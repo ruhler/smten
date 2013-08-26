@@ -133,18 +133,26 @@ caseCG x v ty ms = do
   let (ndefs, def) = findDefault ms
   vnm <- qnameCG $ varName v
   arg <- expCG x
-  body <- mkSymBody vnm (varType v) ty def ndefs
-  return $ S.LetE [S.Val vnm Nothing arg] body
+
+  -- generate the concrete alternatives. We always do this in order to keep
+  -- concrete evaluation fast.
+  (mbs, cms) <- unzip <$> mapM altCG ndefs
+
+  -- generate the symbolic (and default) alternatives.
+  sms <- mkSymAlts vnm (varType v) ty def cms
+  let casee = S.CaseE (S.VarE vnm) (concat [cms, sms])
+      binds = [S.Val vnm Nothing arg] ++ mbs
+  return $ S.LetE binds casee
                
 
--- mkSymBody vnm argty ty default alts
-mkSymBody :: S.Name -> Type -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
-mkSymBody vnm argty ty mdef ms 
+-- mkSymAlts vnm argty ty default alts
+--  Generate the set of alternatives for the case branch which will follow the
+--  concrete alternatives. This should also generate a concrete default
+--  alternative if needed.
+mkSymAlts :: S.Name -> Type -> Type -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
+mkSymAlts vnm argty ty mdef ms 
  | isBoolType argty = mkSymBool vnm mdef ms
- | isConcreteType argty = do
-     ms' <- mapM altCG ms
-     d <- mkDefault mdef
-     return (S.CaseE (S.VarE vnm) (ms' ++ d))
+ | isConcreteType argty = mkDefault mdef
  | isSmtenPrimType argty = mkSymSmtenPrim vnm argty mdef ms
  | otherwise = mkSymData vnm argty mdef ms
 
@@ -152,52 +160,41 @@ mkSymBody vnm argty ty mdef ms
 --   Generate the symbolic alternatives for case expression with boolean
 --   argument.
 --
---  let tb = the True body
---      fb = the False body
---  in case v of
---        True -> tb
---        False -> fb
---        _ -> ite tb fb
-mkSymBool :: S.Name -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
+--  _ -> ite0 v tb fb
+--    where tb is the True body
+--          fb is the False body
+mkSymBool :: S.Name -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
 mkSymBool vnm mdef ms = do
   let mkite tb fb = do
-        addimport "Smten.Runtime.Types"
         addimport "Smten.Runtime.SmtenHS"
-        tb' <- expCG tb
-        fb' <- expCG fb
-        let tbn = "tb"
-            fbn = "fb"
+        return $ foldl1 S.AppE [
+          S.VarE "Smten.Runtime.SmtenHS.ite", 
+          S.VarE vnm,
+          tb, fb]
 
-            itee = foldl1 S.AppE [
-              S.VarE "Smten.Runtime.SmtenHS.ite0", 
-              S.VarE vnm,
-              S.VarE tbn,
-              S.VarE fbn]
+      getFalse :: S.Alt -> Maybe S.Exp
+      getFalse (S.Alt (S.ConP n []) x)
+           | take 5 (reverse n) == reverse "False" = Just x
+      getFalse _ = Nothing
 
-            casee = S.CaseE (S.VarE vnm) [
-              S.Alt (S.ConP "Smten.Runtime.Types.True" []) (S.VarE tbn),
-              S.Alt (S.ConP "Smten.Runtime.Types.False" []) (S.VarE fbn),
-              S.Alt (S.VarP "_") itee]
-        return $ S.LetE [
-                S.Val tbn Nothing tb',
-                S.Val fbn Nothing fb'] casee
+      getTrue :: S.Alt -> Maybe S.Exp
+      getTrue (S.Alt (S.ConP n []) x)
+           | take 4 (reverse n) == reverse "True" = Just x
+            
+      getTrue _ = Nothing
 
-      isFalseK :: DataCon -> Bool
-      isFalseK d =
-        let nm = dataConName d
-        in "False" == (occNameString $ nameOccName nm)
-
-      isTrueK :: DataCon -> Bool
-      isTrueK d =
-        let nm = dataConName d
-        in "True" == (occNameString $ nameOccName nm)
-
-  case (ms, mdef) of
-    ([(DataAlt fk, [], fb), (DataAlt tk, [], tb)], Nothing)
-       | isFalseK fk && isTrueK tk -> mkite tb fb
-    ([(DataAlt tk, [], tb)], Just fb) | isTrueK tk -> mkite tb fb
-    ([(DataAlt fk, [], fb)], Just tb) | isFalseK fk -> mkite tb fb
-    ([], Just b) -> expCG b
+  body <- case (ms, mdef) of
+            ([a, b], Nothing)
+               | Just fb <- getFalse a, Just tb <- getTrue b -> mkite tb fb
+            ([a], Just b)
+               | Just tb <- getTrue a -> do
+                    fb <- expCG b
+                    mkite tb fb
+               | Just fb <- getFalse a -> do
+                    tb <- expCG b
+                    mkite tb fb
+            ([], Just b) -> expCG b
+  return [S.Alt (S.VarP "_") body]
 
 -- mkDefault mdef
 --  Generate the default alternative.
@@ -208,16 +205,18 @@ mkDefault (Just b) = do
   return [S.Alt (S.VarP "_") b']
 
 -- For "Smten" primitive types: Char and Int
---   let casef __vnm =
---         case __vnm of
---              X# ... -> ...
---              X# ... -> ...
---              X# -> default
---              Ite p a b -> ite0 p (casef a) (casef b)
---              Prim r c -> primsapp casef r c
---              Error msg -> error0 msg
---   in casef vnm
-mkSymSmtenPrim :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
+--   X# _ -> default    
+--   _ -> let casef __vnm =
+--              case __vnm of
+--                   X# ... -> ...
+--                   X# ... -> ...
+--                   X# -> default
+--                   Ite p a b -> ite0 p (casef a) (casef b)
+--                   Prim r c -> primsapp casef r c
+--                   Error msg -> error0 msg
+--        in casef vnm
+-- TODO: actually generate the first 'default' alternative.
+mkSymSmtenPrim :: S.Name -> Type -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
 mkSymSmtenPrim vnm argty mdef ms = do
   uniqf <- lift $ getUniqueM
   uniqv <- lift $ getUniqueM
@@ -238,7 +237,6 @@ mkSymSmtenPrim vnm argty mdef ms = do
   qitenm <- qitenmCG tynm
   qprimnm <- qprimnmCG tynm
   defalt <- mkDefault mdef
-  alts <- mapM altCG ms
   let itebody = foldl1 S.AppE [
          S.VarE "Smten.Runtime.SmtenHS.ite0",
          S.VarE "p",
@@ -254,32 +252,25 @@ mkSymSmtenPrim vnm argty mdef ms = do
       erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
                      (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
 
-      allalts = alts ++ [itealt, erralt, primalt] ++ defalt
+      allalts = ms ++ [itealt, erralt, primalt] ++ defalt
       casee = S.CaseE (S.VarE vnmv') allalts
       lame = S.LamE vnmv' casee
       bind = S.Val casefnm Nothing lame
       ine = S.AppE (S.VarE casefnm) (S.VarE vnm)
-  return (S.LetE [bind] ine)
+  return [S.Alt (S.VarP "_") (S.LetE [bind] ine)]
 
 -- For regular algebraic data types.
---   let fFooA a b ... = ...
---       fFooB a b ... = ...
---       ...
---   in case vnm of
---          FooA a b ... -> fFooA a b ...
---          FooB a b ... -> fFooB a b ...
---          ...
---          _ -> let casef = \__vnm ->
---                     case __vnm of
---                       FooA a b ... -> fFooA a b ...
---                       FooB a b ... -> fFooB a b ...
---                       ...
---                       Foo_Error msg -> error0 msg
---                       Foo_Ite {} -> flsapp casef __vnm [__iteFooA __vnm, __iteFooB __vnm, ...]
---                       Foo_Prim r c -> primsapp casef r c
---                       _ -> default
---               in casef vnm
-mkSymData :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
+--   _ -> let casef __vnm =
+--              case __vnm of
+--                FooA a b ... -> ...
+--                FooB a b ... -> ...
+--                ...
+--                Foo_Error msg -> error0 msg
+--                Foo_Ite {} -> flsapp casef __vnm [__iteFooA __vnm, __iteFooB __vnm, ...]
+--                Foo_Prim {} -> ???
+--                _ -> default
+--        in casef vnm
+mkSymData :: S.Name -> Type -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
 mkSymData vnm argty mdef ms = do
   uniqf <- lift $ getUniqueM
   uniqv <- lift $ getUniqueM
@@ -288,24 +279,6 @@ mkSymData vnm argty mdef ms = do
 
       occv = mkVarOcc vnm
       vnmv = mkSystemName uniqv occv
-
-      mkalt :: CoreAlt -> CG (S.Val, S.Alt)
-      mkalt a@(DataAlt k, xs, body) = do
-        uniqf <- lift $ getUniqueM
-        let occf = mkVarOcc "f"
-            ff = mkSystemName uniqf occf
-        ff' <- nameCG ff
-        xs' <- mapM (qnameCG .varName) xs
-        body' <- expCG body
-        k' <- qnameCG $ getName k
-        let lam = foldr (S.LamE) body' xs'
-            altf = S.Val ff' Nothing lam
-
-            applied = foldl S.AppE (S.VarE ff') (map S.VarE xs')
-            alta = S.Alt (S.ConP k' (map S.VarP xs')) applied
-        return (altf, alta)
-  alts <- mapM mkalt ms
-
   case splitTyConApp_maybe argty of
       Just (tycon, _) -> do
           let tynm = tyConName tycon
@@ -319,10 +292,7 @@ mkSymData vnm argty mdef ms = do
           qiteerrnm <- qiteerrnmCG tynm
           qprimnm <- qprimnmCG tynm
           defalt <- mkDefault mdef
-          let altfs = map fst alts
-              calts = map snd alts
-
-              itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnmv') | qiteflnm <- qiteflnms]
+          let itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnmv') | qiteflnm <- qiteflnms]
               iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE vnmv')
               itebody = foldl1 S.AppE [
                  S.VarE "Smten.Runtime.SmtenHS.flsapp",
@@ -338,30 +308,43 @@ mkSymData vnm argty mdef ms = do
               erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
                              (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
 
-              allalts = calts ++ [itealt, erralt, primalt] ++ defalt
+              allalts = ms ++ [itealt, erralt, primalt] ++ defalt
               casee = S.CaseE (S.VarE vnmv') allalts
               lame = S.LamE vnmv' casee
-              caseb = S.Val casefnm Nothing lame
-
-              def = S.Alt (S.VarP "_") (
-                        S.LetE [caseb] (S.AppE (S.VarE casefnm) (S.VarE vnm)))
-              ine = S.CaseE (S.VarE vnm) (calts ++ [def])
-          return (S.LetE altfs ine)
+              bind = S.Val casefnm Nothing lame
+              ine = S.AppE (S.VarE casefnm) (S.VarE vnm)
+          return [S.Alt (S.VarP "_") (S.LetE [bind] ine)]
       _ -> do
           lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr argty)
-          return (S.VarE "???")
+          return [S.Alt (S.VarP "_") (S.VarE "???")]
       
 
 -- | Translate a case alternative directly to haskell
-altCG :: CoreAlt -> CG S.Alt
+altCG :: CoreAlt -> CG (S.Val, S.Alt)
 altCG (LitAlt l, _, body) = do
-    body' <- expCG body
-    return $ S.Alt (S.LitP (litCG l)) body'
+  uniqf <- lift $ getUniqueM
+  let occf = mkVarOcc "f"
+      ff = mkSystemName uniqf occf
+  ff' <- nameCG ff
+  body' <- expCG body
+  let altf = S.Val ff' Nothing body'
+      alta = S.Alt (S.LitP (litCG l)) (S.VarE ff')
+  return (altf, alta)
 altCG (DataAlt k, xs, body) = do
-    body' <- expCG body
-    xs' <- mapM (qnameCG . varName) xs
-    k' <- qnameCG $ getName k
-    return $ S.Alt (S.ConP k' (map S.VarP xs')) body'
+  uniqf <- lift $ getUniqueM
+  let occf = mkVarOcc "f"
+      ff = mkSystemName uniqf occf
+  ff' <- nameCG ff
+  xs' <- mapM (qnameCG . varName) xs
+  body' <- expCG body
+  k' <- qnameCG $ getName k
+  ty <- topTypeCG $ mkFunTys (map varType xs) (exprType body)
+  let lam = foldr (S.LamE) body' xs'
+      altf = S.Val ff' (Just ty) lam
+
+      applied = foldl S.AppE (S.VarE ff') (map S.VarE xs')
+      alta = S.Alt (S.ConP k' (map S.VarP xs')) applied
+  return (altf, alta)
 
 isBoolType :: Type -> Bool
 isBoolType = isType "Bool" ["Smten.Data.Bool0", "GHC.Types"]
