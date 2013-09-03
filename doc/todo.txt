@@ -6,10 +6,18 @@ Cleanup::
 * Why is bv_extract primitive? Why not just shift right and truncate?
 
 Priority Performance::
+* Try alternate code generation with a single big constructor for each
+  datatype (possibly with a tag to specialize for concrete evaluation)
 * Enable -O on all smten files
  - Report FastString string-table reinitializeGlobal bug to ghc
+ - ite0 doesn't support types of kind # (needed for Smten.Data.Char)
+ - emptycase doesn't support types of kind #  (needed for Smten.Data.Char)
  - Support unboxed tuple. (needed for Smten.Data.List,
                                       Smten.Data.Array)
+    Both the type constructor (#, #),
+    And data constructor (for case expressions)
+      we may need a special case for this as concrete, if it, indeed, is
+      concrete...
 
 Other Performance::
 * optimize primitives as needed (see int_add for example)
