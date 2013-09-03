@@ -6,20 +6,10 @@ Cleanup::
 * Why is bv_extract primitive? Why not just shift right and truncate?
 
 Priority Performance::
-* make sure concrete path is always exactly the same for generated code
-    for example: case x of
-                  True -> a
-                  False -> b
-    should *not* be generated as (ite x a b), but rather something like:
-        case x of
-          True -> a
-          False -> b
-          _ -> ite x a b
-    Same for other case expressions.
-* support -O flag when compiling with plugin
- - TidyPgm doesn't do same thing when I call it as when ghc calls it
-    We need to fix this before any other post-optimization things, because the
-    generated code has to match the generated .hi file.
+* Enable -O on all smten files
+ - Report FastString string-table reinitializeGlobal bug to ghc
+ - Support unboxed tuple. (needed for Smten.Data.List,
+                                      Smten.Data.Array)
 
 Other Performance::
 * optimize primitives as needed (see int_add for example)

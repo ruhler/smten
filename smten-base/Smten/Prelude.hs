@@ -60,6 +60,7 @@ import Smten.System.IO
 undefined :: a
 undefined = error "Prelude.undefined"
 
+{-# NOINLINE primitive #-}
 primitive :: String -> a
 primitive nm = error ("Smten.primitive: " ++ nm)
 
