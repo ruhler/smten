@@ -14,7 +14,7 @@ import Smten.Data.Ord0
 import Smten.Data.Ord1
 
 instance Ord Int where
-    compare = int_compare
+    (<=) = int_leq
 
 instance Ord Integer where
     (<=) = integer_leq
