@@ -42,6 +42,9 @@ library
     Smten.Debug.Trace
     Smten.Smten.TypeLits
 
+    Smten.SMC.SMC
+    Smten.SMC.ShiftReg
+
     Smten.Sudoku.BitCell
     Smten.Sudoku.Board
     Smten.Sudoku.Boards
@@ -70,6 +73,7 @@ library
     Smten.Tests.SMT.Datatype
     Smten.Tests.SMT.Error
     Smten.Tests.SMT.Integer
+    Smten.Tests.SMT.SMC
     Smten.Tests.SMT.Sudoku
     Smten.Tests.Test
     Smten.Tests.All
@@ -93,6 +97,9 @@ library
     Smten.Compiled.Smten.Debug.Trace0
     Smten.Compiled.Smten.Debug.Trace
     Smten.Compiled.Smten.Smten.TypeLits
+
+    Smten.Compiled.Smten.SMC.SMC
+    Smten.Compiled.Smten.SMC.ShiftReg
 
     Smten.Compiled.Smten.Sudoku.BitCell
     Smten.Compiled.Smten.Sudoku.Board
@@ -122,6 +129,7 @@ library
     Smten.Compiled.Smten.Tests.SMT.Datatype
     Smten.Compiled.Smten.Tests.SMT.Error
     Smten.Compiled.Smten.Tests.SMT.Integer
+    Smten.Compiled.Smten.Tests.SMT.SMC
     Smten.Compiled.Smten.Tests.SMT.Sudoku
     Smten.Compiled.Smten.Tests.Test
     Smten.Compiled.Smten.Tests.All
