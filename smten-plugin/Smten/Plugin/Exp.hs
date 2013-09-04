@@ -212,7 +212,6 @@ mkDefault (Just b) = do
 --                   X# ... -> ...
 --                   X# -> default
 --                   Ite p a b -> ite0 p (casef a) (casef b)
---                   Prim r c -> primsapp casef r c
 --                   Error msg -> error0 msg
 --        in casef vnm
 -- TODO: actually generate the first 'default' alternative.
@@ -235,7 +234,6 @@ mkSymSmtenPrim vnm argty mdef ms = do
   casefnm <- qnameCG casef
   qerrnm <- qerrnmCG tynm
   qitenm <- qitenmCG tynm
-  qprimnm <- qprimnmCG tynm
   defalt <- mkDefault mdef
   let itebody = foldl1 S.AppE [
          S.VarE "Smten.Runtime.SmtenHS.ite0",
@@ -245,14 +243,10 @@ mkSymSmtenPrim vnm argty mdef ms = do
       itepat = S.ConP qitenm [S.VarP "p", S.VarP "a", S.VarP "b"]
       itealt = S.Alt itepat itebody
 
-      primbody = foldl1 S.AppE (map S.VarE [
-                    "Smten.Runtime.SmtenHS.primsapp", casefnm, "r", "c"])
-      primalt = S.Alt (S.ConP qprimnm [S.VarP "r", S.VarP "c"]) primbody
-                      
       erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
                      (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
 
-      allalts = ms ++ [itealt, erralt, primalt] ++ defalt
+      allalts = ms ++ [itealt, erralt] ++ defalt
       casee = S.CaseE (S.VarE vnmv') allalts
       lame = S.LamE vnmv' casee
       bind = S.Val casefnm Nothing lame
@@ -267,7 +261,6 @@ mkSymSmtenPrim vnm argty mdef ms = do
 --                ...
 --                Foo_Error msg -> error0 msg
 --                Foo_Ite {} -> flsapp casef __vnm [__iteFooA __vnm, __iteFooB __vnm, ...]
---                Foo_Prim {} -> ???
 --                _ -> default
 --        in casef vnm
 mkSymData :: S.Name -> Type -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
@@ -290,7 +283,6 @@ mkSymData vnm argty mdef ms = do
           qitenm <- qitenmCG tynm
           qiteflnms <- mapM (qiteflnmCG . dataConName) (tyConDataCons tycon)
           qiteerrnm <- qiteerrnmCG tynm
-          qprimnm <- qprimnmCG tynm
           defalt <- mkDefault mdef
           let itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnmv') | qiteflnm <- qiteflnms]
               iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE vnmv')
@@ -301,14 +293,10 @@ mkSymData vnm argty mdef ms = do
                  S.ListE (itefls ++ [iteerr])]
               itealt = S.Alt (S.RecP qitenm) itebody
 
-              primbody = foldl1 S.AppE (map S.VarE [
-                            "Smten.Runtime.SmtenHS.primsapp", casefnm, "r", "c"])
-              primalt = S.Alt (S.ConP qprimnm [S.VarP "r", S.VarP "c"]) primbody
-                              
               erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
                              (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
 
-              allalts = ms ++ [itealt, erralt, primalt] ++ defalt
+              allalts = ms ++ [itealt, erralt] ++ defalt
               casee = S.CaseE (S.VarE vnmv') allalts
               lame = S.LamE vnmv' casee
               bind = S.Val casefnm Nothing lame

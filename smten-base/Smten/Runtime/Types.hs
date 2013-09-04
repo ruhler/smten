@@ -97,7 +97,6 @@ data Bool where
    Bool_LeqBit :: P.Integer -> Bit n -> Bit n -> Bool
    Bool_Var :: FreeID -> Bool
    Bool_Err :: ErrorString -> Bool
-   Bool_Prim :: (Model -> Bool) -> Bool -> Bool
 
 instance Show Bool where
     show True = "True"
@@ -111,7 +110,6 @@ instance Show Bool where
     show (Bool_LeqBit _ a b) = "(" ++ show a ++ " <= " ++ show b ++ ")"
     show (Bool_Var a) = freenm a
     show (Bool_Err msg) = "Bool_Err " ++ show msg
-    show (Bool_Prim r x) = "?Bool_Prim?"
 
 andB :: Bool -> Bool -> Bool
 andB True x = x
@@ -146,7 +144,6 @@ data Integer =
   | Integer_Sub Integer Integer
   | Integer_Ite Bool Integer Integer
   | Integer_Var FreeID
-  | Integer_Prim (Model -> Integer) Integer
   | Integer_Err ErrorString
 
 eq_Integer :: Integer -> Integer -> Bool
@@ -196,7 +193,6 @@ data Bit (n :: Nat) where
   Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
   Bit_Var :: FreeID -> Bit n
   Bit_Err :: ErrorString -> Bit n
-  Bit_Prim :: (Model -> Bit n) -> Bit n -> Bit n
 
 instance Show (Bit n) where
   show (Bit x) = show x
@@ -214,7 +210,6 @@ instance Show (Bit n) where
   show (Bit_Ite p a b) = "(" ++ show p ++ " ? " ++ show a ++ " : " ++ show b ++ ")"
   show (Bit_Var x) = freenm x
   show (Bit_Err msg) = "Bit_Err " ++ show msg
-  show (Bit_Prim _ x) = show x
     
 
 eq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
@@ -302,7 +297,6 @@ stableNameEq x y = unsafeDupablePerformIO $ do
 class SymEq a where
     -- Return 'True' if the two (symbolic) objects are structurally equal.
     -- Error constructors are never equal (even if they have the same message).
-    -- Prim constructors are equal if their cases are equal.
     symeq :: a -> a -> P.Bool
 
 instance SymEq Bool where
@@ -325,8 +319,6 @@ instance SymEq Bool where
 --    symeq (Bool_LeqBit _ a1 a2) (Bool_LeqBit _ b1 b2)
 --        = a1 `symeq` b1 && a2 `symeq` b2
     symeq (Bool_Var a) (Bool_Var b) = a == b
-    symeq (Bool_Prim r a) b = a `symeq` b
-    symeq a (Bool_Prim r b) = a `symeq` b
     symeq a b = P.False
 
 instance SymEq Integer where
@@ -339,8 +331,6 @@ instance SymEq Integer where
     symeq (Integer_Ite ap a1 a2) (Integer_Ite bp b1 b2)
       = ap `symeq` bp && a1 `symeq` b1 && a2 `symeq` b2
     symeq (Integer_Var a) (Integer_Var b) = a == b
-    symeq (Integer_Prim r a) b = a `symeq` b
-    symeq a (Integer_Prim r b) = a `symeq` b
     symeq a b = P.False
     
 instance SymEq (Bit n) where
@@ -370,6 +360,4 @@ instance SymEq (Bit n) where
     symeq (Bit_Ite ap a1 a2) (Bit_Ite bp b1 b2)
       = ap `symeq` bp && a1 `symeq` b1 && a2 `symeq` b2
     symeq (Bit_Var a) (Bit_Var b) = a == b
-    symeq (Bit_Prim r a) b = a `symeq` b
-    symeq a (Bit_Prim r b) = a `symeq` b
     symeq a b = P.False

@@ -49,7 +49,6 @@ newtypeD t constr = do
 --
 -- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
 --   realizeN = ...
---   primitiveN = ...
 --   errorN = ...
 --   ...
 smtenHS :: Name -> [TyVar] -> DataCon -> CG [S.Dec]
@@ -64,25 +63,9 @@ smtenHS nm tyvs constr = do
        cn = dataConName constr
    addimport "Smten.Runtime.SmtenHS"
    rel <- realizeD cn n
-   prim <- primD cn n
    ite <- iteD cn n
    err <- errorD cn n
-   return [S.InstD ctx ty [rel, ite, prim, err]]
-
---   primN = \r x -> Foo (primitive0 (__deNewTyFoo . r) (__deNewTyFoo x))
-primD :: Name -> Int -> CG S.Method
-primD nm n = do
-  addimport "Prelude"
-  addimport "Smten.Runtime.SmtenHS"
-  cn <- qnameCG nm
-  dcn <- qdenewtynmCG nm
-  let prim = foldl1 S.AppE [
-        S.VarE "Smten.Runtime.SmtenHS.primitive0",
-        foldl1 S.AppE [S.VarE "(Prelude..)", S.VarE dcn, S.VarE "r"],
-        S.AppE (S.VarE dcn) (S.VarE "x")]
-      foo = S.AppE (S.VarE cn) prim
-      body = S.LamE "r" (S.LamE "x" foo)
-  return $ S.Method ("primitive" ++ show n) body
+   return [S.InstD ctx ty [rel, ite, err]]
 
 -- iteN = \p a b = Foo (ite0 p (__deNewTyFoo a) (__deNewTyFoo b))
 iteD :: Name -> Int -> CG S.Method

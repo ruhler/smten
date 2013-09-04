@@ -25,7 +25,6 @@ dataCG t constrs = do
 --                  | FooB B1 B2 ...
 --                  ...
 --                  | FooK K1 K2 ...
---                  | Foo_Prim (Model -> Foo a b ...) (Foo a b ...)
 --                  | Foo_Error ErrorString
 --                  | Foo_Ite {
 --                      __iteFooA :: Prelude.Maybe (BoolF, Foo a b ...),
@@ -48,15 +47,11 @@ mkDataD nm tyvars constrs = do
   tyvs' <- mapM tyvarCG tyvars
 
   qtyname <- qtynameCG nm
-  primnm <- primnmCG nm
   errnm <- errnmCG nm
   iteerrnm <- iteerrnmCG nm
   iteflnms <- mapM (iteflnmCG . dataConName) constrs
   itenm <- itenmCG nm
   let tyme = S.ConAppT qtyname tyvs'
-      asn = S.arrowT (S.ConAppT "Smten.Runtime.Types.Model" []) tyme
-      prim = S.Con primnm [asn, tyme]
-
       err = S.Con errnm [S.ConAppT "Smten.Runtime.Types.ErrorString" []]
 
       tybool = S.ConAppT "Smten.Runtime.Types.Bool" []
@@ -66,7 +61,7 @@ mkDataD nm tyvars constrs = do
       ites = [S.RecField iteflnm tyfield | iteflnm <- iteflnms]
       ite = S.RecC itenm (ites ++ [iteerr])
 
-      allks = ks ++ [prim, err, ite]
+      allks = ks ++ [err, ite]
   addimport "Smten.Runtime.Types"
   addimport "Prelude"
   addexport (S.TyConExport nm')
@@ -81,7 +76,6 @@ mkDataD nm tyvars constrs = do
 --
 -- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
 --   realizeN = ...
---   primitiveN = ...
 --   errorN = ...
 --   ...
 smtenHS :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
@@ -95,16 +89,9 @@ smtenHS nm tyvs cs = do
    let ty = S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show n) [S.ConAppT qtyname tyvs']
    addimport "Smten.Runtime.SmtenHS"
    rel <- realizeD nm n cs
-   prim <- primD nm n
    ite <- iteD nm n cs
    err <- errorD nm n
-   return [S.InstD ctx ty [rel, ite, prim, err]]
-
---   primN = Foo_Prim
-primD :: Name -> Int -> CG S.Method
-primD nm n = do
-  qprimnm <- qprimnmCG nm
-  return $ S.Method ("primitive" ++ show n) (S.VarE qprimnm)
+   return [S.InstD ctx ty [rel, ite, err]]
 
 -- iteN = \p a b ->
 --   case (a, b) of
@@ -117,8 +104,6 @@ primD nm n = do
 --           __iteFooB = flmerge p (__iteFooB a) (__iteFooB b)
 --           ...
 --         }
---      (Foo_Prim r c, _) -> Foo_Prim (iterealize p a b) (ite p c b)
---      (_, Foo_Prim r c) -> Foo_Prim (iterealize p a b) (ite p a c)
 --      _ -> ite p (__LiftIteFoo a) (__LiftIteFoo b)
 iteD :: Name -> Int -> [DataCon] -> CG S.Method
 iteD n k cs = do
@@ -164,19 +149,6 @@ iteD n k cs = do
       itebody = S.RecE (S.VarE qitenm) (fes ++ [efe])
       itecon = S.Alt itepat itebody
 
-  qprimnm <- qprimnmCG n
-  let lprimpat = S.tup2P (S.ConP qprimnm [S.VarP "r", S.VarP "c"]) S.wildP
-      lprimbody = S.conE qprimnm [
-         foldl1 S.AppE (map S.VarE ["Smten.Runtime.SmtenHS.iterealize", "p", "a", "b"]),
-         ite (S.VarE "c") (S.VarE "b")]
-      lprimcon = S.Alt lprimpat lprimbody
-
-      rprimpat = S.tup2P S.wildP (S.ConP qprimnm [S.VarP "r", S.VarP "c"])
-      rprimbody = S.conE qprimnm [
-         foldl1 S.AppE (map S.VarE ["Smten.Runtime.SmtenHS.iterealize", "p", "a", "b"]),
-         ite (S.VarE "a") (S.VarE "c")]
-      rprimcon = S.Alt rprimpat rprimbody
-
   qliftitenm <- qliftitenmCG n
   let defpat = S.wildP
       defbody = ite (S.AppE (S.VarE qliftitenm) (S.VarE "a"))
@@ -184,7 +156,7 @@ iteD n k cs = do
       defcon = S.Alt defpat defbody
 
   cons <- mapM mkcon cs
-  let casee = S.CaseE (S.tup2E (S.VarE "a") (S.VarE "b")) (cons ++ [errcon, lprimcon, rprimcon, itecon, defcon])
+  let casee = S.CaseE (S.tup2E (S.VarE "a") (S.VarE "b")) (cons ++ [errcon, itecon, defcon])
       body = S.LamE "p" (S.LamE "a" (S.LamE "b" casee))
   return $ S.Method ("ite" ++ show k) body
 
@@ -199,7 +171,6 @@ errorD nm n = do
 --       (FooA x1 x2 ...) -> FooA (realize m x1) (realize m x2) ...
 --       (FooB x1 x2 ...) -> FooB (realize m x1) (realize m x2) ...
 --       ...
---       (Foo_Prim r _) -> r m
 --       (Foo_Ite {}) -> flrealize m [__iteFooA x, __iteFooB x, ...]
 --       (Foo_Error _) -> x
 realizeD :: Name -> Int -> [DataCon] -> CG S.Method
@@ -217,11 +188,6 @@ realizeD n k cs = do
                     S.VarE x] | x <- xs]
             body = S.conE cn rs
         return $ S.Alt pat body
-
-  qprimnm <- qprimnmCG n
-  let primpat = S.ConP qprimnm [S.VarP "r", S.wildP]
-      primbody = S.AppE (S.VarE "r") (S.VarE "m")
-      primcon = S.Alt primpat primbody
 
   qiteflnms <- mapM (qiteflnmCG . dataConName) cs
   qiteerrnm <- qiteerrnmCG n
@@ -241,7 +207,7 @@ realizeD n k cs = do
       errcon = S.Alt errpat errbody
 
   cons <- mapM mkcon cs
-  let casee = S.CaseE (S.VarE "x") (cons ++ [primcon, itecon, errcon])
+  let casee = S.CaseE (S.VarE "x") (cons ++ [itecon, errcon])
       body = S.LamE "m" $ (S.LamE "x") casee
   return $ S.Method ("realize" ++ show k) body
   

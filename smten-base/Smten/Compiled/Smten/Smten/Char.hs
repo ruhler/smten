@@ -19,7 +19,6 @@ data Char =
     C# P.Char#
   | Char_Ite Bool Char Char
   | Char_Err ErrorString
-  | Char_Prim (Model -> Char) Char
 
 instance SymbolicOf P.Char Char where
     tosym (P.C# x) = C# x
@@ -29,7 +28,6 @@ instance SymbolicOf P.Char Char where
         C# c -> f (P.C# c)
         Char_Ite p a b -> ite0 p (f $$ a) (f $$ b)
         Char_Err msg -> error0 msg
-        Char_Prim r x -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
 
 toHSChar :: Char -> P.Char
 toHSChar (C# x) = P.C# x
@@ -41,7 +39,5 @@ instance SmtenHS0 Char where
         C# {} -> x
         Char_Ite p a b -> iterealize p a b m
         Char_Err msg -> Char_Err (realize m msg)
-        Char_Prim r _ -> r m
     ite0 = Char_Ite
-    primitive0 = Char_Prim
 

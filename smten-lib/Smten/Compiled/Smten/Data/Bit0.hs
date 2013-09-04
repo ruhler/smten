@@ -25,7 +25,6 @@ instance SymbolicOf P.Bit (Bit n) where
         Bit b -> f b
         Bit_Ite p a b -> ite0 p (f $$ a) (f $$ b)
         Bit_Err msg -> error0 msg
-        Bit_Prim r x -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
         _ -> P.error "symapp on non-ite symbolic bit vector"
 
 bv_eq :: SingI Nat n -> Bit n -> Bit n -> Bool

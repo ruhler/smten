@@ -1,7 +1,6 @@
 
 module Smten.Plugin.Name (
     nameCG, qnameCG, qtynameCG,
-    primnmCG, qprimnmCG,
     errnmCG, qerrnmCG,
     iteerrnmCG, qiteerrnmCG,
     iteflnmCG, qiteflnmCG,
@@ -103,14 +102,6 @@ qnameCG = nmCG False id True
 -- Generate code for a qualified name.
 qtynameCG :: Name -> CG S.Name
 qtynameCG = nmCG True id True
-
--- | Generate code for the prim constructor of a given data type.
-primnmCG :: Name -> CG S.Name
-primnmCG = nmCG True (++ "_Prim") False
-
--- | qualified type constructor name.
-qprimnmCG :: Name -> CG S.Name
-qprimnmCG = nmCG True (++ "_Prim") True
 
 -- | Generate code for the err constructor of a given data type.
 errnmCG :: Name -> CG S.Name

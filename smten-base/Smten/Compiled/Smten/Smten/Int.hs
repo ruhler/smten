@@ -18,7 +18,6 @@ data Int =
     I# P.Int#
   | Int_Ite Bool Int Int
   | Int_Err ErrorString
-  | Int_Prim (Model -> Int) Int
 
 instance SymbolicOf P.Int Int where
     tosym (P.I# x) = I# x
@@ -30,7 +29,6 @@ instance SymbolicOf P.Int Int where
         I# i -> f (P.I# i)
         Int_Ite p a b -> ite0 p (f $$ a) (f $$ b)
         Int_Err msg -> error0 msg
-        Int_Prim r x -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
 
 instance SmtenHS0 Int where
     error0 = Int_Err
@@ -39,9 +37,7 @@ instance SmtenHS0 Int where
         I# {} -> x
         Int_Ite p a b -> iterealize p a b m
         Int_Err msg -> Int_Err (realize m msg)
-        Int_Prim r _ -> r m
     ite0 = Int_Ite
-    primitive0 = Int_Prim
 
 instance P.Num Int where
     fromInteger = tosym P.. (P.fromInteger :: P.Integer -> P.Int)

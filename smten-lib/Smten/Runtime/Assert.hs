@@ -99,7 +99,6 @@ instance Supported S.Bool where
 
     define ctx (S.Bool_And a b) = binary (and_bool ctx) a b
     define ctx (S.Bool_Not a) = unary (not_bool ctx) a
-    define ctx (S.Bool_Prim _ c) = define ctx c
     define ctx (S.Bool_Err msg) = liftIO $ do
        id <- fresh
        declare ctx S.BoolT (freenm id)
@@ -117,7 +116,6 @@ instance Supported S.Integer where
         b' <- use b
         liftIO $ ite_integer ctx p' a' b'
     define ctx (S.Integer_Var id) = liftIO $ var ctx (freenm id)
-    define ctx (S.Integer_Prim _ c) = define ctx c
     define ctx (S.Integer_Err msg) = liftIO $ do
         id <- fresh
         declare ctx S.IntegerT (freenm id)
@@ -155,7 +153,6 @@ instance Supported (S.Bit n) where
         b' <- use b
         liftIO $ ite_bit ctx p' a' b'
     define ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
-    define ctx (S.Bit_Prim _ c) = define ctx c
     define ctx (S.Bit_Err msg) = do
       w <- asks ar_bitwidth
       liftIO $ do
