@@ -19,8 +19,8 @@ data Model s = Model {
 
 data LTL s =
     P (s -> Bool)         -- p
-  | (LTL s) :/\ (LTL s)   -- f and g
-  | (LTL s) :\/ (LTL s)   -- f or g
+  | (LTL s) :/\: (LTL s)   -- f and g
+  | (LTL s) :\/: (LTL s)   -- f or g
   | G (LTL s)             -- G f
   | F (LTL s)             -- F f
   | X (LTL s)             -- X f
@@ -37,8 +37,8 @@ noloop :: Array Int s -> Int -> Int -> LTL s -> Bool
 noloop s i k ltl =
   case ltl of
     P p      ->  p (s ! i)
-    f :/\ g  ->  noloop s i k f && noloop s i k g
-    f :\/ g  ->  noloop s i k f || noloop s i k g
+    f :/\: g  ->  noloop s i k f && noloop s i k g
+    f :\/: g  ->  noloop s i k f || noloop s i k g
     G f      ->  False
     F f      ->  or [noloop s j k f | j <- [i..k]]
     X f      ->  if i < k then noloop s (i+1) k f else False
@@ -58,8 +58,8 @@ loop :: Array Int s -> Int -> Int -> Int -> LTL s -> Bool
 loop s l i k ltl = 
   case ltl of
     P p      ->  p (s ! i)
-    f :/\ g  ->  loop s l i k f && loop s l i k g
-    f :\/ g  ->  loop s l i k f || loop s l i k g
+    f :/\: g  ->  loop s l i k f && loop s l i k g
+    f :\/: g  ->  loop s l i k f || loop s l i k g
     G f      ->  and [loop s l j k f | j <- [min i l .. k]]
     F f      ->  or [loop s l j k f | j <- [min i l .. k]]
     X f      ->  loop s l (succ k l i) k f
