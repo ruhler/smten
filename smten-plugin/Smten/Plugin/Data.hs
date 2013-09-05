@@ -27,10 +27,10 @@ dataCG t constrs = do
 --                  | FooK K1 K2 ...
 --                  | Foo_Error ErrorString
 --                  | Foo_Ite {
---                      __iteFooA :: Prelude.Maybe (BoolF, Foo a b ...),
---                      __iteFooB :: Prelude.Maybe (BoolF, Foo a b ...),
+--                      __iteFooA :: (BoolF, Foo a b ...),
+--                      __iteFooB :: (BoolF, Foo a b ...),
 --                      ...,
---                      __iteFoo_Error :: Prelude.Maybe (BoolF, Foo a b ...)
+--                      __iteFoo_Error :: (BoolF, Foo a b ...)
 --                    }
 mkDataD :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 mkDataD nm tyvars constrs = do
@@ -55,7 +55,7 @@ mkDataD nm tyvars constrs = do
       err = S.Con errnm [S.ConAppT "Smten.Runtime.Types.ErrorString" []]
 
       tybool = S.ConAppT "Smten.Runtime.Types.Bool" []
-      tyfield = S.ConAppT "Prelude.Maybe" [S.ConAppT "(,)" [tybool, tyme]]
+      tyfield = S.ConAppT "(,)" [tybool, tyme]
 
       iteerr = S.RecField iteerrnm tyfield
       ites = [S.RecField iteflnm tyfield | iteflnm <- iteflnms]
@@ -219,7 +219,7 @@ mkIteHelpersD t n ts cs = do
 
 -- __IteNullFoo :: Foo a b ...
 -- __IteNullFoo = Foo_Ite {
---    __fl* = Nothing,
+--    __fl* = unusedfield,
 --    ...
 -- }
 mkNullIteD :: TyCon -> Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
@@ -230,8 +230,10 @@ mkNullIteD t n ts cs = do
   iteflnms <- mapM (iteflnmCG . dataConName) cs
   iteerrnm <- iteerrnmCG n
   qitenm <- qitenmCG n
-  let fes = [S.Field iteflnm (S.conE "Prelude.Nothing" []) | iteflnm <- iteflnms]
-      efe = S.Field iteerrnm (S.conE "Prelude.Nothing" [])
+  addimport "Smten.Runtime.SmtenHS"
+  let nothing = S.VarE "Smten.Runtime.SmtenHS.unusedfield"
+      fes = [S.Field iteflnm nothing | iteflnm <- iteflnms]
+      efe = S.Field iteerrnm nothing
       body = S.RecE (S.VarE qitenm) (fes ++ [efe])
   return [S.ValD (S.Val nullitenm (Just ty) body)]
 
@@ -239,11 +241,11 @@ mkNullIteD t n ts cs = do
 -- __IteLiftFoo = \x ->
 --    case x of
 --      FooA {} -> (__IteNullFoo :: Foo a b ...) {
---                      __iteFooA = Just (True, x)
+--                      __iteFooA = (True, x)
 --                   }
 --      ...
 --      Foo_Error msg -> (__IteNullFoo :: Foo a b ...) {
---                      __iteErrFoo = Just (True, x)
+--                      __iteErrFoo = (True, x)
 --                   }
 --      Foo_Ite {} -> x
 mkLiftIteD :: TyCon -> Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
@@ -261,7 +263,7 @@ mkLiftIteD t n ts cs = do
         iteflnm <- iteflnmCG cn
         let pat = S.RecP qname
             tuple = S.tup2E (S.conE "Smten.Runtime.Types.True" []) (S.VarE "x")
-            fields = [S.Field iteflnm (S.conE "Prelude.Just" [tuple])]
+            fields = [S.Field iteflnm tuple]
             body = S.RecE (S.SigE (S.VarE qnullitenm) tyme) fields
         return $ S.Alt pat body
 
@@ -269,7 +271,7 @@ mkLiftIteD t n ts cs = do
   iteerrnm <- iteerrnmCG n
   let errpat = S.RecP qerrnm
       errtuple = S.tup2E (S.conE "Smten.Runtime.Types.True" []) (S.VarE "x")
-      errfields = [S.Field iteerrnm (S.conE "Prelude.Just" [errtuple])]
+      errfields = [S.Field iteerrnm errtuple]
       errbody = S.RecE (S.SigE (S.VarE qnullitenm) tyme) errfields
       errcon = S.Alt errpat errbody
 

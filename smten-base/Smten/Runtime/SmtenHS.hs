@@ -5,12 +5,11 @@
 module Smten.Runtime.SmtenHS (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
     ite, iterealize, realize, flrealize, flmerge, flsapp,
-    emptycase,
+    emptycase, unusedfield,
     ) where
 
 import qualified Prelude as P
 import Prelude hiding (Bool(..), Integer)
-import Data.Maybe
 
 import Smten.Runtime.Types
 
@@ -76,27 +75,29 @@ iterealize p a b m = ite (realize m p) (realize m a) (realize m b)
 realize :: (SmtenHS0 a) => Model -> a -> a
 realize m x = m_cached m realize0 x
 
-flrealize :: (SmtenHS0 a) => Model -> [Maybe (Bool, a)] -> a
-flrealize m (Nothing : xs) = flrealize m xs
-flrealize m (Just (p, v) : xs) = ite (realize m p) (realize m v) (flrealize m xs)
+flrealize :: (SmtenHS0 a) => Model -> [(Bool, a)] -> a
+flrealize m ((False, _) : xs) = flrealize m xs
+flrealize m ((p, v) : xs) = ite (realize m p) (realize m v) (flrealize m xs)
 flrealize _ [] = error "flrealize failed"
 
 -- flmerge
 -- Merge two fields of an ite constructor.
 {-# INLINEABLE flmerge #-}
-flmerge :: (SmtenHS0 a) => Bool -> Maybe (Bool, a) -> Maybe (Bool, a) -> Maybe (Bool, a)
-flmerge _ Nothing Nothing = Nothing
-flmerge p (Just (g, v)) Nothing = Just (andB p g, v)
-flmerge p Nothing (Just (g, v)) = Just (andB (notB p) g, v)
-flmerge p (Just (ga, va)) (Just (gb, vb)) = Just (ite p ga gb, ite p va vb)
+flmerge :: (SmtenHS0 a) => Bool -> (Bool, a) -> (Bool, a) -> (Bool, a)
+flmerge p (False, _) (False, _) = unusedfield
+flmerge p (g, v) (False, _) = (andB p g, v)
+flmerge p (False, _) (g, v) = (andB (notB p) g, v)
+flmerge p (ga, va) (gb, vb) = (ite p ga gb, ite p va vb)
 
 {-# INLINEABLE flsapp #-}
-flsapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> [Maybe (Bool, a)] -> b
+flsapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> [(Bool, a)] -> b
 flsapp f x zs =
- let join [Just (_, v)] = f v
-     join (Just (p, a):bs) = ite p (f a) (join bs)
-     zs' = filter isJust zs
- in join zs'
+ let join [(_, v)] = f v
+     join ((p, a):bs) = ite p (f a) (join bs)
+
+     isvalid (False, _) = P.False
+     isvalid _ = P.True
+ in join (filter isvalid zs)
 
 instance SmtenHS0 Bool where
     error0 = Bool_Err
@@ -161,4 +162,7 @@ instance SmtenHS2 (->) where
 
 emptycase :: a
 emptycase = P.error "inaccessable case"
+
+unusedfield :: (Bool, a)
+unusedfield = (False, P.error "unused field access")
 

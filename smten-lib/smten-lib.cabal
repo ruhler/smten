@@ -154,4 +154,5 @@ Test-Suite test-smten-lib
                    pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
                    template-haskell ==2.8.*,
                    smten-base ==4.0.*, smten-plugin ==4.0.*
+    ghc-options: -rtsopts
 
