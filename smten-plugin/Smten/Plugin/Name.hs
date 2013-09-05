@@ -76,7 +76,9 @@ nmCG ty f qlf nm
           useuniq = (not $ isExternalName nm)
               || (occnm == "main" && modnm /= Just ":Main")
 
-          (issym, occnm') = resym useuniq occnm
+          isconsym = (head occnm == ':')
+
+          (issym, occnm') = resym (useuniq || isconsym) occnm
 
           unqlf = f $ if useuniq
                         then occnm' ++ "_" ++ unqnm

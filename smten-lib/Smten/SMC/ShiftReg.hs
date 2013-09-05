@@ -35,11 +35,11 @@ srinit :: SRState -> Bool
 srinit = const True
 
 shiftregm :: Model SRState
-shiftregm = Model srinit srtrans_bad
+shiftregm = Model { _I = srinit, _T = srtrans_bad }
 
 allzero :: SRState -> Bool
 allzero s = not (x0 s) && not (x1 s) && not (x2 s)
 
 shiftregf :: LTL SRState
-shiftregf = Globally (Prop (not . allzero))
+shiftregf = G (P (not . allzero))
 
