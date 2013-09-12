@@ -48,7 +48,7 @@ allcases y =
                         (lookbelow l (i P.* 2) x)
                         (lookin l h x)
             
-  in Integer_Ite (leq_Integer y (Integer 0))
+  in Integer_Ite (leq_Integer y (Integer (P.negate 1)))
                        (lookbelow 0 1 y)
                        (lookabove 0 1 y)
         

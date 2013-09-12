@@ -61,3 +61,13 @@ smttests = do
        x <- free_Integer
        assert (x == 5)
        return (fromInteger x)
+
+    symtesteq "SMT.integer2int.zero" (Just (0 :: Int)) $ do
+       x <- free_Integer
+       assert (x == 0)
+       return (fromInteger x)
+
+    symtesteq "SMT.integer2int.negative" (Just (negate 5 :: Int)) $ do
+       x <- free_Integer
+       assert (x == negate 5)
+       return (fromInteger x)

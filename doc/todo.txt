@@ -52,6 +52,8 @@ Known Bugs::
     when it should instead tell the user an error was encountered in the
     query.
 * see problems with -O optimization above
+* symapp for variable bit-vector
+    Implement it like we implement symapp for Integer
 
 Suspected Bugs::
 * I suspect problems with using a function called 'main' as a normal function
