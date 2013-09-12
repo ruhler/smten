@@ -13,18 +13,18 @@ import Smten.Symbolic.Solver.Yices1
 
 main :: IO ()
 main = do
-    runtest (SMTTestCfg yices1 []) Core.smttests
+    runtest (SMTTestCfg yices1 [] []) Core.smttests
     putStrLn "Yices1.SMT.Core PASSED"
 
-    runtest (SMTTestCfg yices1 []) Datatype.smttests
+    runtest (SMTTestCfg yices1 [] []) Datatype.smttests
     putStrLn "Yices1.SMT.Datatype PASSED"
 
-    runtest (SMTTestCfg yices1 []) Integer.smttests
+    runtest (SMTTestCfg yices1 [] []) Integer.smttests
     putStrLn "Yices1.SMT.Integer PASSED"
 
-    runtest (SMTTestCfg yices1 []) Bit.smttests
+    runtest (SMTTestCfg yices1 [] []) Bit.smttests
     putStrLn "Yices1.SMT.Bit PASSED"
 
-    runtest (SMTTestCfg yices1 []) Error.smttests
+    runtest (SMTTestCfg yices1 [] []) Error.smttests
     putStrLn "Yices1.SMT.Error PASSED"
 

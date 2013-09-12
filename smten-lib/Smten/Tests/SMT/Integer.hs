@@ -54,3 +54,10 @@ smttests = do
         assert ((x - y) == 2)
         return (x, y)
 
+    -- Test realization of an Int from an integer
+    -- This should work fine, without any performance issues, because we
+    -- already know what the integer is
+    symtesteq "SMT.integer2int" (Just (5 :: Int)) $ do
+       x <- free_Integer
+       assert (x == 5)
+       return (fromInteger x)

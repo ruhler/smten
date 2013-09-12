@@ -14,18 +14,18 @@ import Smten.Symbolic.Solver.Z3
 
 main :: IO ()
 main = do
-    runtest (SMTTestCfg z3 []) Core.smttests
+    runtest (SMTTestCfg z3 [] []) Core.smttests
     putStrLn "Z3.SMT.Core PASSED"
 
-    runtest (SMTTestCfg z3 []) Datatype.smttests
+    runtest (SMTTestCfg z3 [] []) Datatype.smttests
     putStrLn "Z3.SMT.Datatype PASSED"
 
-    runtest (SMTTestCfg z3 []) Integer.smttests
+    runtest (SMTTestCfg z3 [] []) Integer.smttests
     putStrLn "Z3.SMT.Integer PASSED"
 
-    runtest (SMTTestCfg z3 []) Bit.smttests
+    runtest (SMTTestCfg z3 [] []) Bit.smttests
     putStrLn "Z3.SMT.Bit PASSED"
 
-    runtest (SMTTestCfg z3 []) Error.smttests
+    runtest (SMTTestCfg z3 [] []) Error.smttests
     putStrLn "Z3.SMT.Error PASSED"
 

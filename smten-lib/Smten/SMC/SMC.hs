@@ -42,12 +42,10 @@ noloop s i k ltl =
     G f      ->  False
     F f      ->  or [noloop s j k f | j <- [i..k]]
     X f      ->  if i < k then noloop s (i+1) k f else False
-    f `U` g  ->
-       let p j = noloop s j k g && and [noloop s n k f | n <- [i..(j-1)]]
-       in or [p j | j <- [i..k]]
-    f `R` g ->
-       let p j = noloop s j k f && and [noloop s n k g | n <- [i..j]]
-       in or [p j | j <- [i..k]]
+    f `U` g  ->  or [p j | j <- [i..k]]
+       where p j = noloop s j k g && and [noloop s n k f | n <- [i..(j-1)]]
+    f `R` g ->   or [p j | j <- [i..k]]
+       where p j = noloop s j k f && and [noloop s n k g | n <- [i..j]]
 
 -- Definition 12 (Successor in a Loop)
 succ :: Int -> Int -> Int -> Int
@@ -63,28 +61,21 @@ loop s l i k ltl =
     G f      ->  and [loop s l j k f | j <- [min i l .. k]]
     F f      ->  or [loop s l j k f | j <- [min i l .. k]]
     X f      ->  loop s l (succ k l i) k f
-    f `U` g  ->  
-      let pa j = loop s l j k g &&
-                 and [loop s l n k f | n <- [i..(j-1)]]
-          a = or [pa j | j <- [i..k]]
-    
-          pb j = loop s l j k g && 
-                 and [loop s l n k f | n <- [i..k]] &&
-                 and [loop s l n k f | n <- [l..(j-1)]]
-          b = or [pb j | j <- [l..(i-1)]]
-      in a || b
-    f `R` g  -> 
-      let x = and [loop s l j k g | j <- [min i l .. k]]
-
-          pa j = loop s l j k f &&
-                 and [loop s l n k g | n <- [i..j]]
-          a = or [pa j | j <- [i..k]]
-    
-          pb j = loop s l j k f && 
-                 and [loop s l n k g | n <- [i..k]] &&
-                 and [loop s l n k g | n <- [l..j]]
-          b = or [pb j | j <- [l..(i-1)]]
-      in x || a || b
+    f `U` g  ->  or [pa j | j <- [i..k]] || or [pb j | j <- [l..(i-1)]]
+      where pa j = loop s l j k g &&
+                   and [loop s l n k f | n <- [i..(j-1)]]
+            pb j = loop s l j k g && 
+                   and [loop s l n k f | n <- [i..k]] &&
+                   and [loop s l n k f | n <- [l..(j-1)]]
+    f `R` g  -> x || a || b
+      where x = and [loop s l j k g | j <- [min i l .. k]]
+            pa j = loop s l j k f &&
+                   and [loop s l n k g | n <- [i..j]]
+            a = or [pa j | j <- [i..k]]
+            pb j = loop s l j k f && 
+                   and [loop s l n k g | n <- [i..k]] &&
+                   and [loop s l n k g | n <- [l..j]]
+            b = or [pb j | j <- [l..(i-1)]]
 
 -- Definition 14 (Loop Condition) L_k
 isloop :: Array Int s -> Model s -> Int -> Bool
@@ -92,11 +83,9 @@ isloop s m k = or [_T m (s ! k) (s ! l) | l <- [0..k]]
    
 -- Definition 15 (General Translation) [[M,f]]_k
 trans :: Array Int s -> Model s -> LTL s -> Int -> Bool
-trans s m f k =
-  let isp = ispath s m k
-      nl = not (isloop s m k) && noloop s 0 k f
-      lp = or [_T m (s ! k) (s ! l) && loop s l 0 k f | l <- [0..k]]
-  in isp && (nl || lp)
+trans s m f k = ispath s m k
+     && ((not (isloop s m k) && noloop s 0 k f)
+         || or [_T m (s ! k) (s ! l) && loop s l 0 k f | l <- [0..k]])
 
 -- Check whether the formula is existentially valid in the given model with
 -- the given bound.

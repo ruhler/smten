@@ -9,11 +9,17 @@ import Smten.Prelude
 
 import Smten.Control.Monad.Reader
 import Smten.Symbolic
+import Smten.Symbolic.Solver.Debug
 import Smten.Tests.Test
 
 data SMTTestCfg = SMTTestCfg {
     ss_solver :: Solver,
-    ss_skips :: [String]
+
+    -- | A list of test cases to skip.
+    ss_skips :: [String],
+
+    -- | A list of test cases to run with the debug solver
+    ss_debugs :: [String]
 }
 
 type SMTTest = ReaderT SMTTestCfg IO
@@ -29,7 +35,10 @@ symtest nm tst q = do
     else do
       liftIO $ do
         putStrLn $ nm ++ "..."
-        got <- run_symbolic (ss_solver cfg) q
+        let slvr = if nm `elem` ss_debugs cfg
+                      then debug (nm ++ ".dbg") (ss_solver cfg)
+                      else ss_solver cfg
+        got <- run_symbolic slvr q
         test nm (tst got)
 
 runtest :: SMTTestCfg -> SMTTest () -> IO ()

@@ -36,7 +36,7 @@ int_signum :: Int -> Int
 int_signum = {-# SCC "PRIM_INT_SIGNUM" #-} symapp (tosym P.. (P.signum :: P.Int -> P.Int))
 
 int_fromInteger :: Integer -> Int
-int_fromInteger (Integer x) = {-# SCC "PRIM_INT_FROMINTEGER" #-} P.fromInteger x
+int_fromInteger = {-# SCC "PRIM_INT_FROMINTEGER" #-}  symapp P.fromInteger
 
 integer_add :: Integer -> Integer -> Integer
 integer_add = {-# SCC "PRIM_INTEGER_ADD" #-} add_Integer

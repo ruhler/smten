@@ -76,7 +76,6 @@ realize :: (SmtenHS0 a) => Model -> a -> a
 realize m x = m_cached m realize0 x
 
 flrealize :: (SmtenHS0 a) => Model -> [(Bool, a)] -> a
-flrealize m ((False, _) : xs) = flrealize m xs
 flrealize m ((p, v) : xs) = ite (realize m p) (realize m v) (flrealize m xs)
 flrealize _ [] = error "flrealize failed"
 
@@ -84,7 +83,6 @@ flrealize _ [] = error "flrealize failed"
 -- Merge two fields of an ite constructor.
 {-# INLINEABLE flmerge #-}
 flmerge :: (SmtenHS0 a) => Bool -> (Bool, a) -> (Bool, a) -> (Bool, a)
-flmerge p (False, _) (False, _) = unusedfield
 flmerge p (g, v) (False, _) = (andB p g, v)
 flmerge p (False, _) (g, v) = (andB (notB p) g, v)
 flmerge p (ga, va) (gb, vb) = (ite p ga gb, ite p va vb)
