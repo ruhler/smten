@@ -19,13 +19,13 @@ import qualified Smten.Tests.SMT.Datatype
 import qualified Smten.Debug.Trace ()
 import qualified Smten.Control.Monad.Error ()
 import qualified Smten.Control.Monad.State.Strict ()
+import qualified Smten.Symbolic.SMT ()
 import qualified Smten.System.Environment ()
 import qualified Smten.System.Exit ()
 import qualified Smten.System.Timeout ()
 import qualified Smten.Tests.SMT.Bit ()
 import qualified Smten.Tests.SMT.Error ()
 import qualified Smten.Tests.SMT.Integer ()
-import qualified Smten.Tests.SMT.Sudoku ()
 
 main :: IO ()
 main = do

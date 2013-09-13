@@ -42,16 +42,9 @@ library
     Smten.Debug.Trace
     Smten.Smten.TypeLits
 
-    Smten.Sudoku.BitCell
-    Smten.Sudoku.Board
-    Smten.Sudoku.Boards
-    Smten.Sudoku.Cell
-    Smten.Sudoku.EnumCell
-    Smten.Sudoku.IntegerCell
-    Smten.Sudoku.Solver
-
     Smten.Symbolic0
     Smten.Symbolic
+    Smten.Symbolic.SMT
     Smten.Symbolic.Solver.Pure
     Smten.Symbolic.Solver.Debug
     Smten.System.Environment
@@ -70,7 +63,6 @@ library
     Smten.Tests.SMT.Datatype
     Smten.Tests.SMT.Error
     Smten.Tests.SMT.Integer
-    Smten.Tests.SMT.Sudoku
     Smten.Tests.Test
     Smten.Tests.All
 
@@ -94,16 +86,9 @@ library
     Smten.Compiled.Smten.Debug.Trace
     Smten.Compiled.Smten.Smten.TypeLits
 
-    Smten.Compiled.Smten.Sudoku.BitCell
-    Smten.Compiled.Smten.Sudoku.Board
-    Smten.Compiled.Smten.Sudoku.Boards
-    Smten.Compiled.Smten.Sudoku.Cell
-    Smten.Compiled.Smten.Sudoku.EnumCell
-    Smten.Compiled.Smten.Sudoku.IntegerCell
-    Smten.Compiled.Smten.Sudoku.Solver
-
     Smten.Compiled.Smten.Symbolic0
     Smten.Compiled.Smten.Symbolic
+    Smten.Compiled.Smten.Symbolic.SMT
     Smten.Compiled.Smten.Symbolic.Solver.Pure
     Smten.Compiled.Smten.Symbolic.Solver.Debug
     Smten.Compiled.Smten.System.Environment
@@ -122,7 +107,6 @@ library
     Smten.Compiled.Smten.Tests.SMT.Datatype
     Smten.Compiled.Smten.Tests.SMT.Error
     Smten.Compiled.Smten.Tests.SMT.Integer
-    Smten.Compiled.Smten.Tests.SMT.Sudoku
     Smten.Compiled.Smten.Tests.Test
     Smten.Compiled.Smten.Tests.All
 
