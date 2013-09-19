@@ -1,0 +1,50 @@
+name: smten-minisat
+version: 4.0.0.0
+synopsis: Smten minisat backend
+license: BSD3
+license-file: LICENSE
+copyright: Copyright (c) 2012, 2013  SRI International, Inc.
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+description:
+  The smten-minisat package provides a minisat backend for smten.
+
+source-repository this
+  type: git
+  location: https://github.com/ruhler/smten.git
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Symbolic.Solver.MiniSat
+    Smten.Compiled.Smten.Symbolic.Solver.MiniSat
+  
+  other-modules:
+    Smten.Runtime.MiniSatFFI
+
+    Smten.Tests.MiniSat
+    Smten.Compiled.Smten.Tests.MiniSat
+
+  build-depends: base ==4.6.*, hashtables ==1.0.*,
+                 smten-plugin ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+  include-dirs: minisat
+  cc-options: -D __STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS
+  c-sources: minisat.cc minisat/core/Solver.cc
+  extra-libraries: stdc++
+
+test-suite test-smten-minisat
+  type: exitcode-stdio-1.0
+  main-is: tests.hs
+  build-depends: base ==4.6.*, hashtables ==1.0.*,
+                 smten-base ==4.0.*, smten-lib ==4.0.*
+  include-dirs: minisat
+  cc-options: -D __STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS
+  c-sources: minisat.cc minisat/core/Solver.cc
+  extra-libraries: stdc++
+
