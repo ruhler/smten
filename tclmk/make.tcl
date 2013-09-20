@@ -170,5 +170,5 @@ smten-yices2
 smten-yices1
 smten-stp
 smten-z3
-#smten-minisat
+smten-minisat
 

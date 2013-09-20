@@ -27,9 +27,6 @@ Other Performance::
 * generate INLINE pragmas for bindings annotated as inline?
     (see inlinePragInfo in ghc api)
 
-Future Work::
-* Add minisat as a solver (requires CNF)
-
 Front End::
 * Auto-derive Show, Eq, Ord, Ix
   maybe look into possibility of using Eq, Ord, etc... from ghc for this
@@ -54,6 +51,7 @@ Known Bugs::
 * see problems with -O optimization above
 * symapp for variable bit-vector
     Implement it like we implement symapp for Integer
+* add support for integers and bit vectors to minisat.
 
 Suspected Bugs::
 * I suspect problems with using a function called 'main' as a normal function

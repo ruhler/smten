@@ -77,7 +77,12 @@ instance SolverAST MiniSat Literal where
   getBoolValue s nm = do
     r <- H.lookup (s_vars s) nm
     case r of 
-       Just v -> c_minisat_getvar (s_ctx s) v
+       Just v -> do
+          r <- c_minisat_getvar (s_ctx s) v
+          case r of
+            0 -> return False
+            1 -> return True
+            _ -> error $ "unexpected result from getvar: " ++ show r
        Nothing -> error $ "var " ++ nm ++ " not found"
 
   getIntegerValue = nointegers

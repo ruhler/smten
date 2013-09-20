@@ -31,7 +31,7 @@ foreign import ccall unsafe "minisat_mkvar"
     c_minisat_mkvar :: MSSolver -> IO MSVar
 
 foreign import ccall unsafe "minisat_getvar"
-    c_minisat_getvar :: MSSolver -> MSVar -> IO Bool
+    c_minisat_getvar :: MSSolver -> MSVar -> IO CInt
 
 foreign import ccall unsafe "minisat_issat"
     c_minisat_issat :: MSSolver -> IO Bool
