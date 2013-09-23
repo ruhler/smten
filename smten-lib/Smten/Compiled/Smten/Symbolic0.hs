@@ -94,6 +94,7 @@ run_symbolic s q = do
        m <- model $ zip (map fst vars) vals
        case {-# SCC "DoubleCheck" #-} realize m (ss_formula ss) of
           S.True -> return ()
+          S.Bool_Err msg -> doerr msg
           x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied?"
                  ++ " Got: " ++ show x
        cleanup solver

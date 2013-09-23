@@ -52,6 +52,8 @@ Known Bugs::
 * symapp for variable bit-vector
     Implement it like we implement symapp for Integer
 * add support for integers and bit vectors to minisat.
+* STP and minisat can't coexist
+    because the minisat symbols get duplicated.
 
 Suspected Bugs::
 * I suspect problems with using a function called 'main' as a normal function

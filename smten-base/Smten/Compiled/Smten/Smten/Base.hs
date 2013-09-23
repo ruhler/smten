@@ -32,7 +32,15 @@ instance SymbolicOf [a] (List__ a) where
          Nil__ -> f []
          Cons__ x xs -> symapp (\xsl -> f (x:xsl)) xs
          List___Err msg -> error0 msg
-         List___Ite itenil itcon iteerr -> P.error "TODO: syammp List__Ite"
+         List___Ite itenil itcon iteerr -> 
+           let zs = [itenil, itcon, iteerr]
+
+               join [(_, v)] = f $$ v
+               join ((p, a):bs) = ite p (f $$ a) (join bs)
+
+               isvalid (False, _) = P.False
+               isvalid _ = P.True
+           in join (P.filter isvalid zs)
 
 instance SymbolicOf [P.Char] (List__ Char) where
     tosym [] = Nil__
@@ -43,7 +51,15 @@ instance SymbolicOf [P.Char] (List__ Char) where
          Nil__ -> f []
          Cons__ x xs -> symapp2 (\xv xsv -> f (xv:xsv)) x xs
          List___Err msg -> error0 msg
-         List___Ite itenil itcon iteerr -> P.error "TODO: syammp List__Ite"
+         List___Ite itenil itcon iteerr ->
+           let zs = [itenil, itcon, iteerr]
+
+               join [(_, v)] = f $$ v
+               join ((p, a):bs) = ite p (f $$ a) (join bs)
+
+               isvalid (False, _) = P.False
+               isvalid _ = P.True
+           in join (P.filter isvalid zs)
 
 fromList__ :: List__ a -> [a]
 fromList__ Nil__ = []
