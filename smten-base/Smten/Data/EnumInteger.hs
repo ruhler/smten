@@ -7,11 +7,12 @@ import Smten.Data.Bool
 import Smten.Data.Enum
 import Smten.Data.Ord
 import Smten.Data.Num
+import Smten.Data.Integral
 
 instance Enum Integer where
     succ x = x + 1
     pred x = x - 1
-    toEnum = int_toInteger
+    toEnum = toInteger
     fromEnum = fromInteger
 
     enumFrom i = i : enumFrom (i+1)

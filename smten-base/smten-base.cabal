@@ -33,6 +33,8 @@ library
     Smten.Data.EnumInt
     Smten.Data.Eq
     Smten.Data.Eq0
+    Smten.Data.Integral
+    Smten.Data.Integral0
     Smten.Data.List
     Smten.Data.List0
     Smten.Data.Maybe
@@ -75,6 +77,8 @@ library
     Smten.Compiled.Smten.Data.EnumInt
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.Eq0
+    Smten.Compiled.Smten.Data.Integral
+    Smten.Compiled.Smten.Data.Integral0
     Smten.Compiled.Smten.Data.List
     Smten.Compiled.Smten.Data.List0
     Smten.Compiled.Smten.Data.Maybe

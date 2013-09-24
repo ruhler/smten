@@ -15,6 +15,7 @@ tests = do
   test "p.bang1" (([7 :: Integer, 2, 5, 3, 1] !! 0) == 7)
   test "p.bang2" (([7 :: Integer, 2, 5, 3, 1] !! 2) == 5)
   test "p.toEnum.Integer" ((4 :: Integer) == toEnum (4 :: Int))
+  test "p.quotRem.Int" ((10, 4) == quotRem (74 :: Int) 7)
 
   putStrLn "Prelude PASSED"
 

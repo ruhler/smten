@@ -11,6 +11,7 @@ module Smten.Prelude (
     Ord(compare, (<), (<=), (>=), (>), max, min),
     Enum(..),
     Num((+), (-), (*), negate, abs, signum, fromInteger),
+    Integral(quot, rem, quotRem, toInteger),
     Monad(..),
     Functor(fmap),
     mapM, mapM_, sequence, sequence_,
@@ -52,6 +53,7 @@ import Smten.Data.Ord
 import Smten.Data.List
 import Smten.Data.Maybe
 import Smten.Data.Num
+import Smten.Data.Integral
 import Smten.Data.Show
 import Smten.Data.Tuple
 import Smten.Smten.Base
