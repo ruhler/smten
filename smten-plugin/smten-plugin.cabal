@@ -49,6 +49,10 @@ source-repository this
   --branch:
   --tag:
 
+executable smten
+  main-is: smten.hs
+  build-depends: base ==4.6.*, process ==1.1.*
+
 library
   exposed-modules:
     Smten.Plugin.Annotations
