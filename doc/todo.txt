@@ -6,9 +6,11 @@ Cleanup::
 * Why is bv_extract primitive? Why not just shift right and truncate?
 
 Smten Executable::
-* It messes up if -ffoo -fbar are added at the end of the command line
-* Add a way to generate a profiling build (support "-prof" flag)
 * Figure out how to use it for sketch and shampi
+  - want things like odir? idir?
+* Generate code into temp directory instead of current directory?
+* Remove generated code after generating it?
+* Add a flag for generating a cabal package?
 
 Priority Performance::
 * Try alternate code generation with a single big constructor for each

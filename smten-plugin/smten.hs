@@ -1,54 +1,35 @@
 
+{-# LANGUAGE DeriveDataTypeable #-}
+
 -- | The Smten Compiler
 --
 -- This executable is just a wrapper which properly invokes ghc with the
 -- smten-plugin.
 
 import System.Cmd
-import System.Environment
 import System.Exit
-
-lookuparg :: String -> [String] -> Maybe String
-lookuparg k m = 
-  case dropWhile ((/=) k) m of
-     (_:x:_) -> Just x
-     _ -> Nothing
-
-getfiles :: [String] -> [String]
-getfiles [] = []
-getfiles (x:xs) 
-  | head x == '-' = getfiles (drop 1 xs)
-  | otherwise = x:xs
-
-usage :: String
-usage = "Usage: smten -o outfile infile.hs"
+import Smten.Plugin.ParseArgs
 
 main :: IO ()
 main = do
-  args <- getArgs
+  args <- parseArgs
 
-  if "--help" `elem` args
-     then putStrLn usage >> exitSuccess
+  if sa_help args
+     then putStrLn usage >> exitSuccess 
      else return ()
 
-  let -- Get the name of output executable to generate.
-      ofile = case lookuparg "-o" args of
-                Just v -> v
-                Nothing -> "a.out"
-
-      -- Get the name of the input main file.
-      ifile = case getfiles args of
-                [v] -> v
-                [] -> fail $ "no input file.\n" ++ usage
-                _ -> fail $ "duplicate input files.\n" ++ usage
+  let infile = sa_infile args
+      outfile = sa_outfile args
+      profile = sa_profile args
+      optimize = sa_optimize args
 
   -- Step 1: Compile the code with -fplugin=Smten.Plugin.Plugin
-  putStrLn $ "smten got args ifile = " ++ ifile ++ ", ofile = " ++ ofile
-  let s1args = [ifile,
+  let s1args = [infile,
                  "--make", "-osuf", "smten_o", 
                  "-hisuf", "smten_hi",
                  "-prof",
                  "-fplugin=Smten.Plugin.Plugin",
+                 "-XRebindableSyntax", "-XNoImplicitPrelude",
                  "-O0", "-c"]
   putStrLn "Stage 1: Compiling using ghc with smten plugin"
   putStrLn $ "ghc " ++ show s1args
@@ -60,7 +41,12 @@ main = do
   -- Step 2: Compile the generated smten code.
   --   Set -main-is Smten.Compiled.Main.main
   --   Add -i<odir>
-  let s2args = ["-o", ofile, "Smten/Compiled/Main.hs", "-main-is", "Smten.Compiled.Main.main"]
+  let s2args = concat [["-o", outfile,
+                        "Smten/Compiled/Main.hs",
+                        "-main-is", "Smten.Compiled.Main.main"],
+                       if profile then ["-prof"] else [],
+                       if optimize then ["-O"] else []]
+
   putStrLn "State 2: Compiling generated haskell code without smten plugin"
   putStrLn $ "ghc " ++ show s2args
   ec2 <- rawSystem "ghc" s2args
