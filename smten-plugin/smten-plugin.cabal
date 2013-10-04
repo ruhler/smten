@@ -51,9 +51,7 @@ source-repository this
 
 executable smten
   main-is: smten.hs
-  build-depends: base ==4.6.*, process ==1.1.*
-  other-modules:
-    Smten.Plugin.ParseArgs
+  build-depends: base ==4.6.*, process ==1.1.*, mtl ==2.1.*
 
 library
   exposed-modules:

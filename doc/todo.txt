@@ -6,11 +6,10 @@ Cleanup::
 * Why is bv_extract primitive? Why not just shift right and truncate?
 
 Smten Executable::
-* Figure out how to use it for sketch and shampi
-  - want things like odir? idir?
 * Generate code into temp directory instead of current directory?
 * Remove generated code after generating it?
 * Add a flag for generating a cabal package?
+* Should smten executable be in a package called 'smten'?
 
 Priority Performance::
 * Try alternate code generation with a single big constructor for each
