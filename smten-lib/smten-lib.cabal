@@ -10,6 +10,12 @@ category: Language
 build-type: Simple
 cabal-version: >=1.8
 stability: experimental
+description:
+  This package provides the Smten Symbolic API and other Smten libraries not
+  part of the Smten base libraries. It includes a pure solver based on the
+  list monad which is not very efficient. For improved solving performance,
+  install one of the SMT backend solvers, such as smten-yices2, smten-z3, or
+  smten-stp.
 
 source-repository this
   type: git

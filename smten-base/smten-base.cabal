@@ -10,6 +10,8 @@ category: Language
 build-type: Simple
 cabal-version: >=1.8
 stability: experimental
+description:
+  This package provides the Smten Prelude and base libraries.
 
 source-repository this
   type: git
