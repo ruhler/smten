@@ -1,3 +1,13 @@
+October 05, 2013
+  smten-4.0.0.0, smten-base-4.0.0.0, smten-lib-4.0.0.0,
+  smten-minisat-4.0.0.0, smten-stp-4.0.0.0, smten-yices1-4.0.0.0,
+  smten-yices2-4.0.0.0, smten-z3-4.0.0.0
+
+  Change from smten-3.0.0.0
+  * Switch to using a GHC plugin for smten compiler.
+  * Complete rewrite of most everything.
+  * Now all Haskell syntax is supported.
+
 July 11, 2013
   smten-3.0.0.0
 
