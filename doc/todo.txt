@@ -1,6 +1,4 @@
 Release 4.0.0.0::
-* Rename smten-plugin package smten?
-* Update smten-plugin description to discuss 'smten' tool
 * Add tags for git in the cabal files
 
 Cleanup::

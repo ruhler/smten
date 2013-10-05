@@ -52,7 +52,7 @@ library
     Smten.Compiled.Smten.Tests.Yices2
 
   build-depends: base ==4.6.*,
-                 smten-plugin ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
+                 smten ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
   extra-libraries: yices2
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 

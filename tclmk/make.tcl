@@ -33,21 +33,23 @@ proc hrun {args} {
     exec {*}$args "2>@" stderr ">@" stdout
 }
 
-# Create and set up a build directory for the build.
-hrun mkdir -p build/home
-
 set ::env(HOME) [pwd]/build/home
-#hrun cabal update
 
-# The smten-plugin package
-proc smten-plugin {} {
-    indir smten-plugin {
-        hrun cabal install \
-            --builddir ../build/smten-plugin-build \
-            --with-compiler=$::GHC \
-            --force-reinstalls
+# Create and set up a build directory for the build if needed
+if {![file exists "build/home/cabal"]} {
+    puts "Creating local home directory..."
+    hrun mkdir -p build/home/cabal
+    hrun cabal update
+    exec echo "extra-lib-dirs: $::env(LD_LIBRARY_PATH)" >> build/home/.cabal/config
+    exec echo "library-profiling: True" >> build/home/.cabal/config
+}
 
-        hrun cabal sdist --builddir ../build/smten-plugin-build
+# The smten package
+proc smten {} {
+    hrun cp -r -f -l smten build/
+    indir build/smten {
+        hrun cabal install --force-reinstalls --with-compiler=$::GHC
+        hrun cabal sdist
     }
 }
 
@@ -162,7 +164,7 @@ proc smten-minisat {} {
 
 
 
-smten-plugin
+smten
 smten-base
 smten-lib
 

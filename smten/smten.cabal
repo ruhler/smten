@@ -1,4 +1,4 @@
-name: smten-plugin
+name: smten
 version: 4.0.0.0
 synopsis: Smten library
 license: BSD3
@@ -11,37 +11,26 @@ build-type: Simple
 cabal-version: >=1.8
 stability: experimental
 description:
-  This package provides the ghc-plugin for smten.
+  This package provides the compiler for smten.
   .
   Smten is a language which integrates functional programming and SMT query
   orchestraction. The surface syntax and features of Smten are the same as
-  Haskell. The Smten compiler is implemented as a plugin to the ghc haskell
-  compiler.
+  Haskell.
   . 
-  Smten code should be written as in Haskell with the following exceptions:
-  * The language extensions NoImplicitPrelude and RebindableSyntax should
-    always be used
-  .
+  Smten code should be written as in Haskell with the following exception:
   * The Smten libraries should be imported instead of standard Haskell
     libraries. For example, import Smten.Prelude instead of Prelude,
     import Smten.Data.Maybe instead of Data.Maybe, and so on. The Smten
     libraries are available in the smten-base and smten-lib cabal packages.
   .
-  The Smten ghc-plugin compiles Smten code into Haskell code, which can then
-  be compiled using ghc into an executable. To compile the Smten code, add the
-  flag \"-fplugin=Smten.Plugin.Plugin\" when calling ghc. For example:
-  .
-  > ghc --make -c -fplugin=Smten.Plugin.Plugin MySmtenProgram.hs
-  .
-  For each smten module, a haskell module will be generated using the name of
-  the smten module prefixed with \"Smten.Compiled\". The generated haskell files
-  can be found in the Smten\/Compiled directory. For the main module, a
-  file called Smten\/Compiled\/Main.hs will be generated.
-  .
-  After the haskell files have been generated, call ghc in ordinary fashion to
-  generate an executable:
-  .
-  > ghc --make -o mysmtenprogram Smten/Compiled/Main.hs
+  The interface for SMT queries is exported by the "Smten.Symbolic" module,
+  which is part of the smten-lib package. Additional SMT solver backends are
+  available in packages smten-yices1, smten-yices2, smten-z3, smten-stp, and
+  smten-minisat.
+  . 
+  To compile smten code, run the smten command as you would run ghc. For more
+  details on which options the smten command supports, run:
+  > smten --help
 
 source-repository this
   type: git

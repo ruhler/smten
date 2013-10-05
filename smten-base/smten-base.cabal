@@ -112,7 +112,7 @@ library
     Smten.Compiled.GHC.Tuple
     Smten.Compiled.GHC.Types
 
-  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten-plugin ==4.0.*,
+  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten ==4.0.*,
                  hashtables ==1.0.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports

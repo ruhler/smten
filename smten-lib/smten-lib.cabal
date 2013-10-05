@@ -125,7 +125,7 @@ library
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                  pretty ==1.1.*, array ==0.4.*, ghc-prim ==0.3.*,
                  template-haskell ==2.8.*,
-                 smten-base ==4.0.*, smten-plugin ==4.0.*
+                 smten-base ==4.0.*, smten ==4.0.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
@@ -135,6 +135,6 @@ Test-Suite test-smten-lib
     build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                    pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
                    template-haskell ==2.8.*,
-                   smten-base ==4.0.*, smten-plugin ==4.0.*
+                   smten-base ==4.0.*, smten ==4.0.*
     ghc-options: -rtsopts
 

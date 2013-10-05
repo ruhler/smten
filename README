@@ -1,7 +1,7 @@
 Smten (Developer) ReadMe
 ========================
 Richard Uhler <ruhler@csail.mit.edu>
-August 2, 2013
+October 5, 2013
 
 Configuring Smten for Development Build
 ---------------------------------------
@@ -22,8 +22,8 @@ set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 set ::GHC "/home/ruhler/local/bin/ghc"
 =========================================
 
-Yices1, Yices2, and STP
------------------------
+Yices1, Yices2, STP and Z3
+--------------------------
 Smten currently requires yices1, yices2, STP, and Z3 to be installed. See 
 the documentation in smten-yices1, smten-yices2, smten-z3, and smten-stp
 packages for more special instructions on how to install them.
@@ -31,5 +31,35 @@ packages for more special instructions on how to install them.
 Building Smten
 --------------
 Once smten is configured for build and the required SMT solvers are installed,
-it can be built by running `make`.
+it can be built by running `make`. The following targets are supported:
+
+all::
+  Build all the smten packages locally and run the test suites for them.
+
+userinstall::
+  Build all the smten packages locally, run the test suites, and
+  then install the packages into the current users account.
+
+userinstall2::
+  Install the packages into the current users account without first building
+  them locally. This requires you have already built the packages locally.
+
+clean::
+  Clean up the locally generated cabal packages.
+
+fullclean::
+  Remove the entire local 'home' directory, including any packages already
+  installed locally which smten depends on.
+
+Documentation
+-------------
+The 'doc' directory contains mostly out of date documents. The only relevant
+documents now are:
+
+doc/todo.txt:: contains a brief list of known issues and plan work to do.
+doc/history.txt:: contains the release history of smten.
+
+For other documentation, consult the generated haddock documentation after
+building the packages locally at build/home/.cabal/share/doc/index.html or 
+build/smten-*/dist/doc/html/smten-*/index.html for the individual packages.
 

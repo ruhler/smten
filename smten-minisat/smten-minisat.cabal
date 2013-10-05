@@ -31,7 +31,7 @@ library
     Smten.Compiled.Smten.Tests.MiniSat
 
   build-depends: base ==4.6.*, hashtables ==1.0.*,
-                 smten-plugin ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
+                 smten ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
   include-dirs: minisat
   cc-options: -D __STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS
