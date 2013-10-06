@@ -1,5 +1,7 @@
-Release 4.0.0.0::
-* Add tags for git in the cabal files
+Release to Public::
+* put smten-4.0.0.0 on hackage.
+* don't use -prof in stage 1 unless requested. (github issue #2)
+    because it requires profiling libraries we may not want to have installed!
 
 Cleanup::
 * Support symbolic IO?

@@ -1,0 +1,91 @@
+Tutorial 1 - Getting Started
+============================
+Richard Uhler <ruhler@csail.mit.edu>
+October 06, 2013
+
+Goals
+-----
+The goal of this tutorial is to demonstrate how to install and run the 'smten'
+compiler on a hello world program.
+
+Introduction
+------------
+Smten is a unified language for functional programming and orchestration of
+SMT queries. The Smten front-end language is Haskell. For questions on Smten
+syntax, please consult a Haskell reference, such as the Haskell Report.
+
+The implementation of Smten is based on and requires the Glasgow Haskell
+Compiler (GHC), version 7.6, which can be downloaded from
+http://www.haskell.org/ghc. It also requires cabal. If you haven't already
+done so, you should install GHC now.
+
+Note: Version smten-4.0.0.0 requires you have profiling libraries installed.
+If you have not already done so, set 'library-profiling: True' in your
+.cabal/config file.
+
+Installing Smten
+----------------
+The smten compiler and runtime libraries are distributed as a set of three
+cabal packages. The +smten+ package provides the compiler. The +smten-base+
+package provides the Smten prelude, and +smten-lib+ provides additional Smten
+libraries.
+
+The smten cabal packages can be downloaded from github
+https://github.com/ruhler/smten/releases. At the time of writing, the latest
+release is smten-4.0.0.0. For this tutorial you only need the three packages
++smten+, +smten-base+, and +smten-lib+.
+
+Install the packages using +cabal+. For example:
+  
+  $ tar xf smten-4.0.0.0.tar.gz
+  $ cd smten-4.0.0.0
+  smten-4.0.0.0$ cabal install
+   ... (this may take a while ) ...
+  smten-4.0.0.0$ cd ../
+  $ tar xf smten-base-4.0.0.0.tar.gz
+  $ cd smten-base-4.0.0.0
+  smten-base-4.0.0.0$ cabal install
+   ... (this may take a while ) ...
+  smten-base-4.0.0.0$ cd ../
+  $ tar xf smten-lib-4.0.0.0.tar.gz
+  $ cd smten-lib-4.0.0.0
+  smten-lib-4.0.0.0$ cabal install
+   ... (this may take a while ) ...
+
+Hello, World
+------------
+Writing a Smten program is just like writing a Haskell program. The only
+difference is the Smten libraries should be used instead of the standard
+Haskell libraries.
+
+The following is an implementation of a classic hello world program in
+Smten:
+
+--------------
+  import Smten.Prelude
+ 
+  main :: IO ()
+  main = putStrLn "hello, world"
+--------------
+
+Create a file called 'hello.hs' which contains the hello world program. To
+compile the program, run:
+
+  smten --make -o hello hello.hs
+
+This should produce an executable called +hello+, which you can now run:
+
+  $ ./hello
+  >>> hello, world
+
+For more information on the +smten+ command and what arguments its accepts,
+run:
+
+  $ smten --help
+
+Conclusion
+----------
+In this tutorial you wrote and ran your first Smten program. The
+next tutorial demonstrates how to perform symbolic computation in Smten by
+developing a solver for the +nqueens+ puzzle.
+
