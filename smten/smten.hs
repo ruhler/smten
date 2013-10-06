@@ -62,7 +62,7 @@ getopts al =
     ("--make" : tl) -> smode Make >> getopts tl
     ("-o" : f : tl) -> s2 ["-o", f] >> getopts tl
     ("-O" : tl) -> s2 ["-O"] >> getopts tl
-    ("-prof" : tl) -> s2 ["-prof"] >> getopts tl
+    ("-prof" : tl) -> s1 ["-prof"] >> s2 ["-prof"] >> getopts tl
     ("-fprof-auto-top" : tl) -> s1 ["-fprof-auto-top"] >> getopts tl
     ("-hidir" : f : tl) -> s1 ["-hidir", f] >> s2 ["-hidir", f] >> getopts tl
     ("-odir" : f : tl) -> s1 ["-odir", f] >> s2 ["-odir", f] >> getopts tl
@@ -84,7 +84,7 @@ main = do
         putStrLn usage
         exitFailure
     Make -> do
-      let s1 = ["--make", "-osuf", "smten_o", "-prof",
+      let s1 = ["--make", "-osuf", "smten_o",
                 "-fplugin=Smten.Plugin.Plugin",
                 "-XRebindableSyntax", "-XNoImplicitPrelude",
                 "-O0", "-c"] ++ o_s1args opts
