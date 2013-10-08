@@ -28,7 +28,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "core/SolverTypes.h"
 
 
-namespace Minisat {
+namespace SmtenMinisat {
 
 //=================================================================================================
 // Solver -- the main class:

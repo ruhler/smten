@@ -1,7 +1,9 @@
 Release to Public::
 * put smten-4.0.0.0 on hackage.
-* don't use -prof in stage 1 unless requested. (github issue #2)
-    because it requires profiling libraries we may not want to have installed!
+* can we do dynamic linking to make using different backends easier?
+* nqueens pure 3: strange performance behavior!
+    It should take, like, no time to try all 27 possibilities.
+* write T2 Symbolic Computation tutorial.
 
 Cleanup::
 * Support symbolic IO?
@@ -63,8 +65,7 @@ Known Bugs::
 * symapp for variable bit-vector
     Implement it like we implement symapp for Integer
 * add support for integers and bit vectors to minisat.
-* STP and minisat can't coexist
-    because the minisat symbols get duplicated.
+* add support for integers to 'pure' solver.
 
 Suspected Bugs::
 * I suspect problems with using a function called 'main' as a normal function

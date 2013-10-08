@@ -1,7 +1,7 @@
 
 #include "minisat/core/Solver.h"
 
-using namespace Minisat;
+using namespace SmtenMinisat;
 
 extern "C" Solver* minisat_mksolver()
 {
