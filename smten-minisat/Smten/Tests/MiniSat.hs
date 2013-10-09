@@ -11,7 +11,7 @@ import Smten.Symbolic.Solver.MiniSat
 
 main :: IO ()
 main = do
-    runtest (SMTTestCfg minisat ["SMT.Core.Integer"] []) Core.smttests
+    runtest (SMTTestCfg minisat [] []) Core.smttests
     putStrLn "MiniSat.SMT.Core PASSED"
 
     runtest (SMTTestCfg minisat [] []) Datatype.smttests

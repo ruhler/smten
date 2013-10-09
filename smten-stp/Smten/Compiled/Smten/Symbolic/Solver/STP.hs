@@ -20,9 +20,7 @@ import qualified Smten.Runtime.Types as S
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
-
-data Formula = STPF { expr :: STP_Expr }
-             | IntegerF { ints :: [(Formula, Integer)] }
+import Smten.Runtime.Integers
 
 type VarMap = H.BasicHashTable String STP_Expr
 
@@ -51,11 +49,10 @@ stp = do
   vars <- H.new
   gc <- newIORef []
   let s = STP { stp_ctx = ptr, stp_vars = vars, stp_gc = gc }
-  return $ solverInstFromAST s
+  return $ solverInstFromAST (Integers s)
 
 withvc :: STP -> (STP_VC -> IO a) -> IO a
 withvc s f = f (stp_ctx s)
-
 
 nointegers :: a
 nointegers = error $ "STP does not support integers"
@@ -71,7 +68,7 @@ getbits s w e
       hi <- getbits s (w-64) ehi
       return $ shiftL hi 64 + lo
 
-instance SolverAST STP Formula where
+instance SolverAST STP STP_Expr where
   declare s S.BoolT nm = do
     st <- gceM s $ withvc s c_vc_boolType
     v <- withvc s $ \vc ->
@@ -95,7 +92,7 @@ instance SolverAST STP Formula where
   getBoolValue s nm = do
     v <- var s nm
     val <- withvc s $ \vc ->
-             gceM s $ c_vc_getCounterExample vc (expr v)
+             gceM s $ c_vc_getCounterExample vc v
     b <- c_vc_isBool val
     case b of
         0 -> return False
@@ -107,7 +104,7 @@ instance SolverAST STP Formula where
   getBitVectorValue s w nm = do
     v <- var s nm
     withvc s $ \vc -> do
-      val <- gceM s $ c_vc_getCounterExample vc (expr v)
+      val <- gceM s $ c_vc_getCounterExample vc v
       getbits s w val
 
   -- To check for satisfiability, we query if False is valid. If False is
@@ -128,52 +125,38 @@ instance SolverAST STP Formula where
      withvc s c_vc_Destroy
         
   assert s e = {-# SCC "STPAssert" #-} withvc s $ \vc ->
-      c_vc_assertFormula vc (expr e)
+      c_vc_assertFormula vc e
 
-  bool s True = STPF <$> (gceM s $ withvc s c_vc_trueExpr)
-  bool s False = STPF <$> (gceM s $ withvc s c_vc_falseExpr)
+  bool s True = gceM s $ withvc s c_vc_trueExpr
+  bool s False = gceM s $ withvc s c_vc_falseExpr
 
-  integer s i = do
-    tt <- bool s True
-    return (IntegerF [(tt, i)])
+  integer = nointegers
 
   bit s w v = withvc s $ \vc -> do
      let w' = fromInteger w
          v' = fromInteger v
      if w <= 64
-        then STPF <$> (gceM s $ c_vc_bvConstExprFromLL vc w' v')
-        else STPF <$> (withCString (show v) $ \str ->
-                         gceM s $ c_vc_bvConstExprFromDecStr vc w' str)
+        then gceM s $ c_vc_bvConstExprFromLL vc w' v'
+        else withCString (show v) $ \str ->
+                 gceM s $ c_vc_bvConstExprFromDecStr vc w' str
 
   var s nm = do
     vars <- H.lookup (stp_vars s) nm
     case vars of
-        Just v -> return (STPF v)
+        Just v -> return v
         Nothing -> error $ "STP: unknown var: " ++ nm
 
   and_bool = bprim c_vc_andExpr
   not_bool = uprim c_vc_notExpr
     
-  ite_bool s p a b = withvc s $ \vc ->
-      STPF <$> (gceM s $ c_vc_iteExpr vc (expr p) (expr a) (expr b))
+  ite_bool s p a b = withvc s $ \vc -> gceM s $ c_vc_iteExpr vc p a b
+  ite_bit s p a b = withvc s $ \vc -> gceM s $ c_vc_iteExpr vc p a b
 
-  ite_bit s p a b = withvc s $ \vc ->
-      STPF <$> (gceM s $ c_vc_iteExpr vc (expr p) (expr a) (expr b))
-
-  ite_integer s p a b = withvc s $ \vc -> do
-    let join :: STP_Expr -> (Formula, Integer) -> IO (Formula, Integer)
-        join p (a, v) = do
-          pa <- STPF <$> (gceM s $ c_vc_andExpr vc p (expr a))
-          return (pa, v)
-    not_p <- gceM s $ c_vc_notExpr vc (expr p)
-    a' <- mapM (join (expr p)) (ints a)
-    b' <- mapM (join not_p) (ints b)
-    return $ IntegerF (a' ++ b')
-
-  eq_integer = ibprim (==)
-  leq_integer = ibprim (<=)
-  add_integer = iiprim (+)
-  sub_integer = iiprim (-)
+  ite_integer = nointegers
+  eq_integer = nointegers
+  leq_integer = nointegers
+  add_integer = nointegers
+  sub_integer = nointegers
 
   eq_bit = bprim c_vc_eqExpr
   leq_bit = bprim c_vc_bvLeExpr
@@ -187,49 +170,21 @@ instance SolverAST STP Formula where
   lshr_bit s _ = blprim c_vc_bvRightShiftExprExpr s
   not_bit = uprim c_vc_bvNotExpr
   sign_extend_bit s fr to x = withvc s $ \vc ->
-    STPF <$> (gceM s $ c_vc_bvSignExtend vc (expr x) (fromInteger to))
+    gceM s $ c_vc_bvSignExtend vc x (fromInteger to)
   extract_bit s hi lo x = withvc s $ \vc ->
-    STPF <$> (gceM s $ c_vc_bvExtract vc (expr x) (fromInteger hi) (fromInteger lo))
+    gceM s $ c_vc_bvExtract vc x (fromInteger hi) (fromInteger lo)
 
 uprim :: (STP_VC -> STP_Expr -> IO STP_Expr)
-      -> STP -> Formula -> IO Formula
-uprim f s a = withvc s $ \vc -> STPF <$> (gceM s $ f vc (expr a))
+      -> STP -> STP_Expr -> IO STP_Expr
+uprim f s a = withvc s $ \vc -> gceM s $ f vc a
 
 bprim :: (STP_VC -> STP_Expr -> STP_Expr -> IO STP_Expr)
-      -> STP -> Formula -> Formula -> IO Formula
-bprim f s a b = withvc s $ \vc -> STPF <$> (gceM s $ f vc (expr a) (expr b))
+      -> STP -> STP_Expr -> STP_Expr -> IO STP_Expr
+bprim f s a b = withvc s $ \vc -> gceM s $ f vc a b
 
 blprim :: (STP_VC -> CInt -> STP_Expr -> STP_Expr -> IO STP_Expr)
-       -> STP -> Formula -> Formula -> IO Formula
-blprim f s a b = withvc s $ \vc -> STPF <$> do
-    n <- c_vc_getBVLength vc (expr a)
-    gceM s $ f vc n (expr a) (expr b)
-
-ibprim :: (Integer -> Integer -> Bool) 
-       -> STP -> Formula -> Formula -> IO Formula
-ibprim f s a b = withvc s $ \vc -> do
-  let join :: (Formula, Integer) -> (Formula, Integer) -> IO Formula
-      join (pa, va) (pb, vb) = do
-        pab <- gceM s $ c_vc_andExpr vc (expr pa) (expr pb)
-        v <- bool s (f va vb)
-        STPF <$> (gceM s $ c_vc_andExpr vc pab (expr v))
-
-      orN :: [Formula] -> IO Formula
-      orN [] = bool s False
-      orN [x] = return x
-      orN (x:xs) = do
-        xs' <- orN xs
-        STPF <$> (gceM s $ c_vc_orExpr vc (expr x) (expr xs'))
-  vals <- sequence [join ax bx | ax <- ints a, bx <- ints b]
-  orN vals
-
-iiprim :: (Integer -> Integer -> Integer) 
-       -> STP -> Formula -> Formula -> IO Formula
-iiprim f s a b = withvc s $ \vc -> do
-  let join :: (Formula, Integer) -> (Formula, Integer) -> IO (Formula, Integer)
-      join (pa, va) (pb, vb) = do
-        pab <- STPF <$> (gceM s $ c_vc_andExpr vc (expr pa) (expr pb))
-        let vab = f va vb
-        return (pab, vab)
-  IntegerF <$> sequence [join ax bx | ax <- ints a, bx <- ints b]
+       -> STP -> STP_Expr -> STP_Expr -> IO STP_Expr
+blprim f s a b = withvc s $ \vc -> do
+    n <- c_vc_getBVLength vc a
+    gceM s $ f vc n a b
 

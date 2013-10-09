@@ -26,7 +26,17 @@ class SolverAST ctx exp | ctx -> exp where
   var :: ctx -> String -> IO exp
 
   not_bool :: ctx -> exp -> IO exp
+
   and_bool :: ctx -> exp -> exp -> IO exp
+  and_bool s a b = do
+    ff <- bool s False
+    ite_bool s a b ff
+
+  or_bool :: ctx -> exp -> exp -> IO exp
+  or_bool s a b = do
+    tt <- bool s True
+    ite_bool s a tt b
+
   ite_bool :: ctx -> exp -> exp -> exp -> IO exp
 
   ite_integer :: ctx -> exp -> exp -> exp -> IO exp

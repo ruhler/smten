@@ -14,6 +14,7 @@ import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 import Smten.Runtime.MiniSatFFI
 import Smten.Runtime.Result
+import Smten.Runtime.Integers
 
 data Literal = Literal {
   _variable :: MSVar,
@@ -56,15 +57,7 @@ minisat :: Solver
 minisat = do
   ptr <- c_minisat_mksolver
   vars <- H.new
-  return $ solverInstFromAST (MiniSat ptr vars)    
-
-or_bool :: MiniSat -> Literal -> Literal -> IO Literal
-or_bool s a b = do
-    x <- c_minisat_mkvar (s_ctx s)
-    addclause (s_ctx s) [notL a, posL x]  -- a ==> x
-    addclause (s_ctx s) [notL b, posL x]  -- b ==> x
-    addclause (s_ctx s) [negL x, a, b]    -- x ==> a | b
-    return (posL x)
+  return $ solverInstFromAST (Integers $ MiniSat ptr vars)    
 
 instance SolverAST MiniSat Literal where
   declare s S.BoolT nm = do 
@@ -114,6 +107,13 @@ instance SolverAST MiniSat Literal where
     addclause (s_ctx s) [negL x, a]   -- x ==> a
     addclause (s_ctx s) [negL x, b]   -- x ==> b
     addclause (s_ctx s) [notL a, notL b, posL x]  -- a & b ==> x
+    return (posL x)
+
+  or_bool s a b = do
+    x <- c_minisat_mkvar (s_ctx s)
+    addclause (s_ctx s) [notL a, posL x]  -- a ==> x
+    addclause (s_ctx s) [notL b, posL x]  -- b ==> x
+    addclause (s_ctx s) [negL x, a, b]    -- x ==> a | b
     return (posL x)
 
   not_bool s a = return $ notL a

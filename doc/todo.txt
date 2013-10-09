@@ -39,6 +39,7 @@ Other Performance::
 * make <, >, >= primitives?
 * generate INLINE pragmas for bindings annotated as inline?
     (see inlinePragInfo in ghc api)
+* implement or_bool on all the solvers rather than falling back to the default
 
 Front End::
 * Auto-derive Show, Eq, Ord, Ix
