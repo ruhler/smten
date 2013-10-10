@@ -6,6 +6,7 @@ module Smten.Tests.MiniSat (main) where
 import Smten.Prelude
 import qualified Smten.Tests.SMT.Core as Core
 import qualified Smten.Tests.SMT.Datatype as Datatype
+import qualified Smten.Tests.SMT.Bit as Bit
 import Smten.Tests.SMT.Test
 import Smten.Symbolic.Solver.MiniSat
 
@@ -16,4 +17,10 @@ main = do
 
     runtest (SMTTestCfg minisat [] []) Datatype.smttests
     putStrLn "MiniSat.SMT.Datatype PASSED"
+
+    runtest (SMTTestCfg minisat [
+      "SMT.Bit.Add", "SMT.Bit.Sub", "SMT.Bit.Cmp",
+      "SMT.Bit.SignExt1", "SMT.Bit.SignExt2",
+      "SMT.Bit.Lsh", "SMT.Bit.Lshr"] []) Bit.smttests
+    putStrLn "MiniSat.SMT.Bit PASSED"
 

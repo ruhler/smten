@@ -14,6 +14,7 @@ import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 import Smten.Runtime.MiniSatFFI
 import Smten.Runtime.Result
+import Smten.Runtime.Bits
 import Smten.Runtime.Integers
 
 data Literal = Literal {
@@ -50,14 +51,15 @@ data MiniSat = MiniSat {
     s_vars :: VarMap
 }
 
-nointegers = error "TODO: support integers in MiniSat"
-nobits = error "TODO: support bit vectors in MiniSat"
+nointegers = error "There is no native support integers in MiniSat"
+nobits = error "There is no native support for bit vectors in MiniSat"
 
 minisat :: Solver
 minisat = do
   ptr <- c_minisat_mksolver
   vars <- H.new
-  return $ solverInstFromAST (Integers $ MiniSat ptr vars)    
+  s <- addBits (Integers $ MiniSat ptr vars)
+  return $ solverInstFromAST s
 
 instance SolverAST MiniSat Literal where
   declare s S.BoolT nm = do 

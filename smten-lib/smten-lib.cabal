@@ -25,6 +25,7 @@ source-repository this
 
 library
   exposed-modules:
+    Smten.Runtime.Bits
     Smten.Runtime.Integers
     Smten.Runtime.Solver
     Smten.Runtime.SolverAST
