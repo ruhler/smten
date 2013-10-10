@@ -94,14 +94,8 @@ ibprim f (Integers s) a b = do
         v <- bool s (f va vb)
         and_bool s pab v
 
-      orN :: [e] -> IO e
-      orN [] = bool s False
-      orN [x] = return x
-      orN (x:xs) = do
-        xs' <- orN xs
-        or_bool s x xs'
   vals <- sequence [join ax bx | ax <- ints a, bx <- ints b]
-  Exp <$> orN vals
+  Exp <$> or_bools s vals
 
 iiprim :: forall s e . (SolverAST s e) => (Integer -> Integer -> Integer) 
        -> Integers s -> Formula e -> Formula e -> IO (Formula e)

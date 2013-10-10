@@ -2,7 +2,10 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Smten.Runtime.SolverAST (SolverAST(..)) where
+module Smten.Runtime.SolverAST (
+    SolverAST(..),
+    eq_bool, xor_bool, and_bools, or_bools,
+    ) where
 
 import Smten.Runtime.Types (Type)
 import Smten.Runtime.Result
@@ -71,4 +74,28 @@ class SolverAST ctx exp | ctx -> exp where
   
   -- extract ctx hi lo x
   extract_bit :: ctx -> Integer -> Integer -> exp -> IO exp
+
+and_bools :: (SolverAST s e) => s -> [e] -> IO e
+and_bools s [] = bool s True
+and_bools s [x] = return x
+and_bools s (x:xs) = do
+  xs' <- and_bools s xs
+  and_bool s x xs'
+
+or_bools :: (SolverAST s e) => s -> [e] -> IO e
+or_bools s [] = bool s False
+or_bools s [x] = return x
+or_bools s (x:xs) = do
+  xs' <- or_bools s xs
+  or_bool s x xs'
+
+eq_bool :: (SolverAST s e) => s -> e -> e -> IO e
+eq_bool s a b = do
+    notb <- not_bool s b
+    ite_bool s a b notb
+
+xor_bool :: (SolverAST s e) => s -> e -> e -> IO e
+xor_bool s a b = do
+    notb <- not_bool s b
+    ite_bool s a notb b
 

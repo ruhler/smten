@@ -85,10 +85,24 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
   -- all individual bits must be equal
   eq_bit (Bits s _) a b = do
     eqs <- sequence $ zipWith (eq_bool s) (bits a) (bits b)
-    Exp <$> andN s eqs
+    Exp <$> and_bools s eqs
 
   leq_bit = bitstodo "leq"
-  add_bit = bitstodo "add"
+
+  add_bit (Bits s _) a b = do
+    ff <- bool s False
+    let add _ [] [] = return []
+        add c (a:as) (b:bs) = do
+           xor_ab <- xor_bool s a b
+           z <- xor_bool s c xor_ab
+           ca <- and_bool s c a
+           cb <- and_bool s c b
+           ab <- and_bool s a b
+           c' <- or_bools s [ca, cb, ab]
+           tl <- add c' as bs
+           return (z : tl)
+    BitF <$> add ff (bits a) (bits b)
+    
   sub_bit = bitstodo "sub"
   mul_bit = bitstodo "mul"
 
@@ -111,11 +125,6 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
         hii = fromInteger hi
     in return (BitF (drop loi (take hii (bits x))))
 
-eq_bool :: (SolverAST s e) => s -> e -> e -> IO e
-eq_bool s a b = do
-    notb <- not_bool s b
-    ite_bool s a b notb
-
 uprim :: (SolverAST s e) => (s -> e -> IO e)
       -> Bits s e -> Formula e -> IO (Formula e)
 uprim f (Bits s _) a = Exp <$> f s (expr a)
@@ -134,11 +143,4 @@ intB :: Integer -> Integer -> [Bool]
 intB 0 _ = []
 intB w x = case x `quotRem` 2 of
                 (x2, b) -> (b == 1) : intB (w-1) x2
-
-andN :: (SolverAST s e) => s -> [e] -> IO e
-andN s [] = bool s True
-andN s [x] = return x
-andN s (x:xs) = do
-  xs' <- andN s xs
-  and_bool s x xs'
 
