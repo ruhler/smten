@@ -49,7 +49,8 @@ stp = do
   vars <- H.new
   gc <- newIORef []
   let s = STP { stp_ctx = ptr, stp_vars = vars, stp_gc = gc }
-  return $ solverInstFromAST (Integers s)
+  withints <- addIntegers s
+  return $ solverInstFromAST withints
 
 withvc :: STP -> (STP_VC -> IO a) -> IO a
 withvc s f = f (stp_ctx s)

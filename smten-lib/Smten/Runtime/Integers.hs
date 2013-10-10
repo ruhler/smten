@@ -5,7 +5,7 @@
 
 -- | Add limited support for symbolic Integers to a backend which doesn't
 -- already support integers.
-module Smten.Runtime.Integers (Integers(..)) where
+module Smten.Runtime.Integers (addIntegers) where
 
 import Data.Functor
 
@@ -15,6 +15,10 @@ data Formula exp = Exp { expr :: exp }
              | IntegerF { ints :: [(exp, Integer)] }
 
 newtype Integers s = Integers s
+
+-- | Add Integer support to an existing solver.
+addIntegers :: s -> IO (Integers s)
+addIntegers s = return (Integers s)
 
 instance (SolverAST s exp) => SolverAST (Integers s) (Formula exp) where
   declare (Integers s) t nm = declare s t nm

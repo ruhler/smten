@@ -22,7 +22,8 @@ data Bits s e = Bits s (BitVarMap e)
 
 bitstodo nm = error $ "TODO: Bits support for " ++ nm
 
-addBits :: (SolverAST s exp) => s -> IO (Bits s exp)
+-- | Add bit-vector support to an existing solver.
+addBits :: s -> IO (Bits s exp)
 addBits s = do
     m <- H.new
     return (Bits s m)

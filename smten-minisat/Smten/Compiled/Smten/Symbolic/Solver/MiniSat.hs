@@ -58,8 +58,10 @@ minisat :: Solver
 minisat = do
   ptr <- c_minisat_mksolver
   vars <- H.new
-  s <- addBits (Integers $ MiniSat ptr vars)
-  return $ solverInstFromAST s
+  let base = MiniSat ptr vars
+  withints <- addIntegers base
+  withbits <- addBits withints
+  return $ solverInstFromAST (withbits)
 
 instance SolverAST MiniSat Literal where
   declare s S.BoolT nm = do 
