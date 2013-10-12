@@ -87,7 +87,9 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
     eqs <- sequence $ zipWith (eq_bool s) (bits a) (bits b)
     Exp <$> and_bools s eqs
 
-  leq_bit = bitstodo "leq"
+  leq_bit bs@(Bits s _) a b = do
+    b_minus_a <- sub_bit bs b a
+    Exp <$> not_bool s (last (bits b_minus_a))
 
   add_bit (Bits s _) a b = do
     ff <- bool s False
@@ -113,7 +115,10 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
 
   not_bit (Bits s _) x = BitF <$> mapM (not_bool s) (bits x)
 
-  sign_extend_bit = bitstodo "sign_extend"
+  sign_extend_bit _ fr to x = do
+    let sign = last (bits x)
+    return (BitF (bits x ++ replicate (fromInteger $ to-fr) sign))
+
   extract_bit _ hi lo x =
     let loi = fromInteger lo
         hii = fromInteger hi
