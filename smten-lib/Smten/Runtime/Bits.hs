@@ -91,19 +91,13 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
 
   add_bit (Bits s _) a b = do
     ff <- bool s False
-    let add _ [] [] = return []
-        add c (a:as) (b:bs) = do
-           xor_ab <- xor_bool s a b
-           z <- xor_bool s c xor_ab
-           ca <- and_bool s c a
-           cb <- and_bool s c b
-           ab <- and_bool s a b
-           c' <- or_bools s [ca, cb, ab]
-           tl <- add c' as bs
-           return (z : tl)
-    BitF <$> add ff (bits a) (bits b)
+    BitF <$> add s ff (bits a) (bits b)
     
-  sub_bit = bitstodo "sub"
+  sub_bit bs@(Bits s _) a b = do
+    b_not <- not_bit bs b
+    tt <- bool s True
+    BitF <$> add s tt (bits a) (bits b_not)
+
   mul_bit = bitstodo "mul"
 
   or_bit (Bits s _) a b = do
@@ -143,4 +137,18 @@ intB :: Integer -> Integer -> [Bool]
 intB 0 _ = []
 intB w x = case x `quotRem` 2 of
                 (x2, b) -> (b == 1) : intB (w-1) x2
+
+-- add s cin a b
+--   Add the bit vectors a and b with the given carry in.
+add :: (SolverAST s exp) => s -> exp -> [exp] -> [exp] -> IO [exp] 
+add s _ [] [] = return []
+add s c (a:as) (b:bs) = do
+   xor_ab <- xor_bool s a b
+   z <- xor_bool s c xor_ab
+   ca <- and_bool s c a
+   cb <- and_bool s c b
+   ab <- and_bool s a b
+   c' <- or_bools s [ca, cb, ab]
+   tl <- add s c' as bs
+   return (z : tl)
 
