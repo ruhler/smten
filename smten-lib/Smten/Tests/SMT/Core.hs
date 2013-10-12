@@ -4,7 +4,7 @@ module Smten.Tests.SMT.Core (smttests, tests) where
 
 import Smten.Prelude
 import Smten.Symbolic
-import Smten.Symbolic.Solver.Pure
+import Smten.Symbolic.Solver.Smten
 import Smten.Tests.SMT.Test
 
 smttests :: SMTTest ()
@@ -128,6 +128,6 @@ smttests = do
    
 tests :: IO ()
 tests = do
-   runtest (SMTTestCfg pure [] []) smttests
+   runtest (SMTTestCfg smten [] []) smttests
    putStrLn "SMT.Core PASSED"
 

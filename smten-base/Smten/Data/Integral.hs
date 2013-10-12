@@ -12,10 +12,10 @@ import Smten.Data.Integral0
 
 class (Enum a) => Integral a where
     quot :: a -> a -> a
-    quot n d = q where (q, r) = quotRem n d
+    quot n d = q where (q, _) = quotRem n d
     
     rem :: a -> a -> a
-    rem n d = r where (q, r) = quotRem n d
+    rem n d = r where (_, r) = quotRem n d
 
     quotRem :: a -> a -> (a, a)
     toInteger :: a -> Integer

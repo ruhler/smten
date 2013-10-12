@@ -1,7 +1,7 @@
 
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Smten.Compiled.Smten.Symbolic.Solver.Pure (pure) where
+module Smten.Compiled.Smten.Symbolic.Solver.Smten (smten) where
 
 import Control.Monad
 
@@ -21,7 +21,7 @@ data Model = Model {
 
 data Exp = Exp (Model -> Bool)
 
-data PureSolver = PureSolver (IORef [Model])
+data SmtenSolver = SmtenSolver (IORef [Model])
 
 ite_Exp :: Exp -> Exp -> Exp -> IO Exp
 ite_Exp (Exp p) (Exp a) (Exp b) = return . Exp $ \m ->
@@ -29,21 +29,21 @@ ite_Exp (Exp p) (Exp a) (Exp b) = return . Exp $ \m ->
         True -> a m
         False -> b m
 
-nobits = error "PureSolver: bits not supported natively"
-noints = error "PureSolver: integers not supported natively"
+nobits = error "SmtenSolver: bits not supported natively"
+noints = error "SmtenSolver: integers not supported natively"
 
-instance SolverAST PureSolver Exp where
-  declare (PureSolver mref) BoolT nm = do
+instance SolverAST SmtenSolver Exp where
+  declare (SmtenSolver mref) BoolT nm = do
      ms <- readIORef mref
      writeIORef mref $ do
         vs <- vars <$> ms
         b <- [True, False]
         return (Model $ (nm, b) : vs)
 
-  declare (PureSolver mref) IntegerT nm = noints
-  declare (PureSolver mref) (BitT _) nm = nobits
+  declare (SmtenSolver mref) IntegerT nm = noints
+  declare (SmtenSolver mref) (BitT _) nm = nobits
 
-  getBoolValue (PureSolver mref) nm = do
+  getBoolValue (SmtenSolver mref) nm = do
      ms <- readIORef mref
      case ms of
         [] -> error $ "getBoolValue called when there is no model"
@@ -55,11 +55,11 @@ instance SolverAST PureSolver Exp where
   getIntegerValue = noints
   getBitVectorValue = nobits
 
-  check (PureSolver mref) = do
+  check (SmtenSolver mref) = do
      ms <- readIORef mref
      return (if null ms then Unsat else Sat)
 
-  assert (PureSolver mref) (Exp p) = do
+  assert (SmtenSolver mref) (Exp p) = do
      ms <- readIORef mref
      writeIORef mref $ do
         m <- ms
@@ -101,10 +101,10 @@ instance SolverAST PureSolver Exp where
   sign_extend_bit = nobits
   extract_bit = nobits
 
-pure :: Solver
-pure = do
+smten :: Solver
+smten = do
    mref <- newIORef [Model []]
-   let base = PureSolver mref
+   let base = SmtenSolver mref
    withints <- addIntegers base
    withbits <- addBits withints
    return $ solverInstFromAST withbits

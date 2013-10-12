@@ -5,7 +5,7 @@ module Smten.Tests.SMT.Datatype (smttests, tests) where
 import Smten.Prelude
 import Smten.Control.Monad
 import Smten.Symbolic
-import Smten.Symbolic.Solver.Pure
+import Smten.Symbolic.Solver.Smten
 import Smten.Tests.SMT.Test
 
 data MyEnum = E1 | E2 | E3 | E4
@@ -95,6 +95,6 @@ smttests = do
 
 tests :: IO ()
 tests = do
-   runtest (SMTTestCfg pure [] []) smttests
+   runtest (SMTTestCfg smten [] []) smttests
    putStrLn "SMT.DataType PASSED"
 

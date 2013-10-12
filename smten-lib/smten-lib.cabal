@@ -12,10 +12,10 @@ cabal-version: >=1.8
 stability: experimental
 description:
   This package provides the Smten Symbolic API and other Smten libraries not
-  part of the Smten base libraries. It includes a pure solver based on the
-  list monad which is not very efficient. For improved solving performance,
-  install one of the SMT backend solvers, such as smten-yices2, smten-z3, or
-  smten-stp.
+  part of the Smten base libraries. It includes a basic solver backend
+  implemented in Haskell which is likely not very efficient. For improved
+  solving performance, install one of the SMT backend solvers, such as
+  smten-yices2, smten-z3, or smten-stp.
 
 source-repository this
   type: git
@@ -53,8 +53,9 @@ library
     Smten.Symbolic0
     Smten.Symbolic
     Smten.Symbolic.SMT
-    Smten.Symbolic.Solver.Pure
     Smten.Symbolic.Solver.Debug
+    Smten.Symbolic.Solver.Pure
+    Smten.Symbolic.Solver.Smten
     Smten.System.Environment
     Smten.System.Exit
     Smten.System.Timeout
@@ -97,8 +98,8 @@ library
     Smten.Compiled.Smten.Symbolic0
     Smten.Compiled.Smten.Symbolic
     Smten.Compiled.Smten.Symbolic.SMT
-    Smten.Compiled.Smten.Symbolic.Solver.Pure
     Smten.Compiled.Smten.Symbolic.Solver.Debug
+    Smten.Compiled.Smten.Symbolic.Solver.Smten
     Smten.Compiled.Smten.System.Environment
     Smten.Compiled.Smten.System.Exit
     Smten.Compiled.Smten.System.Timeout

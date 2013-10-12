@@ -2,12 +2,10 @@
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Symbolic.Solver.Pure (pure) where
 
-import Smten.Plugin.Annotations
-import Smten.Prelude
 import Smten.Symbolic
+import Smten.Symbolic.Solver.Smten
 
-{-# ANN module PrimitiveModule #-}
-
+{-# DEPRECATED pure "Please use the 'smten' solver instead" #-}
 pure :: Solver
-pure = error "pure symbolic"
+pure = smten
 
