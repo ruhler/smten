@@ -1,12 +1,15 @@
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Smten.Compiled.Smten.Symbolic.Solver.Smten (smten) where
 
 import Control.Monad
+import qualified Data.Map as Map
 
 import Data.IORef
-import Data.Functor
+import Data.Maybe
 
 import Smten.Runtime.Types (Type(..))
 import Smten.Runtime.Result
@@ -15,31 +18,23 @@ import Smten.Runtime.Solver
 import Smten.Runtime.Bits
 import Smten.Runtime.Integers
 
-data Model = Model {
-    vars :: [(String, Bool)]
-}
+-- A clause represents a conjunction of literals.
+-- A variable is present in the conjunction if it is in the Clause map. A
+-- value of True means it is a positive literal, a value of False means it is
+-- a negative literal.
+type Clause = Map.Map String Bool
 
-data Exp = Exp (Model -> Bool)
+-- Disjunctive normal form for a boolean formula. Represents the disjunction
+-- of a bunch of clauses.
+type DNF = [Clause]
 
-data SmtenSolver = SmtenSolver (IORef [Model])
-
-ite_Exp :: Exp -> Exp -> Exp -> IO Exp
-ite_Exp (Exp p) (Exp a) (Exp b) = return . Exp $ \m ->
-     case p m of
-        True -> a m
-        False -> b m
+data SmtenSolver = SmtenSolver (IORef DNF)
 
 nobits = error "SmtenSolver: bits not supported natively"
 noints = error "SmtenSolver: integers not supported natively"
 
-instance SolverAST SmtenSolver Exp where
-  declare (SmtenSolver mref) BoolT nm = do
-     ms <- readIORef mref
-     writeIORef mref $ do
-        vs <- vars <$> ms
-        b <- [True, False]
-        return (Model $ (nm, b) : vs)
-
+instance SolverAST SmtenSolver DNF where
+  declare (SmtenSolver mref) BoolT nm = return ()
   declare (SmtenSolver mref) IntegerT nm = noints
   declare (SmtenSolver mref) (BitT _) nm = nobits
 
@@ -47,38 +42,28 @@ instance SolverAST SmtenSolver Exp where
      ms <- readIORef mref
      case ms of
         [] -> error $ "getBoolValue called when there is no model"
-        (x:_) ->
-          case lookup nm (vars x) of
-            Just b -> return b
-            Nothing -> error $ "getBoolValue: " ++ nm ++ " not found"
+        (m:_) -> return (fromMaybe False (Map.lookup nm m))
   
   getIntegerValue = noints
   getBitVectorValue = nobits
 
   check (SmtenSolver mref) = do
-     ms <- readIORef mref
-     return (if null ms then Unsat else Sat)
+     f <- readIORef mref
+     return (if null f then Unsat else Sat)
 
-  assert (SmtenSolver mref) (Exp p) = do
-     ms <- readIORef mref
-     writeIORef mref $ do
-        m <- ms
-        guard (p m == True)
-        return m
+  assert (SmtenSolver mref) p = modifyIORef mref $ andDNF p
 
-  bool _ x = return (Exp $ const x)
+  bool _ True = return trueDNF
+  bool _ False = return falseDNF
   integer = noints
   bit = nobits
 
-  var _ nm = return . Exp $ \m ->
-                case lookup nm (vars m) of
-                    Just x -> x
-                    Nothing -> error $ "var: " ++ nm ++ " not found"
+  var _ nm = return $ varDNF nm
 
-  and_bool ctx a b = ite_bool ctx a b (Exp $ const False)
-  not_bool ctx a = ite_bool ctx a (Exp $ const False) (Exp $ const True)
+  and_bool _ a b = return $ andDNF a b
+  not_bool _ a = return $ notDNF a
+  ite_bool _ p a b = return $ iteDNF p a b
 
-  ite_bool _ = ite_Exp
   ite_integer = noints
   ite_bit _ = nobits
 
@@ -103,9 +88,43 @@ instance SolverAST SmtenSolver Exp where
 
 smten :: Solver
 smten = do
-   mref <- newIORef [Model []]
+   mref <- newIORef trueDNF
    let base = SmtenSolver mref
    withints <- addIntegers base
    withbits <- addBits withints
    return $ solverInstFromAST withbits
+
+
+trueDNF :: DNF
+trueDNF = {-# SCC "trueDNF" #-} [Map.empty]
+
+falseDNF :: DNF
+falseDNF = {-# SCC "falseDNF" #-} []
+
+varDNF :: String -> DNF
+varDNF nm = {-# SCC "varDNF" #-} [Map.singleton nm True]
+
+notDNF :: DNF -> DNF
+notDNF xs = foldr andDNF trueDNF $ map notClause xs
+
+notClause :: Clause -> DNF
+notClause m = {-# SCC "notClause" #-}
+    [Map.singleton nm (not v) | (nm, v) <- Map.assocs m]
+
+orDNF :: DNF -> DNF -> DNF
+orDNF = {-# SCC "orDNF" #-} (++)
+
+andDNF :: DNF -> DNF -> DNF
+andDNF a b = {-# SCC "andDNF" #-} do
+  am <- a
+  bm <- b
+  guard $ nonConflicting am bm
+  return $ am `Map.union` bm
+
+nonConflicting :: Clause -> Clause -> Bool
+nonConflicting a b = {-# SCC "nonConflicting" #-}
+  all (\(ak, av) -> av == fromMaybe av (Map.lookup ak b)) (Map.assocs a)
+
+iteDNF :: DNF -> DNF -> DNF -> DNF
+iteDNF p a b = {-# SCC "iteDNF" #-} orDNF (andDNF p a) (andDNF (notDNF p) b)
 
