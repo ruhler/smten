@@ -9,6 +9,7 @@ module Smten.Compiled.Smten.Symbolic0 (
     free_Integer, free_Bit,
     ) where
 
+import Control.Monad.Reader
 import Control.Monad.State
 import Data.Functor((<$>))
 
@@ -25,13 +26,16 @@ import Smten.Compiled.GHC.TypeLits
 import qualified Smten.Compiled.Smten.Smten.Integer as S
 import qualified Smten.Runtime.Types as S
 
+data SR = SR {
+    sr_pred :: S.Bool
+}
+
 data SS = SS {
-    ss_pred :: S.Bool,
     ss_free :: [(FreeID, Type)],
     ss_formula :: S.Bool
 }
 
-type Symbolic = StateT SS IO
+type Symbolic = ReaderT SR (StateT SS IO)
 
 instance SmtenHS1 Symbolic where
     error1 msg = return (error0 msg)
@@ -51,7 +55,8 @@ bind_symbolic = (>>=)
 
 mzero_symbolic :: (SmtenHS0 a) => Symbolic a
 mzero_symbolic = do
-    modify $ \ss -> ss { ss_formula = ss_formula ss `andB` notB (ss_pred ss) }
+    p <- asks sr_pred
+    modify $ \ss -> ss { ss_formula = ss_formula ss `andB` notB p }
     return (error0 (errstr "mzero_symbolic"))
 
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
@@ -73,17 +78,12 @@ free_Bit w = do
     return (S.Bit_Var fid)
 
 predicated :: S.Bool -> Symbolic a -> Symbolic a
-predicated p q = do
-    pold <- gets ss_pred
-    modify $ \ss -> ss { ss_pred = pold `andB` p }
-    v <- q
-    modify $ \ss -> ss { ss_pred = pold }
-    return v
+predicated p = local (\r -> r { sr_pred = sr_pred r `andB` p })
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
   solver <- s
-  (x, ss) <- runStateT q (SS S.True [] S.True)
+  (x, ss) <- runStateT (runReaderT q (SR S.True)) (SS [] S.True)
   mapM_ (declVar solver) (ss_free ss)
   assert solver (ss_formula ss)
   res <- check solver
