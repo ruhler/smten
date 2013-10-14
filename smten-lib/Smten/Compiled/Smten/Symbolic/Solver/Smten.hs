@@ -9,6 +9,7 @@ import Control.Monad
 import qualified Data.Map as Map
 
 import Data.IORef
+import Data.Functor
 import Data.Maybe
 
 import Smten.Runtime.Types (Type(..))
@@ -28,19 +29,24 @@ type Clause = Map.Map String Bool
 -- of a bunch of clauses.
 type DNF = [Clause]
 
-data SmtenSolver = SmtenSolver (IORef DNF)
+data Exp = Exp {
+    pos :: DNF, -- DNF describing how to make this expression true.
+    neg :: DNF  -- DNF describing how to make this expression false.
+}
+
+data SmtenSolver = SmtenSolver (IORef Exp)
 
 nobits = error "SmtenSolver: bits not supported natively"
 noints = error "SmtenSolver: integers not supported natively"
 
-instance SolverAST SmtenSolver DNF where
+instance SolverAST SmtenSolver Exp where
   declare (SmtenSolver mref) BoolT nm = return ()
   declare (SmtenSolver mref) IntegerT nm = noints
   declare (SmtenSolver mref) (BitT _) nm = nobits
 
   getBoolValue (SmtenSolver mref) nm = do
      ms <- readIORef mref
-     case ms of
+     case pos ms of
         [] -> error $ "getBoolValue called when there is no model"
         (m:_) -> return (fromMaybe False (Map.lookup nm m))
   
@@ -48,21 +54,21 @@ instance SolverAST SmtenSolver DNF where
   getBitVectorValue = nobits
 
   check (SmtenSolver mref) = do
-     f <- readIORef mref
+     f <- pos <$> readIORef mref
      return (if null f then Unsat else Sat)
 
-  assert (SmtenSolver mref) p = modifyIORef mref $ andDNF p
+  assert (SmtenSolver mref) p = modifyIORef mref $ andExp p
 
-  bool _ True = return trueDNF
-  bool _ False = return falseDNF
+  bool _ True = return trueExp
+  bool _ False = return falseExp
   integer = noints
   bit = nobits
 
-  var _ nm = return $ varDNF nm
+  var _ nm = return $ varExp nm
 
-  and_bool _ a b = return $ andDNF a b
-  not_bool _ a = return $ notDNF a
-  ite_bool _ p a b = return $ iteDNF p a b
+  and_bool _ a b = return $ andExp a b
+  not_bool _ a = return $ notExp a
+  ite_bool _ p a b = return $ iteExp p a b
 
   ite_integer = noints
   ite_bit _ = nobits
@@ -88,28 +94,47 @@ instance SolverAST SmtenSolver DNF where
 
 smten :: Solver
 smten = do
-   mref <- newIORef trueDNF
+   mref <- newIORef trueExp
    let base = SmtenSolver mref
    withints <- addIntegers base
    withbits <- addBits withints
    return $ solverInstFromAST withbits
 
+trueExp :: Exp
+trueExp = Exp trueDNF falseDNF
+
+falseExp :: Exp
+falseExp = Exp falseDNF trueDNF
+
+varExp :: String -> Exp
+varExp nm = Exp {
+    pos = [Map.singleton nm True],
+    neg = [Map.singleton nm False]
+}
+
+notExp :: Exp -> Exp
+notExp (Exp p n) = Exp n p
+
+orExp :: Exp -> Exp -> Exp
+orExp (Exp ap an) (Exp bp bn) = Exp {
+    pos = orDNF ap bp,
+    neg = andDNF an bn
+}
+
+andExp :: Exp -> Exp -> Exp
+andExp (Exp ap an) (Exp bp bn) = Exp {
+    pos = andDNF ap bp,
+    neg = orDNF an bn
+}
+
+iteExp :: Exp -> Exp -> Exp -> Exp
+iteExp p a b = orExp (andExp p a) (andExp (notExp p) b)
 
 trueDNF :: DNF
 trueDNF = {-# SCC "trueDNF" #-} [Map.empty]
 
 falseDNF :: DNF
 falseDNF = {-# SCC "falseDNF" #-} []
-
-varDNF :: String -> DNF
-varDNF nm = {-# SCC "varDNF" #-} [Map.singleton nm True]
-
-notDNF :: DNF -> DNF
-notDNF xs = foldr andDNF trueDNF $ map notClause xs
-
-notClause :: Clause -> DNF
-notClause m = {-# SCC "notClause" #-}
-    [Map.singleton nm (not v) | (nm, v) <- Map.assocs m]
 
 orDNF :: DNF -> DNF -> DNF
 orDNF = {-# SCC "orDNF" #-} (++)
@@ -124,7 +149,4 @@ andDNF a b = {-# SCC "andDNF" #-} do
 nonConflicting :: Clause -> Clause -> Bool
 nonConflicting a b = {-# SCC "nonConflicting" #-}
   all (\(ak, av) -> av == fromMaybe av (Map.lookup ak b)) (Map.assocs a)
-
-iteDNF :: DNF -> DNF -> DNF -> DNF
-iteDNF p a b = {-# SCC "iteDNF" #-} orDNF (andDNF p a) (andDNF (notDNF p) b)
 
