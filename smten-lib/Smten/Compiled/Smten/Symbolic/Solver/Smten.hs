@@ -2,15 +2,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Compiled.Smten.Symbolic.Solver.Smten (smten) where
 
-import Control.Monad
-import qualified Data.Map as Map
-
 import Data.IORef
 import Data.Functor
-import Data.Maybe
 
 import Smten.Runtime.Types (Type(..))
 import Smten.Runtime.Result
@@ -19,19 +16,20 @@ import Smten.Runtime.Solver
 import Smten.Runtime.Bits
 import Smten.Runtime.Integers
 
--- A clause represents a conjunction of literals.
--- A variable is present in the conjunction if it is in the Clause map. A
--- value of True means it is a positive literal, a value of False means it is
--- a negative literal.
-type Clause = Map.Map String Bool
-
--- Disjunctive normal form for a boolean formula. Represents the disjunction
--- of a bunch of clauses.
-type DNF = [Clause]
+-- BDD: represents a set of clauses in disjunctive normal form.
+-- The following invarient should hold for a BDD:
+--    Var x is a parent of Var y if x < y.
+data BDD = None     -- ^ unsatisfiable
+         | Done     -- ^ valid (all assignments satisfy)
+         | Var {
+    _nm :: String,  -- ^ The variable name
+    _tt :: BDD,     -- ^ If the variable is true
+    _ff :: BDD      -- ^ If the variable is false
+  }  -- ^ Split on a variable
 
 data Exp = Exp {
-    pos :: DNF, -- DNF describing how to make this expression true.
-    neg :: DNF  -- DNF describing how to make this expression false.
+    pos :: BDD, -- BDD describing how to make this expression true.
+    neg :: BDD  -- BDD describing how to make this expression false.
 }
 
 data SmtenSolver = SmtenSolver (IORef Exp)
@@ -46,16 +44,16 @@ instance SolverAST SmtenSolver Exp where
 
   getBoolValue (SmtenSolver mref) nm = do
      ms <- readIORef mref
-     case pos ms of
-        [] -> error $ "getBoolValue called when there is no model"
-        (m:_) -> return (fromMaybe False (Map.lookup nm m))
+     return (lookupBDD nm $ pos ms)
   
   getIntegerValue = noints
   getBitVectorValue = nobits
 
   check (SmtenSolver mref) = do
      f <- pos <$> readIORef mref
-     return (if null f then Unsat else Sat)
+     return $ case f of
+                 None -> Unsat
+                 _ -> Sat
 
   assert (SmtenSolver mref) p = modifyIORef mref $ andExp p
 
@@ -101,15 +99,15 @@ smten = do
    return $ solverInstFromAST withbits
 
 trueExp :: Exp
-trueExp = Exp trueDNF falseDNF
+trueExp = Exp trueBDD falseBDD
 
 falseExp :: Exp
-falseExp = Exp falseDNF trueDNF
+falseExp = Exp falseBDD trueBDD
 
 varExp :: String -> Exp
 varExp nm = Exp {
-    pos = [Map.singleton nm True],
-    neg = [Map.singleton nm False]
+    pos = Var nm Done None,
+    neg = Var nm None Done
 }
 
 notExp :: Exp -> Exp
@@ -117,36 +115,58 @@ notExp (Exp p n) = Exp n p
 
 orExp :: Exp -> Exp -> Exp
 orExp (Exp ap an) (Exp bp bn) = Exp {
-    pos = orDNF ap bp,
-    neg = andDNF an bn
+    pos = orBDD ap bp,
+    neg = andBDD an bn
 }
 
 andExp :: Exp -> Exp -> Exp
 andExp (Exp ap an) (Exp bp bn) = Exp {
-    pos = andDNF ap bp,
-    neg = orDNF an bn
+    pos = andBDD ap bp,
+    neg = orBDD an bn
 }
 
 iteExp :: Exp -> Exp -> Exp -> Exp
 iteExp p a b = orExp (andExp p a) (andExp (notExp p) b)
 
-trueDNF :: DNF
-trueDNF = {-# SCC "trueDNF" #-} [Map.empty]
+trueBDD :: BDD
+trueBDD = Done
 
-falseDNF :: DNF
-falseDNF = {-# SCC "falseDNF" #-} []
+falseBDD :: BDD
+falseBDD = None
 
-orDNF :: DNF -> DNF -> DNF
-orDNF = {-# SCC "orDNF" #-} (++)
+orBDD :: BDD -> BDD -> BDD
+orBDD None x = x
+orBDD Done _ = Done
+orBDD x None = x
+orBDD x Done = Done
+orBDD xa@(Var x xt xf) ya@(Var y yt yf)
+  | x < y = Var x (orBDD xt ya) (orBDD xf ya)
+  | x == y = Var x (orBDD xt yt) (orBDD xf yf)
+  | otherwise = Var y (orBDD xa yt) (orBDD xa yf)
 
-andDNF :: DNF -> DNF -> DNF
-andDNF a b = {-# SCC "andDNF" #-} do
-  am <- a
-  bm <- b
-  guard $ nonConflicting am bm
-  return $ am `Map.union` bm
+andBDD :: BDD -> BDD -> BDD
+andBDD None x = None
+andBDD Done x = x
+andBDD x None = None
+andBDD x Done = x
+andBDD xa@(Var x xt xf) ya@(Var y yt yf)
+  | x < y = case (andBDD xt ya, andBDD xf ya) of
+               (None, None) -> None
+               (t, f) -> Var x t f
+  | x == y = case (andBDD xt yt, andBDD xf yf) of
+               (None, None) -> None
+               (t, f) -> Var x t f
+  | otherwise = case (andBDD xa yt, andBDD xa yf) of
+               (None, None) -> None
+               (t, f) -> Var y t f
 
-nonConflicting :: Clause -> Clause -> Bool
-nonConflicting a b = {-# SCC "nonConflicting" #-}
-  all (\(ak, av) -> av == fromMaybe av (Map.lookup ak b)) (Map.assocs a)
-
+lookupBDD :: String -> BDD -> Bool
+lookupBDD nm None = error $ "no possible assignment for " ++ nm
+lookupBDD nm Done = False    -- ^ Doesn't matter, just pick false.
+lookupBDD nm (Var x None f)
+  | nm <= x = False
+  | otherwise = lookupBDD nm f
+lookupBDD nm (Var x t _)
+  | nm <= x = True
+  | otherwise = lookupBDD nm t
+    
