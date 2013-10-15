@@ -71,7 +71,7 @@ Smten:
 Create a file called 'hello.hs' which contains the hello world program. To
 compile the program, run:
 
-  smten --make -o hello hello.hs
+  $ smten --make -o hello hello.hs
 
 This should produce an executable called +hello+, which you can now run:
 

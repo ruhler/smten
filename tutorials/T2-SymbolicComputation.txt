@@ -1,0 +1,245 @@
+Tutorial 2 - Symbolic Computation
+=================================
+Richard Uhler <ruhler@csail.mit.edu>
+October 15, 2013
+
+Goals
+-----
+The goal of this tutorial is to demonstrate how the +Symbolic+ monad in Smten
+can be used to perform symbolic computations, making it much easier to solve
+problems like nqueens than using a custom solver.
+
+Introduction
+------------
+In this tutorial we develop a solver for the nqueens problem leveraging
+symbolic computation in Smten. The nqueens problem is to place n queens on an
+n by n chess board so that no queen can attack another. In other words, no two
+queens may occupy the same row, column, or diagonal.
+
+The Smten approach to implementing an nqueens solver is to implement a
+predicate describing which placements of queens are legal, and to use symbolic
+computation to automatically synthesis a placement which satisfies the
+predicate.
+
+Legal Placements
+----------------
+The first step in implementing nqueens in Smten is to define what a legal
+placement of queens is. We start by defining what a placement is:
+
+--------------------
+    type Placement = [(Int, Int)]
+--------------------
+
+A placement is represented as a list of (row, column) pairs, one for each
+queen being placed. For example, the placement +[(0, 0), (2, 1), (2, 2)]+
+could be graphically represented for a 3 by 3 board using 'X' to represent
+queens and '.' to represent blank squares as:
+
+--------------------
+    X..
+    ...
+    .XX
+--------------------
+
+In fact, it will be useful to be able to print a placement using this
+representation:
+
+----------
+    pretty :: Placement -> String
+    pretty places = unlines [[if (r, c) `elem` places then 'X' else '.'
+                               | c <- [0..(length places - 1)]]
+                               | r <- [0..(length places - 1)]]
+----------
+
+
+For a placement to be legal, the rows, columns, and diagonals where the queens
+are placed must all be distinct. We define a generic +distinct+ function which
+takes a list of elements, returns True if all elements in the list are
+different, and returns False otherwise:
+    
+--------------------
+    distinct :: (Eq a) => [a] -> Bool
+    distinct [] = True
+    distinct (x:xs) = x `notElem` xs && distinct xs
+--------------------
+
+Given a Placement as defined above, the rows of all the queens are the
+first elements of the pairs and the columns of the queens are the second
+elements of the pairs. Less obvious is that the diagonal going from lower
+left to upper right on which a queen is placed can be identified by the sum of 
+the queen's row and column, and the diagonal going from upper left to lower
+right can be identified by the difference of the queen's row and column.
+
+To see this more clearly, the following figure shows a 4x4 board with each
+place labelled with its row, column, sum of row and column, and difference of
+row and column:
+
+--------------------
+  0 0 0 0     0 1 2 3       0 1 2 3     0 -1 -2 -3
+  1 1 1 1     0 1 2 3       1 2 3 4     1  0 -1 -2
+  2 2 2 2     0 1 2 3       2 3 4 5     2  1  0 -1
+  3 3 3 3     0 1 2 3       3 4 5 6     3  2  1  0
+   row          col           sum       difference
+--------------------
+
+Given this, and the +distinct+ function we already defined, we can easily
+implement a predicate describing which placements are valid: 
+
+--------------------
+    islegal :: Placement -> Bool
+    islegal places = and [
+        distinct (map fst places),
+        distinct (map snd places),
+        distinct (map (uncurry (+)) places),
+        distinct (map (uncurry (-)) places]
+--------------------
+
+We will assume all n queens have been placed somewhere on the board, so we
+don't have to check for the length of +places+ or the bounds of rows and
+columns for each place.
+
+Symbolic Computation
+--------------------
+Now that we have defined what it means for a placement to be legal, we can use
+symbolic computation to automatically synthesize a legal placement. Symbolic
+computation is orchestrated using the builtin +Symbolic+ monad in Smten, which
+is exported by the module +Smten.Symbolic+. The type +Symbolic a+ can be
+interpreted as a set of values of type +a+, or alternatively as a
+non-deterministic computation which returns a result of type +a+. The
++Smten.Symbolic+ monad is an instance of +MonadPlus+, which supports failure
+and choice:
+
+---------
+-- mzero: failing computation
+mzero :: Symbolic a    
+
+-- mplus: nondeterministically choose between the given arguments
+mplus :: Symbolic a -> Symbolic a -> Symbolic a
+----------
+
+On top of the +MonadPlus+ instance we can define two convenient functions:
++msum+, which chooses among more than two arguments, and assert, which
+forces the computation to satisfy the given predicate:
+
+-----------------
+msum :: [Symbolic a] -> Symbolic a
+msum xs = foldr mplus mzero
+
+assert :: Bool -> Symbolic ()
+assert p = if p then return () else mzero
+-----------------
+ 
+Additionally we have a function to run a symbolic computation:
+
+--------------
+run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
+--------------
+
+The +run_symbolic+ function takes as input a symbolic computation and returns
+any arbitrary result of that computation if there is any, or +Nothing+ to
+indicate that all paths of the computation fail. The +run_symbolic+ function
+also takes as an argument a solver to use in performing the symbolic
+computation. For now we'll just use the builtin "smten" solver exported by
++Smten.Symbolic.Solver.Smten+.
+
+How will we use the +Symbolic+ monad for +nqueens+? We will first construct
+symbolic values for the placement of the columns of each queen, chosen from 0
+to (n-1). Then we will assert the resulting placement is legal. The result of
+running the symbolic computation is a legal placement of the queens, which we
+can print to the user:
+
+-----------------------
+nqueens :: Int -> IO ()
+nqueens n = do
+  result <- run_symbolic smten $ do
+              let rows = [0..(n-1)]
+              cols <- sequence $ replicate n (msum (map return [0..(n-1)]))
+              let places = zip rows cols
+              assert (islegal places)
+              return places
+  case result of
+    Nothing -> putStrLn "no solution"
+    Just v -> putStrLn (pretty v)
+--------------------
+
+Putting it All Together
+-----------------------
+The following shows the entire nqueens solution, including a main function
+which reads the number n from the command line:
+
+-----------------
+import Smten.Prelude
+import Smten.Control.Monad
+import Smten.Symbolic
+import Smten.Symbolic.Solver.Smten
+import Smten.System.Environment
+
+-- Placement: A list of locations (row, col) for each queen.
+-- Indices go from 0 to n-1
+type Placement = [(Int, Int)]
+
+pretty :: Placement -> String
+pretty places = unlines [[if (r, c) `elem` places then 'X' else '.'
+                            | c <- [0..(length places - 1)]]
+                            | r <- [0..(length places - 1)]]
+
+distinct :: (Eq a) => [a] -> Bool
+distinct [] = True
+distinct (x:xs) = x `notElem` xs && distinct xs
+
+islegal :: Placement -> Bool
+islegal places = and [
+  distinct (map fst places),
+  distinct (map snd places),
+  distinct (map (uncurry (+)) places),
+  distinct (map (uncurry (-)) places)]
+
+nqueens :: Int -> IO ()
+nqueens n = do
+  result <- run_symbolic smten $ do
+              let rows = [0..(n-1)]
+              cols <- sequence $ replicate n (msum (map return [0..(n-1)]))
+              let places = zip rows cols
+              assert (islegal places)
+              return places
+  case result of
+    Nothing -> putStrLn "no solution"
+    Just v -> putStrLn (pretty v)
+
+usage :: IO ()
+usage = putStrLn "nqueens <n>"
+
+main :: IO ()
+main = do
+  args <- getArgs
+  case args of
+     [x] -> nqueens (read x)
+     _ -> usage
+--------------------
+
+Assuming this code is placed in a file called +nqueens.hs+, it can be compiled
+with the smten compiler using:
+
+  $ smten --make -o nqueens nqueens.hs
+
+This produces the executable +nqueens+ which we can now run:
+
+  $ nqueens 6
+  >>> ..X...
+      .....X
+      .X....
+      ....X.
+      X.....
+      ...X..
+
+Note that you may get a different placement from that shown here, because the
++run_symbolic+ function is non-deterministic. It may return *any* one of the
+possible answers.
+
+Conclusion
+----------
+In this tutorial you wrote an nqueens solver by leveraging the +Symbolic+
+monad for symbolic computation. The next tutorial shows how you can use
+different solver backends to improve the performance and scaling of your
+nqueens solver.
+

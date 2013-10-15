@@ -1,7 +1,7 @@
 Release to Public::
-* put smten-4.0.0.0 on hackage.
+* put smten on hackage.
 * can we do dynamic linking to make using different backends easier?
-* write T2 Symbolic Computation tutorial.
+* implement 'read' for Int (at least)
 
 Cleanup::
 * Support symbolic IO?
