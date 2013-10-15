@@ -36,7 +36,6 @@ Concrete Performance::
     (see inlinePragInfo in ghc api)
 
 Symbolic Performance::
-* Represent MZero explicitly to avoid introducing spurious error vars?
 * for yices1: having a shl_n function, which shifts by a constant amount,
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?

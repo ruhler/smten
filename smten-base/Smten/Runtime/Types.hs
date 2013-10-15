@@ -132,10 +132,9 @@ iteB True x _ = x
 iteB False _ x = x
 iteB (Bool_Not x) a b = iteB x b a
 iteB x@(Bool_Err {}) _ _ = x
-iteB p True False = p
 iteB p True True = True
-iteB p False True = notB p
-iteB p False False = False
+iteB p False b = notB p `andB` b
+iteB p a False = p `andB` a
 iteB p a b = Bool_Ite p a b
 
 data Integer =
