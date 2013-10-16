@@ -13,7 +13,7 @@ import Foreign.C.String
 import Data.Char
 import Numeric
 
-import Smten.Runtime.Yices2FFI
+import Smten.Runtime.Yices2.FFI
 import qualified Smten.Runtime.Types as S
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver

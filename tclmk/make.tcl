@@ -73,24 +73,12 @@ proc smten-lib {} {
             -main-is Smten.Tests.All.main \
             -fplugin=Smten.Plugin.Plugin Smten/Tests/All.hs
 
-        hrun cabal configure --enable-tests --enable-benchmarks \
-            --with-compiler=$::GHC
-        hrun cabal build
-        hrun cabal test
-        hrun cabal sdist
-        hrun cabal install --force-reinstalls --with-compiler=$::GHC
-    }
-}
-
-proc smten-yices2 {} {
-    # The smten-yices2 package
-    hrun cp -r -f -l smten-yices2 build/
-    indir build/smten-yices2 {
-        hrun $::GHC --make -c -osuf o_smten -hisuf hi_smten \
+        hrun $::GHC --make -c -osuf o_smten -hisuf hi_smten -c \
             -main-is Smten.Tests.Yices2.main \
             -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices2.hs
 
-        hrun cabal configure --enable-tests --enable-benchmarks --with-compiler=$::GHC
+        hrun cabal configure --enable-tests --enable-benchmarks \
+            --with-compiler=$::GHC
         hrun cabal build
         hrun cabal test
         hrun cabal sdist
@@ -168,7 +156,6 @@ smten
 smten-base
 smten-lib
 
-smten-yices2
 smten-yices1
 smten-stp
 smten-z3

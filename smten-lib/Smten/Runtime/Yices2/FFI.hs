@@ -3,7 +3,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | Raw FFI interface to yices2.
-module Smten.Runtime.Yices2FFI (
+module Smten.Runtime.Yices2.FFI (
     YContext, YModel, YType, YTerm, YContextConfig,
     YParam, YSMTStatus,
     fromYSMTStatus,
