@@ -15,23 +15,11 @@ description:
   .
   The smten-yices2 solver requires yices2 is installed. Yices2 can be
   downloaded from <http://yices.csl.sri.com/download-yices2.shtml>. The
-  smten-yices2 package looks for the yices2 library under the name \"yices2\".
-  Because the yices2 library ships as \"yices\", you will need to provide a
-  link to \"yices2\".
-  .
-  For example, if you have libyices.so.2.1.0 for yices2 installed, to create
-  the \"yices2\" library suitable for use with smten, run the commands:
-  .
-  >  ln -s libyices.so.2.1.0 libyices2.so
-  >  ln -s libyices.so.2.1.0 libyices.so.2.0 
-  .
-  You may need to add the library path containing libyices.so.2.1.0 as an
-  extra library directory to your cabal configuration file. For example, if
-  the yices2 library is installed in \/home\/ruhler\/local\/lib, and your cabal
-  configuration is in ~\/.cabal\/config, add the following line to
-  ~\/.cabal\/config:
-  .  
-  >   extra-lib-dirs: /home/ruhler/local/lib
+  smten-yices2 package looks for the yices2 library at runtime in the file
+  "libyices.so.2.1". You may need to provide a symlink for libyices.so.2.1 to
+  the version of yices2 library you have instsalled (for example,
+  libyices.so.2.1.0), and you may need to add the directory containing
+  libyices.so.2.1 to the LD_LIBRARY_PATH environment variable at runtime.
 
 source-repository this
   type: git
@@ -53,7 +41,8 @@ library
 
   build-depends: base ==4.6.*,
                  smten ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
-  extra-libraries: yices2
+  extra-libraries: dl
+  c-sources: y2.c
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
 test-suite test-smten-yices2
@@ -61,5 +50,6 @@ test-suite test-smten-yices2
   main-is: tests.hs
   build-depends: base ==4.6.*,
                  smten-base ==4.0.*, smten-lib ==4.0.*
-  extra-libraries: yices2
+  extra-libraries: dl
+  c-sources: y2.c
 
