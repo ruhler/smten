@@ -1,5 +1,5 @@
 name: smten-z3
-version: 4.0.0.0
+version: @VERSION@-@GITTAG@
 synopsis: Smten library
 license: BSD3
 license-file: LICENSE
@@ -16,8 +16,8 @@ description:
 source-repository this
   type: git
   location: https://github.com/ruhler/smten.git
-  --branch:
-  --tag:
+  branch: @GITBRANCH@
+  tag: @GITTAG@
 
 library
   exposed-modules:
@@ -32,7 +32,8 @@ library
 
     
   build-depends: base ==4.6.*, hashtables ==1.0.*,
-                 smten ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
+                 smten ==@VERSIONMAJOR@.*, smten-base ==@VERSIONMAJOR@.*,
+                 smten-lib ==@VERSIONMAJOR@.*
   extra-libraries: z3
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
@@ -40,6 +41,6 @@ test-suite test-smten-z3
   type: exitcode-stdio-1.0
   main-is: tests.hs
   build-depends: base ==4.6.*, hashtables ==1.0.*,
-                 smten-base ==4.0.*, smten-lib ==4.0.*
+                 smten-base ==@VERSIONMAJOR@.*, smten-lib ==@VERSIONMAJOR@.*
   extra-libraries: z3
 

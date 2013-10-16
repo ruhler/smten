@@ -1,5 +1,5 @@
 name: smten-minisat
-version: 4.0.0.0
+version: @VERSION@-@GITTAG@
 synopsis: Smten minisat backend
 license: BSD3
 license-file: LICENSE
@@ -16,8 +16,8 @@ description:
 source-repository this
   type: git
   location: https://github.com/ruhler/smten.git
-  --branch:
-  --tag:
+  branch: @GITBRANCH@
+  tag: @GITTAG@
 
 library
   exposed-modules:
@@ -31,7 +31,8 @@ library
     Smten.Compiled.Smten.Tests.MiniSat
 
   build-depends: base ==4.6.*, hashtables ==1.0.*,
-                 smten ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
+                 smten ==@VERSIONMAJOR@.*, smten-base ==@VERSIONMAJOR@.*,
+                 smten-lib ==@VERSIONMAJOR@.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
   include-dirs: minisat
   cc-options: -D __STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS
@@ -42,7 +43,7 @@ test-suite test-smten-minisat
   type: exitcode-stdio-1.0
   main-is: tests.hs
   build-depends: base ==4.6.*, hashtables ==1.0.*,
-                 smten-base ==4.0.*, smten-lib ==4.0.*
+                 smten-base ==@VERSIONMAJOR@.*, smten-lib ==@VERSIONMAJOR@.*
   include-dirs: minisat
   cc-options: -D __STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS
   c-sources: minisat.cc minisat/core/Solver.cc

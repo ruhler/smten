@@ -1,5 +1,5 @@
 name: smten-base
-version: 4.0.0.0
+version: @VERSION@-@GITTAG@
 synopsis: Smten library
 license: BSD3
 license-file: LICENSE
@@ -16,8 +16,8 @@ description:
 source-repository this
   type: git
   location: https://github.com/ruhler/smten.git
-  --branch:
-  --tag:
+  branch: @GITBRANCH@
+  tag: @GITTAG@
 
 library
   exposed-modules:
@@ -112,7 +112,7 @@ library
     Smten.Compiled.GHC.Tuple
     Smten.Compiled.GHC.Types
 
-  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten ==4.0.*,
+  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten ==@VERSIONMAJOR@.*,
                  hashtables ==1.0.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports

@@ -21,7 +21,6 @@ proc indir {dir script} {
     cd $wd
 }
 
-
 proc run {args} {
     puts $args
     exec {*}$args "2>@" stderr
@@ -44,9 +43,29 @@ if {![file exists "build/home/cabal"]} {
     exec echo "library-profiling: True" >> build/home/.cabal/config
 }
 
+# Any occurrences of these variables surrounded by @ signs are substituted 
+# into the .cabal files before running cabal.
+set ::VERSIONMAJOR "4.1"
+set ::VERSIONMINOR "0.0"
+set ::VERSION "$::VERSIONMAJOR.$::VERSIONMINOR"
+set ::GITBRANCH [exec git rev-parse --abbrev-ref HEAD]
+set ::GITTAG [exec git rev-parse HEAD]
+
+proc substcabal {nm} {
+    hrun rm build/$nm/$nm.cabal
+    exec sed -e "s/@VERSIONMINOR@/$::VERSIONMINOR/g" \
+             -e "s/@VERSIONMAJOR@/$::VERSIONMAJOR/g" \
+             -e "s/@VERSION@/$::VERSION/g" \
+             -e "s/@GITBRANCH@/$::GITBRANCH/g" \
+             -e "s/@GITTAG@/$::GITTAG/g" \
+             $nm/$nm.cabal > build/$nm/$nm.cabal
+}
+
+
 # The smten package
 proc smten {} {
     hrun cp -r -f -l smten build/
+    substcabal smten
     indir build/smten {
         hrun cabal install --force-reinstalls --with-compiler=$::GHC
         hrun cabal sdist
@@ -56,6 +75,7 @@ proc smten {} {
 # The smten-base package
 proc smten-base {} {
     hrun cp -r -f -l smten-base build/
+    substcabal smten-base
     indir build/smten-base {
         hrun $::GHC --make -osuf o_smten -hisuf hi_smten -c \
             -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
@@ -68,6 +88,7 @@ proc smten-base {} {
 # The smten-lib package
 proc smten-lib {} {
     hrun cp -r -f -l smten-lib build/
+    substcabal smten-lib
     indir build/smten-lib {
         hrun $::GHC --make -osuf o_smten -hisuf hi_smten -c \
             -main-is Smten.Tests.All.main \
@@ -89,6 +110,7 @@ proc smten-lib {} {
 proc smten-yices1 {} {
     # The smten-yices1 package
     hrun cp -r -f -l smten-yices1 build/
+    substcabal smten-yices1
     indir build/smten-yices1 {
         hrun $::GHC --make -c -osuf o_smten -hisuf hi_smten \
             -main-is Smten.Tests.Yices1.main \
@@ -105,6 +127,7 @@ proc smten-yices1 {} {
 proc smten-stp {} {
     # The smten-stp package
     hrun cp -r -f -l smten-stp build/
+    substcabal smten-stp
     indir build/smten-stp {
         hrun $::GHC --make -c -osuf o_smten -hisuf hi_smten \
             -main-is Smten.Tests.STP.main \
@@ -121,6 +144,7 @@ proc smten-stp {} {
 proc smten-z3 {} {
     # The smten-z3 package
     hrun cp -r -f -l smten-z3 build/
+    substcabal smten-z3
     indir build/smten-z3 {
         hrun $::GHC --make -c -osuf o_smten -hisuf hi_smten \
             -main-is Smten.Tests.Z3.main \
@@ -137,6 +161,7 @@ proc smten-z3 {} {
 proc smten-minisat {} {
     # The smten-minisat package
     hrun cp -r -f -l smten-minisat build/
+    substcabal smten-minisat
     indir build/smten-minisat {
         hrun $::GHC --make -c -osuf o_smten -hisuf hi_smten \
             -main-is Smten.Tests.MiniSat.main \

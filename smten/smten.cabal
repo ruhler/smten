@@ -1,5 +1,5 @@
 name: smten
-version: 4.0.0.0
+version: @VERSION@-@GITTAG@
 synopsis: Smten library
 license: BSD3
 license-file: LICENSE
@@ -35,8 +35,8 @@ description:
 source-repository this
   type: git
   location: https://github.com/ruhler/smten.git
-  --branch:
-  --tag:
+  branch: @GITBRANCH@
+  tag: @GITTAG@
 
 executable smten
   main-is: smten.hs

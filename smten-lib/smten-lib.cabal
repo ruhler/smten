@@ -1,5 +1,5 @@
 name: smten-lib
-version: 4.0.0.0
+version: @VERSION@-@GITTAG@
 synopsis: Smten library
 license: BSD3
 license-file: LICENSE
@@ -18,8 +18,8 @@ description:
 source-repository this
   type: git
   location: https://github.com/ruhler/smten.git
-  --branch:
-  --tag:
+  branch: @GITBRANCH@
+  tag: @GITTAG@
 
 library
   exposed-modules:
@@ -131,7 +131,7 @@ library
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                  pretty ==1.1.*, array ==0.4.*, ghc-prim ==0.3.*,
                  template-haskell ==2.8.*, containers ==0.5.*,
-                 smten-base ==4.0.*, smten ==4.0.*
+                 smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
   extra-libraries: dl
@@ -143,7 +143,7 @@ Test-Suite test-smten-lib
     build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                    pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
                    template-haskell ==2.8.*, containers ==0.5.*,
-                   smten-base ==4.0.*, smten ==4.0.*
+                   smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
     ghc-options: -rtsopts
     extra-libraries: dl
     c-sources: Smten/Runtime/Yices2/y2.c
@@ -154,7 +154,7 @@ test-suite y2tests
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                  pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
                  template-haskell ==2.8.*, containers ==0.5.*,
-                 smten-base ==4.0.*, smten ==4.0.*
+                 smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   extra-libraries: dl
   c-sources: Smten/Runtime/Yices2/y2.c
 

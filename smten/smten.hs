@@ -8,9 +8,12 @@
 
 import Control.Monad.State
 import Data.List
+import Data.Version (showVersion)
 import System.Cmd
 import System.Environment
 import System.Exit
+
+import Paths_smten
 
 usage :: String
 usage = unlines [
@@ -19,6 +22,7 @@ usage = unlines [
     "",
     "Supported Options:",
     "  -?, --help           Print this usage information and exit",
+    "  --version            Print the smten version and exit",
     "  -O                   Enable optimiziation",
     "  -prof                Enable profiling",
     "  -fprof-auto-top      Auto-add SCCs to top-level bindings",
@@ -27,7 +31,7 @@ usage = unlines [
     "  -odir dir            Set directory for object files",
     ""]
 
-data Mode = Help | Make | Error String
+data Mode = Help | Version | Make | Error String
 
 data Options = Options {
     o_mode :: Mode,
@@ -59,6 +63,7 @@ getopts al =
     [] -> return ()
     ("--help" : tl) -> smode Help >> getopts tl
     ("-?" : tl) -> smode Help >> getopts tl
+    ("--version" : tl) -> smode Version >> getopts tl
     ("--make" : tl) -> smode Make >> getopts tl
     ("-o" : f : tl) -> s2 ["-o", f] >> getopts tl
     ("-O" : tl) -> s2 ["-O"] >> getopts tl
@@ -79,6 +84,7 @@ main = do
 
   case o_mode opts of
     Help -> putStrLn usage >> exitSuccess
+    Version -> putStrLn $ "smten version " ++ showVersion version
     Error msg -> do
         putStrLn msg  
         putStrLn usage
