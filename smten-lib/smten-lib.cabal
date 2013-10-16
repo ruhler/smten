@@ -13,7 +13,7 @@ stability: experimental
 description:
   This package provides the Smten Symbolic API and other Smten libraries not
   part of the Smten base libraries.  Additional SMT backends are available in
-  the packages smten-yices1, smten-z3, smten-stp, and smten-minisat.
+  the packages smten-yices1, smten-stp, and smten-minisat.
 
 source-repository this
   type: git
@@ -55,6 +55,7 @@ library
     Smten.Symbolic.Solver.Pure
     Smten.Symbolic.Solver.Smten
     Smten.Symbolic.Solver.Yices2
+    Smten.Symbolic.Solver.Z3
     Smten.System.Environment
     Smten.System.Exit
     Smten.System.Timeout
@@ -100,6 +101,7 @@ library
     Smten.Compiled.Smten.Symbolic.Solver.Debug
     Smten.Compiled.Smten.Symbolic.Solver.Smten
     Smten.Compiled.Smten.Symbolic.Solver.Yices2
+    Smten.Compiled.Smten.Symbolic.Solver.Z3
     Smten.Compiled.Smten.System.Environment
     Smten.Compiled.Smten.System.Exit
     Smten.Compiled.Smten.System.Timeout
@@ -124,9 +126,12 @@ library
     Smten.Runtime.Assert
     Smten.Runtime.Debug
     Smten.Runtime.Yices2.FFI
+    Smten.Runtime.Z3.FFI
     Smten.Smten.TypeLitsTH
     Smten.Tests.Yices2
+    Smten.Tests.Z3
     Smten.Compiled.Smten.Tests.Yices2
+    Smten.Compiled.Smten.Tests.Z3
 
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                  pretty ==1.1.*, array ==0.4.*, ghc-prim ==0.3.*,
@@ -135,7 +140,7 @@ library
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
   extra-libraries: dl
-  c-sources: Smten/Runtime/Yices2/y2.c
+  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c
 
 Test-Suite test-smten-lib
     type: exitcode-stdio-1.0
@@ -146,7 +151,7 @@ Test-Suite test-smten-lib
                    smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
     ghc-options: -rtsopts
     extra-libraries: dl
-    c-sources: Smten/Runtime/Yices2/y2.c
+    c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c
 
 test-suite y2tests
   type: exitcode-stdio-1.0
@@ -156,5 +161,15 @@ test-suite y2tests
                  template-haskell ==2.8.*, containers ==0.5.*,
                  smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   extra-libraries: dl
-  c-sources: Smten/Runtime/Yices2/y2.c
+  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c
+
+test-suite z3tests
+  type: exitcode-stdio-1.0
+  main-is: z3tests.hs
+  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
+                 pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
+                 template-haskell ==2.8.*, containers ==0.5.*,
+                 smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
+  extra-libraries: dl
+  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c
 

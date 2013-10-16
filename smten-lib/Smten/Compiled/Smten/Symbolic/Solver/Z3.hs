@@ -16,7 +16,7 @@ import Data.Functor
 import Data.Maybe
 import qualified Data.HashTable.IO as H
 
-import Smten.Runtime.Z3FFI
+import Smten.Runtime.Z3.FFI
 import qualified Smten.Runtime.Types as S
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST

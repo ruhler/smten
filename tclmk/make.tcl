@@ -94,9 +94,13 @@ proc smten-lib {} {
             -main-is Smten.Tests.All.main \
             -fplugin=Smten.Plugin.Plugin Smten/Tests/All.hs
 
-        hrun $::GHC --make -c -osuf o_smten -hisuf hi_smten -c \
+        hrun $::GHC --make -osuf o_smten -hisuf hi_smten -c \
             -main-is Smten.Tests.Yices2.main \
             -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices2.hs
+
+        hrun $::GHC --make -osuf o_smten -hisuf hi_smten -c \
+            -main-is Smten.Tests.Z3.main \
+            -fplugin=Smten.Plugin.Plugin Smten/Tests/Z3.hs
 
         hrun cabal configure --enable-tests --enable-benchmarks \
             --with-compiler=$::GHC
@@ -141,23 +145,6 @@ proc smten-stp {} {
     }
 }
 
-proc smten-z3 {} {
-    # The smten-z3 package
-    hrun cp -r -f -l smten-z3 build/
-    substcabal smten-z3
-    indir build/smten-z3 {
-        hrun $::GHC --make -c -osuf o_smten -hisuf hi_smten \
-            -main-is Smten.Tests.Z3.main \
-            -fplugin=Smten.Plugin.Plugin Smten/Tests/Z3.hs
-
-        hrun cabal configure --enable-tests --enable-benchmarks --with-compiler=$::GHC
-        hrun cabal build
-        hrun cabal test
-        hrun cabal sdist
-        hrun cabal install --force-reinstalls --with-compiler=$::GHC
-    }
-}
-
 proc smten-minisat {} {
     # The smten-minisat package
     hrun cp -r -f -l smten-minisat build/
@@ -183,6 +170,5 @@ smten-lib
 
 smten-yices1
 smten-stp
-smten-z3
 smten-minisat
 

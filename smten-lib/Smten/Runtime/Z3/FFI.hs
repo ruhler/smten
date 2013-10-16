@@ -3,7 +3,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | Raw FFI interface to z3.
-module Smten.Runtime.Z3FFI where
+module Smten.Runtime.Z3.FFI where
 
 import Foreign
 import Foreign.C.String
