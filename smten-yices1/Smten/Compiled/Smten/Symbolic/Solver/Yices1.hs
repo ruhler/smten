@@ -138,8 +138,10 @@ instance SolverAST Yices1 YExpr where
             v' = fromInteger v
         if w <= 64 
             then c_yices_mk_bv_constant ctx w' v'
-            else withArray (bvBits w v) $
-                    c_yices_mk_bv_constant_from_array ctx w'
+            else do
+              let bits = bvBits w v
+              r <- withArray bits $ c_yices_mk_bv_constant_from_array ctx w'
+              return r
 
   var y nm = withy1 y $ \ctx -> do
      decl <- withCString nm $ c_yices_get_var_decl_from_name ctx
@@ -175,6 +177,10 @@ instance SolverAST Yices1 YExpr where
 
 yices1 :: Solver
 yices1 = do
+  r <- c_yices_load
+  case r of
+    0 -> return ()
+    _ -> error "yices1 backend: unable to load libyices.so"
   ptr <- c_yices_mk_context
   return (solverInstFromAST $ Yices1 ptr)
 
