@@ -26,7 +26,6 @@ module Smten.Runtime.Yices2FFICGen (
     c_yices_arith_leq_atom,
     c_yices_add,
     c_yices_sub,
-    c_yices_mul,
     c_yices_and2,
 
     c_yices_bvconst_uint64,
@@ -37,7 +36,6 @@ module Smten.Runtime.Yices2FFICGen (
     c_yices_bvand,
     c_yices_bvor,
     c_yices_bvnot,
-    c_yices_zero_extend,
     c_yices_sign_extend,
     c_yices_bvshl,
     c_yices_bvlshr,
@@ -246,9 +244,6 @@ c_yices_add = y2 "yices_add" Y.c_yices_add
 c_yices_sub :: YTerm -> YTerm -> IO YTerm
 c_yices_sub = y2 "yices_sub" Y.c_yices_sub
 
-c_yices_mul :: YTerm -> YTerm -> IO YTerm
-c_yices_mul = y2 "yices_mul" Y.c_yices_mul
-
 c_yices_and2 :: YTerm -> YTerm -> IO YTerm
 c_yices_and2 = y2 "yices_and2" Y.c_yices_and2
 
@@ -282,12 +277,6 @@ c_yices_bvor = y2 "yices_bvor" Y.c_yices_bvor
 
 c_yices_bvnot :: YTerm -> IO YTerm
 c_yices_bvnot = y1 "yices_bvnot" Y.c_yices_bvnot
-
-c_yices_zero_extend :: YTerm -> Word32 -> IO YTerm
-c_yices_zero_extend x y = do
-    r <- nterm $ Y.c_yices_zero_extend (ytm_v x) y
-    putStrLn $ prr r ++ " = yices_zero_extend(" ++ pr x ++ ", " ++ show y ++ ");"
-    return r
 
 c_yices_sign_extend :: YTerm -> Word32 -> IO YTerm
 c_yices_sign_extend x y = do

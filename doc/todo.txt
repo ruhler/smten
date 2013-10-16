@@ -1,7 +1,10 @@
 Release to Public::
-* put smten on hackage.
+* write up tutorials (github #3)
+* implement 'read' for Int (at least) (github #4)
+* put smten on hackage (after tutorials are posted nicely?)
 * can we do dynamic linking to make using different backends easier?
-* implement 'read' for Int (at least)
+* make yices1 work out of the box (github #5)
+* use the shared minisat library (-lminisat) instead of linking statically?
 
 Cleanup::
 * Support symbolic IO?
@@ -14,7 +17,6 @@ Smten Executable::
 * Generate code into temp directory instead of current directory?
 * Remove generated code after generating it?
 * Add a flag for generating a cabal package?
-* Should smten executable be in a package called 'smten'?
 
 Concrete Performance::
 * Try alternate code generation with a single big constructor for each
@@ -63,8 +65,8 @@ Known Bugs::
 * see problems with -O optimization above
 * symapp for variable bit-vector
     Implement it like we implement symapp for Integer
-* add support for integers and bit vectors to minisat.
-* add support for integers to 'pure' solver.
+* add support for integers to minisat.
+* add support for integers to 'smten' solver.
 
 Suspected Bugs::
 * I suspect problems with using a function called 'main' as a normal function
