@@ -34,7 +34,8 @@ library
   build-depends: base ==4.6.*, hashtables ==1.0.*,
                  smten ==@VERSIONMAJOR@.*, smten-base ==@VERSIONMAJOR@.*,
                  smten-lib ==@VERSIONMAJOR@.*
-  extra-libraries: z3
+  extra-libraries: dl
+  c-sources: z3.c
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
 test-suite test-smten-z3
@@ -42,5 +43,6 @@ test-suite test-smten-z3
   main-is: tests.hs
   build-depends: base ==4.6.*, hashtables ==1.0.*,
                  smten-base ==@VERSIONMAJOR@.*, smten-lib ==@VERSIONMAJOR@.*
-  extra-libraries: z3
+  extra-libraries: dl
+  c-sources: z3.c
 

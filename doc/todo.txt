@@ -6,7 +6,6 @@ Release to Public::
 * make yices1 work out of the box (github #5)
 * use the shared minisat library (-lminisat) instead of linking statically?
 * don't warn about unused symbols in generated code.
-* merge smten-yices2 package into smten-lib.
 
 Cleanup::
 * Support symbolic IO?

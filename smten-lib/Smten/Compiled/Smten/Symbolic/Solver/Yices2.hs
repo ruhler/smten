@@ -27,7 +27,7 @@ yices2 = do
   r <- c_yices_load
   case r of
     0 -> return ()
-    _ -> error "yices2 smten backend: unabled to load libyices.so.2.1"
+    _ -> error "yices2 smten backend: unable to load libyices.so.2.1"
   c_yices_init
   ptr <- c_yices_new_context nullPtr
   return $ solverInstFromAST (Yices2 ptr)    

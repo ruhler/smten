@@ -143,6 +143,11 @@ instance SolverAST Z3 Z3Expr where
 
 z3 :: Solver
 z3 = do
+  r <- c_Z3_load
+  case r of
+    0 -> return ()
+    _ -> error "z3 smten backend: unable to load libz3.so"
+  
   cfg <- c_Z3_mk_config
   ctx <- c_Z3_mk_context cfg
   slv <- c_Z3_mk_solver ctx
