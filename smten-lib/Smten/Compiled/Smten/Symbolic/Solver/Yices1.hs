@@ -16,7 +16,7 @@ import Foreign hiding (bit)
 import Foreign.C.String
 import Foreign.C.Types
 
-import Smten.Runtime.Yices1FFI
+import Smten.Runtime.Yices1.FFI
 import qualified Smten.Runtime.Types as S
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver

@@ -3,7 +3,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | Raw FFI interface to yices1.
-module Smten.Runtime.Yices1FFI where
+module Smten.Runtime.Yices1.FFI where
 
 import Foreign
 import Foreign.C.String
