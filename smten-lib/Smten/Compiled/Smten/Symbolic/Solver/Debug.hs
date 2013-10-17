@@ -60,6 +60,10 @@ instance SolverAST DebugLL Debug where
         dbgPutStrLn dbg $ show r
         return r
 
+    cleanup dbg = do
+        hClose (dbg_handle dbg)
+        D.cleanup (dbg_s dbg)
+
     assert dbg e = do
         dbgPutStrLn dbg "assert:"
         dbgstr <- dbgRender e
