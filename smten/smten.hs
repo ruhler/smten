@@ -29,6 +29,7 @@ usage = unlines [
     "  -idir1:dir2:...      Add dir1, dir2, etc. to import path",
     "  -hidir dir           Set directory for interface files",
     "  -odir dir            Set directory for object files",
+    "  -rtsopts             Enable RTS options in generated executable",
     ""]
 
 data Mode = Help | Version | Make | Error String
@@ -71,6 +72,7 @@ getopts al =
     ("-fprof-auto-top" : tl) -> s1 ["-fprof-auto-top"] >> getopts tl
     ("-hidir" : f : tl) -> s1 ["-hidir", f] >> s2 ["-hidir", f] >> getopts tl
     ("-odir" : f : tl) -> s1 ["-odir", f] >> s2 ["-odir", f] >> getopts tl
+    ("-rtsopts" : tl) -> s2 ["-rtsopts"] >> getopts tl
     (x@('-':'i':_) : tl) -> s1 [x] >> s2 [x] >> getopts tl
     (('-':f) : _) -> smode (Error $ "unrecognized flag: " ++ show ('-':f))
     (f : tl) -> s1 [f] >> getopts tl
