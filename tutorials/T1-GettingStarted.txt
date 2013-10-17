@@ -1,7 +1,7 @@
 Tutorial 1 - Getting Started
 ============================
 Richard Uhler <ruhler@csail.mit.edu>
-October 06, 2013
+October 2013
 
 Goals
 -----

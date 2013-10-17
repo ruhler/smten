@@ -1,0 +1,254 @@
+Tutorial 3 - SMT Backends
+=========================
+Richard Uhler <ruhler@csail.mit.edu>
+October 2013
+
+Goals
+-----
+The goal of this tutorial is to make you aware of different SMT backends
+supported by Smten for improving the performance of running symbolic
+computations, and to encourage you to install one or more of them.
+
+Introduction
+------------
+In the previous tutorial we presented a symbolic computation for solving the
+nqueens problem and used the builtin ``smten'' solver for running that
+computation. The builtin smten solver, however, is not terribly efficient, and
+fails to work on large nqueens problems.
+
+Fortunately, there has been much research and effort producing highly
+efficient SMT solvers which Smten can leverage for improving the performance
+of symbolic computation. The current list of supported backends includes
+Yices1, Yices2, STP, Z3, and MiniSat. To get a sense of how these solvers can
+improve the performance of symbolic computation in Smten, consider the
+following results obtained by the author when running n-queens with various n
+and backends:
+
+|================================================
+|        |    8    |   16    |    24    |     32
+|Smten   | 25.430s |  NA     |     NA   |    NA
+|Yices1  |  0.023s | 0.254s  |  17.491s | 40.784s
+|Yices2  |  0.017s | 0.171s  |  16.712s | 35.149s
+|STP     |  0.077s | 0.919s  |  20.737s | 49.622s
+|Z3      |  0.031s | 0.247s  |  17.404s | 40.334s
+|MiniSat |  0.021s | 0.240s  |  17.780s | 44.269s
+|================================================
+
+Using an SMT backend significantly outperforms the builtin Smten solver.
+Though the performance of each SMT solver appears similar here, we'll see in
+future tutorials how nqueens can be modified to leverage backend solver
+support for bit vectors or integers, which leads to greater variation in the
+solving times among SMT backends.
+
+Using an Alternate Backend
+--------------------------
+In order to use one of the SMT solver backends to smten, you must first
+install the SMT solver on your system. In some cases, you may also need to
+install a separate smten cabal package that integrates the SMT solver into
+smten.
+
+Once the backend is installed, you simply need to import the solver, and pass
+it as the argument to the +run_symbolic+ function. Solvers have type +Solver+
+in smten, and by convention they live at the Smten.Symbolic.Solver.* part of
+the module hierarchy.
+
+For example, assuming the Yices2 solver has been installed, it can be used in
+the nqueens from the previous tutorial by importing
++Smten.Symbolic.Solver.Yices2+ and changing the line:
+
+   result <- run_symbolic smten $ do 
+
+To the line:
+   
+   result <- run_symbolic yices2 $ do
+
+
+The remainder of this tutorial provides more details about how to install and
+use each of the backends. You are encouraged to try installing and running as
+many of these solvers as you can, though in practice you should only need one
+of them (other than the ``smten'' solver) for Smten to be useful.
+
+The Smten Solver
+----------------
+The Smten solver is a custom solver provided with Smten. The Smten solver is
+not efficient. It's primary purpose is to allow users to experiment with small
+Smten examples without requiring the overhead of installing an SMT solver. It
+is not recommend for general use.
+
+Package:: smten-lib
+
+Module:: Smten.Symbolic.Solver.Smten
+
+Solver Name:: smten
+
+Installation::
+    No additional installation step is needed to use the Smten solver.
+
+Native Theories::
+    Booleans are supported natively. Bit vectors are supported by bit-blasting
+    to booleans. Concrete evaluation of Integers is supported, but free
+    Integers are not supported.
+
+
+The Debug Solver
+----------------
+The Debug solver outputs the generated SMT query to a file in an abstract SMT
+syntax and the resulting model, if any. The debug solver takes another
+solver as an argument to do the actual solving. Note that rendering the
+generated SMT query in text can be costly in terms of time and memory.
+
+Package:: smten-lib
+
+Module:: Smten.Symbolic.Solver.Debug
+
+Solver Name:: debug
+
+Installation::
+    No additional installation step is needed to use the Debug solver.
+
+Native Theories::
+    None. The debug solver relies on another solver to do the actual work.
+
+Sample Usage::
+
+   result <- run_symbolic (debug "nqueens.dbg" yices2) $ do
+
+Yices1
+------
+The Yices1 solver is an SMT solver from SRI International. It is expected to
+be obsoleted by Yices2 eventually, but is still useful nonetheless.
+
+Package:: smten-lib
+
+Module:: Smten.Symbolic.Solver.Yices1
+
+Solver Name:: yices1
+
+Installation::
+  The yices1 solver must be installed before it can be used. It can be
+  downloaded from http://yices.csl.sri.com. Make sure to download the
+  version of Yices1 with GMP dynamically linked.
+  +
+  + 
+  The yices1 backend of smten looks for the shared library ``libyices.so'' in
+  standard locations at runtime. It will report an error if it is unable to
+  find ``libyices.so''.
+  +
+  +
+  To install the shared library for yices1, either place ``libyices.so'' in a
+  common library path, such as /usr/lib or /usr/local/lib, and run 'ldconfig',
+  or add the path containing ``libyices.so'' to the LD_LIBRARY_PATH environment
+  variable at runtime.
+
+Native Theories::
+    Yices1 supports booleans, bit vectors, and integers natively.
+
+Yices2
+------
+The Yices2 solver is the latest SMT solver from SRI International. It is a
+good all around solver to use with Smten.
+
+Package:: smten-lib
+
+Module:: Smten.Symbolic.Solver.Yices2
+
+Solver Name:: yices2
+
+Installation::
+  The yices2 solver must be installed before it can be used. It can be
+  downloaded from http://yices.csl.sri.com.
+  + 
+  +
+  The yices2 backend of smten looks for the shared library ``libyices.so.2.1''
+  in standard locations at runtime. It will report an error if it is unable to
+  find ``libyices.so.2.1''.
+  +
+  +
+  To install the shared library for yices2, either place ``libyices.so.2.1.X''
+  in a common library path, such as /usr/lib or /usr/local/lib, and run
+  'ldconfig', or create a symlink named ``libyices.so.2.1'' pointing to your
+  version of ``libyices.so.2.1.X'' and add the path containing
+  ``libyices.so.2.1'' to the LD_LIBRARY_PATH environment variable at runtime.
+
+Native Theories::
+    Yices2 supports booleans, bit vectors, and integers natively.
+
+STP
+---
+The STP solver is a solver with good support for bit-vectors.
+
+Package:: smten-stp
+
+Module:: Smten.Symbolic.Solver.STP
+
+Solver Name:: stp
+
+Installation::
+  The STP solver must be installed before it can be used. The source for
+  STP can be downloaded from sites.google.com/site/stpfastprover/. Follow the
+  instructions in the INSTALL file provided along with the STP source code to
+  build and install the STP solver.
+  +
+  +
+  Once the STP solver is installed, install the smten-stp cabal package
+  available at http://github.com/ruhler/smten/releases. You may need to add
+  the path containing +libstp.a+ to the +extra_lib_dirs+ option in your
+  ~/.cabal/config file in order for cabal to find the STP library to build the
+  smten-stp package.
+ 
+Native Theories::
+    STP supports booleans and bit vectors natively. 
+    Concrete evaluation of integers are supported, but free integers are not.
+
+Z3
+---
+The Z3 solver is a solver from Microsoft which is a good all around solver to
+use with Smten.
+
+Package:: smten-lib
+
+Module:: Smten.Symbolic.Solver.Z3
+
+Solver Name:: z3
+
+Installation::
+  The z3 solver must be installed before it can be used. It can be
+  downloaded from http://z3.codeplex.com/. Following the provided instructions
+  for installing the solver.
+  + 
+  +
+  The z3 backend of smten looks for the shared library ``libz3.so'' in standard
+  locations at runtime. It will report an error if it is unable to find
+  ``libz3.so''. You may need to add the path containing ``libz3.so'' to the
+  LD_LIBRARY_PATH environment variable at runtime.
+
+Native Theories::
+    Z3 supports booleans, bit vectors, and integers natively.
+
+MiniSat
+-------
+The MiniSat solver is a SAT solver which can be used with Smten.
+
+Package:: smten-minisat
+
+Module:: Smten.Symbolic.Solver.MiniSat
+
+Solver Name:: minisat
+
+Installation::
+  Install the smten-minisat cabal package available at
+  http://github.com/ruhler/smten/releases. This package includes the MiniSat
+  solver, so no other installation is necessary.
+
+Native Theories::
+    MiniSat supports booleans. It supports bit vectors by bit-blasting to
+    booleans.  Concrete evaluation of integers are supported, but free
+    integers are not.
+
+Conclusion
+----------
+In this tutorial we presented the SMT backends available for Smten. Hopefully
+you tried installing a couple and saw that it improved the performance of your
+nqueens solver drastically. The next tutorial shows how you can take advantage
+of native support for integers in some solvers to speed up nqueens even more.
+

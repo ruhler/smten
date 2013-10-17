@@ -1,7 +1,7 @@
 Tutorial 2 - Symbolic Computation
 =================================
 Richard Uhler <ruhler@csail.mit.edu>
-October 15, 2013
+October 2013
 
 Goals
 -----
