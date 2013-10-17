@@ -36,6 +36,7 @@ tests = do
     test "Bit.sign extend +" (bit5 0x03 == bv_sign_extend (bit3 3))
     test "Bit.sign extend -" (bit5 0x1c == bv_sign_extend (bit3 4))
     test "Bit.my_bv_concat" (0x1c == my_bv_concat (3 :: Bit 2) (4 :: Bit 3))
+    test "Bit.read" (bit3 5 == read "5")
     putStrLn "Bit PASSED"
 
 

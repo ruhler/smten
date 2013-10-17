@@ -33,6 +33,7 @@ module Smten.Prelude (
 
     -- PreludeText
     ShowS, Show(..), shows, showChar, showString, showParen,
+    ReadS, Read(..), reads, read,
 
     -- PreludeIO
     FilePath, putChar, putStr, putStrLn, getContents,
@@ -54,6 +55,7 @@ import Smten.Data.List
 import Smten.Data.Maybe
 import Smten.Data.Num
 import Smten.Data.Integral
+import Smten.Data.Read
 import Smten.Data.Show
 import Smten.Data.Tuple
 import Smten.Smten.Base

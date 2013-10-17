@@ -24,6 +24,9 @@ instance (SingI n) => Ord (Bit n) where
 instance (SingI n) => Show (Bit n) where
     show = bv_show
 
+instance (SingI n) => Read (Bit n) where
+    readsPrec p x = [(fromInteger n, s) | (n, s) <- readsPrec p x]
+
 instance (SingI n) => Num (Bit n) where
     (+) = bv_add
     (-) = bv_sub

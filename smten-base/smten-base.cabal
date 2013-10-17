@@ -42,6 +42,7 @@ library
     Smten.Data.Maybe
     Smten.Data.Num
     Smten.Data.Num0
+    Smten.Data.Read
     Smten.Data.Show
     Smten.Data.Show0
     Smten.Data.Ord
@@ -86,6 +87,7 @@ library
     Smten.Compiled.Smten.Data.Maybe
     Smten.Compiled.Smten.Data.Num
     Smten.Compiled.Smten.Data.Num0
+    Smten.Compiled.Smten.Data.Read
     Smten.Compiled.Smten.Data.Show
     Smten.Compiled.Smten.Data.Show0
     Smten.Compiled.Smten.Data.Ord
