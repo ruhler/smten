@@ -22,8 +22,8 @@ instance Ppr Module where
   ppr m = 
     vcat (map ppr (mod_pragmas m)) $+$
     text "module" <+> text (mod_name m) <+> text "(" $+$
-        (vcat (punctuate comma (map ppr (mod_exports m)))) $+$
-        text ") where {" $+$
+        (nest 4 $ vcat (punctuate comma (map ppr (mod_exports m)))) $+$
+        (nest 2 $ text ") where {") $+$
     vcat [text ("import qualified " ++ x) <+> semi | x <- mod_imports m] $+$
     vcat (map ppr $ mod_decs m) $+$
     text "}"
@@ -46,8 +46,10 @@ instance Ppr Dec where
     ppr (DataD x) = ppr x
     ppr (ValD x) = ppr x
     ppr (InstD ctx ty ms)
-      = text "instance" <+> pprctx ctx <+> ppr ty <+> text "where"
-            <+> braces (ppr ms) <+> semi
+      = vcat [
+          text "instance" <+> pprctx ctx <+> ppr ty <+> text "where {",
+          nest 2 (ppr ms),
+          text "}" <+> semi]
     ppr (NewTypeD nm vs c) =
        text "newtype" <+> ppr nm <+> sep (map ppr vs) <+> text "=" <+> ppr c <+> semi
         
@@ -55,12 +57,12 @@ instance Ppr Dec where
 instance Ppr Data where
     ppr (Data nm vs cs) =
        text "data" <+> ppr nm <+> sep (map ppr vs) <+> text "=" <+>
-       vcat (punctuate (text "|") (map ppr cs)) <+> semi 
+       sep (punctuate (text "|") (map ppr cs)) <+> semi 
 
 instance Ppr Val where
-    ppr (Val nm (Just ty) e) =
-      ppr nm <+> text "::" <+> ppr ty <+> semi $+$
-      ppr nm <+> text "=" <+> ppr e <+> semi
+    ppr (Val nm (Just ty) e) = sep[
+      ppr nm <+> text "::" <+> ppr ty <+> semi,
+      ppr nm <+> text "=" <+> ppr e <+> semi]
     ppr (Val nm Nothing e) =
       ppr nm <+> text "=" <+> ppr e <+> semi
 
@@ -68,18 +70,18 @@ instance Ppr Method where
     ppr (Method nm e) = ppr nm <+> text "=" <+> ppr e <+> semi
 
 instance Ppr [Method] where
-    ppr ms = vcat (map ppr ms)
+    ppr ms = sep (map ppr ms)
     
 instance Ppr RecField where
     ppr (RecField nm ty) = ppr nm <+> text "::" <+> ppr ty
 
 instance Ppr Con where
     ppr (Con nm tys) = ppr nm <+> sep (map ppr tys)
-    ppr (RecC nm fs) = ppr nm <+> braces (vcat $ punctuate comma (map ppr fs))
+    ppr (RecC nm fs) = ppr nm <+> braces (sep $ punctuate comma (map ppr fs))
 
 instance Ppr Type where
     ppr (ConAppT nm tys)
-      = parens (sep (ppr nm : map ppr tys))
+      = parens (hsep (ppr nm : map ppr tys))
     ppr (ForallT vs ctx ty)
       = parens $ text "forall" <+> sep (map ppr vs) <+> text "." <+> pprctx ctx <+> ppr ty
 
@@ -91,11 +93,21 @@ instance Ppr Exp where
     ppr (VarE nm) = ppr nm
     ppr (LitE l) = ppr l
     ppr (AppE a b) = parens (ppr a <+> ppr b)
-    ppr (LetE xs b) = parens ((text "let" <+> braces (vcat $ map ppr xs)) $+$ (text "in" <+> ppr b))
-    ppr (LamE n e) = parens (text "\\" <+> ppr n <+> text "->" <+> ppr e)
-    ppr (CaseE x ms) = parens (text "case" <+> ppr x <+> text "of" <+> braces (ppr ms))
+    ppr (LetE xs b) = parens (sep [
+                         text "let" <+> text "{",
+                         nest 2 (sep $ map ppr xs),
+                         text "} in" <+> ppr b])
+    ppr (LamE n e) = parens (sep [text "\\" <+> ppr n <+> text "->",
+                                  nest 2 $ ppr e])
+    ppr (CaseE x ms) = parens (sep [
+                         text "case" <+> ppr x <+> text "of {",
+                         nest 2 (ppr ms),
+                         text "}"])
     ppr (ListE xs) = text "[" <+> sep (punctuate comma (map ppr xs)) <+> text "]"
-    ppr (RecE x ms) = parens (ppr x <+> braces (vcat $ punctuate comma (map ppr ms)))
+    ppr (RecE x ms) = parens (sep [
+                          ppr x <+> text "{",
+                          nest 2 (sep $ punctuate comma (map ppr ms)),
+                          text "}"])
     ppr (SigE x t) = parens (ppr x <+> text "::" <+> ppr t)
     ppr (SccE nm x) = parens (text ("{-# SCC \"" ++ nm ++ "\" #-}") <+> ppr x)
 
@@ -103,10 +115,10 @@ instance Ppr Field where
     ppr (Field n v) = ppr n <+> text "=" <+> ppr v
 
 instance Ppr [Alt] where
-    ppr = vcat . map ppr
+    ppr = sep . map ppr
 
 instance Ppr Alt where
-    ppr (Alt p e) = ppr p <+> text "->" <+> ppr e <+> semi
+    ppr (Alt p e) = sep [ppr p <+> text "->", nest 2 (ppr e <+> semi)]
 
 instance Ppr Pat where
     ppr (LitP l) = ppr l
