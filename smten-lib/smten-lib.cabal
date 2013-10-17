@@ -12,8 +12,8 @@ cabal-version: >=1.8
 stability: experimental
 description:
   This package provides the Smten Symbolic API and other Smten libraries not
-  part of the Smten base libraries.  Additional SMT backends are available in
-  the packages smten-yices1, smten-stp, and smten-minisat.
+  part of the Smten base libraries. Additional SMT backends are available in
+  the packages smten-stp and smten-minisat.
 
 source-repository this
   type: git

@@ -14,6 +14,7 @@ type TyVar = String
 
 data Pragma = LanguagePragma String
             | HaddockHide
+            | GhcOption String
 
 data Module = Module {
   mod_pragmas :: [Pragma],

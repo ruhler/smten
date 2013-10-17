@@ -31,6 +31,7 @@ instance Ppr Module where
 instance Ppr Pragma where
   ppr (LanguagePragma p) = text ("{-# LANGUAGE " ++ p ++ " #-}")
   ppr HaddockHide = text "{-# OPTIONS_HADDOCK hide #-}"
+  ppr (GhcOption x) = text $ "{-# OPTIONS_GHC " ++ x ++ " #-}"
 
 pprctx :: [Class] -> Doc 
 pprctx ctx = if null ctx

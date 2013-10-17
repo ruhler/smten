@@ -87,7 +87,7 @@ moduleCG cg details = do
             "DataKinds", "MagicHash", "NoImplicitPrelude",
             "RankNTypes", "ScopedTypeVariables"]
   return $ S.Module {
-    S.mod_pragmas = S.HaddockHide : langs,
+    S.mod_pragmas = S.HaddockHide : S.GhcOption "-fno-warn-unused-binds" : langs,
     S.mod_name = modnm,
     S.mod_exports = exports,
     S.mod_imports = imports,
