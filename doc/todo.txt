@@ -1,5 +1,4 @@
 Release to Public::
-* update the README.
 * write up tutorials (github #3)
 * put smten on hackage (after tutorials are posted nicely?)
 * SMT.Bit.Large fails for yices1 for some strange reason (github #7)

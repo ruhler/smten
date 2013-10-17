@@ -1,7 +1,7 @@
 Smten (Developer) ReadMe
 ========================
 Richard Uhler <ruhler@csail.mit.edu>
-October 5, 2013
+October 2013
 
 Configuring Smten for Development Build
 ---------------------------------------
@@ -24,9 +24,9 @@ set ::GHC "/home/ruhler/local/bin/ghc"
 
 Yices1, Yices2, STP and Z3
 --------------------------
-Smten currently requires yices1, yices2, STP, and Z3 to be installed. See 
-the documentation in smten-yices1, smten-yices2, smten-z3, and smten-stp
-packages for more special instructions on how to install them.
+The tests for Smten currently require yices1, yices2, STP, and Z3 to be
+installed. See the documentation in tutorial/T3-SMTBackends.txt
+for information on how to install them.
 
 Building Smten
 --------------
@@ -59,7 +59,8 @@ documents now are:
 doc/todo.txt:: contains a brief list of known issues and plan work to do.
 doc/history.txt:: contains the release history of smten.
 
-For other documentation, consult the generated haddock documentation after
+For user documentation, consult the generated haddock documentation after
 building the packages locally at build/home/.cabal/share/doc/index.html or 
 build/smten-*/dist/doc/html/smten-*/index.html for the individual packages.
+There are also some tutorials on using Smten in the 'tutorials' directory.
 
