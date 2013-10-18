@@ -144,16 +144,32 @@ computation. For now we'll just use the builtin "smten" solver exported by
 
 How will we use the +Symbolic+ monad for +nqueens+? We will first construct
 symbolic values for the placement of the columns of each queen, chosen from 0
-to (n-1). Then we will assert the resulting placement is legal. The result of
+to (n-1). We can make a single symbolic column using the following +mkcol+
+function, which selects a value from 0 to n-1.
+
+---------------------
+mkcol :: Int -> Symbolic Int
+mkcol n = msum (map return [0..(n-1)])
+---------------------
+
+To form a placement using symbolic columns, we replicate +mkcol+ n times to
+produce n symbolic columns, and zip the columns with the set of rows:
+
+-----------------
+    let rows = [0..(n-1)]
+    cols <- sequence $ replicate n (mkcol n)
+-----------------
+
+Then we will assert the resulting placement is legal. The result of
 running the symbolic computation is a legal placement of the queens, which we
-can print to the user:
+can print to the user. Overall, the nqueens solver is implemented as:
 
 -----------------------
 nqueens :: Int -> IO ()
 nqueens n = do
   result <- run_symbolic smten $ do
               let rows = [0..(n-1)]
-              cols <- sequence $ replicate n (msum (map return [0..(n-1)]))
+              cols <- sequence $ replicate n (mkcol n)
               let places = zip rows cols
               assert (islegal places)
               return places
@@ -194,11 +210,14 @@ islegal places = and [
   distinct (map (uncurry (+)) places),
   distinct (map (uncurry (-)) places)]
 
+mkcol :: Int -> Symbolic Int
+mkcol n = msum (map return [0..(n-1)])
+
 nqueens :: Int -> IO ()
 nqueens n = do
   result <- run_symbolic smten $ do
               let rows = [0..(n-1)]
-              cols <- sequence $ replicate n (msum (map return [0..(n-1)]))
+              cols <- sequence $ replicate n (mkcol n)
               let places = zip rows cols
               assert (islegal places)
               return places

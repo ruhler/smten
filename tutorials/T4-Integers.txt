@@ -1,0 +1,84 @@
+Tutorial 4 - Integers
+=====================
+Richard Uhler <ruhler@csail.mit.edu>
+October 2013
+
+Goals
+-----
+The goal of this tutorial is to demonstrate how native support for Integers in
+the backend solvers can be leveraged for improved symbolic computation.
+
+Introduction
+------------
+A few of the backend solvers for Smten have native support for symbolic
+integers. They are: Yices1, Yices2, and Z3. We can modify the nqueens
+implementation from previous tutorials to take advantage of this support for
+Integers to improve performance even more.
+
+Using Integers for NQueens
+--------------------------
+In the nqueens solution we gave in tutorial 2, we used the 'Int' type to
+represent the symbolic column position of each queen. Because the 'Int' type
+has no native support in the SMT backends, Smten must eliminate all occurrences
+of Int when generating SMT queries. This is why it is possible to use, for
+instance, a SAT solver to solve the nqueens problem. Eliminating all
+occurrences of Int, however, can be expensive. Indeed, if you ran profiling on
+the nqueens solution presented, you would find most of the time is spent in
+generating the SMT query, not in solving the query.
+
+To reduce the cost of generating the SMT query, we can switch to using the
+'Integer' type for a placement:
+
+    type Placement = [(Integer, Integer)]
+
+Now, to produce a symbolic column, rather than enumerating all possible values
+of the column, we can create a free integer and assert it is in bounds:
+
+------------
+mkcol :: Int -> Symbolic Integer
+mkcol n = do
+    x <- free_Integer
+    assert (x >= 0 && x < toInteger n)
+    return x
+------------
+
+The rest of the code also requires some mundane updates to convert between Int
+and Integer where needed:
+
+----------
+    pretty :: Placement -> String
+    pretty places = unlines [[if (r, c) `elem` places then 'X' else '.'
+                               | c <- [toInteger $ 0..(length places - 1)]]
+                               | r <- [toInteger $ 0..(length places - 1)]]
+
+    nqueens :: Int -> IO ()
+    nqueens n = do
+      result <- run_symbolic yices2 $ do
+             let rows = [0..(toInteger n-1)]
+             cols <- sequence $ replicate n (mkcol n)
+             let places = zip rows cols
+             assert (islegal places)
+             return places
+      case result of
+        Nothing -> putStrLn "no solution"
+    Just v -> putStrLn (pretty v)
+-------------
+
+The +distinct+, +islegal+, and +main+ functions are unchanged.
+
+Originally our nqueens solver took about 35 seconds to run for n = 32. After
+switching to Integers, it takes only 3 seconds, and all of the time is spent
+solving the SMT query, not generating it.
+
+One thing to note is that currently, the +free_Integer+ primitive is only
+supported with Yices1, Yices2, and Z3 backends. If you try using a solver
+without support for integers, it will report an error at runtime.
+ 
+Conclusion
+----------
+In this tutorial we updated the nqueens solver to use integers for symbolic
+computation, leading to a large improvement in performance for those backends
+supporting integers natively. In the next tutorial we will show how bit
+vectors could be used instead of integers to achieve a similar effect for
+those solvers supporting bit vectors natively.
+
