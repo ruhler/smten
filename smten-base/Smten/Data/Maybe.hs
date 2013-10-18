@@ -3,6 +3,7 @@
 module Smten.Data.Maybe (
     Maybe(Nothing, Just), maybe,
     isJust, isNothing, fromJust, fromMaybe,
+    listToMaybe, maybeToList, catMaybes, mapMaybe,
     ) where
 
 import Smten.Control.Monad
@@ -53,4 +54,23 @@ fromJust (Just x) = x
 
 fromMaybe :: a -> Maybe a -> a
 fromMaybe d x = case x of {Nothing -> d; Just v -> v}
+
+maybeToList :: Maybe a -> [a]
+maybeToList Nothing = []
+maybeToList (Just x) = [x]
+
+listToMaybe :: [a] -> Maybe a
+listToMaybe [] = Nothing
+listToMaybe (a:_) = Just a
+
+catMaybes :: [Maybe a] -> [a]
+catMaybes ls = [x | Just x <- ls]
+
+mapMaybe :: (a -> Maybe b) -> [a] -> [b]
+mapMaybe _ [] = []
+mapMaybe f (x:xs) =
+  let rs = mapMaybe f xs in
+  case f x of
+    Nothing -> rs
+    Just r -> r:rs
 
