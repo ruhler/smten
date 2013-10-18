@@ -56,7 +56,9 @@ pass m = do
      else do
       hsc_env <- getHscEnv
       (cg, details) <- liftIO $ tidyProgram hsc_env m
+      debugTraceMsg $ text "Smten Plugin: translating core..."
       mod <- runCG (moduleCG cg details)
+      debugTraceMsg $ text "Smten Plugin: outputting haskell..."
       flags <- getDynFlags
       let slashes = moduleNameSlashes $ moduleName (mg_module m)
           odir = fromMaybe "." (objectDir flags)

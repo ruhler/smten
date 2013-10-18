@@ -23,6 +23,7 @@ usage = unlines [
     "Supported Options:",
     "  -?, --help           Print this usage information and exit",
     "  --version            Print the smten version and exit",
+    "  -v, -vn              Enable verbose operation",
     "  -O                   Enable optimiziation",
     "  -prof                Enable profiling",
     "  -fprof-auto-top      Auto-add SCCs to top-level bindings",
@@ -70,6 +71,7 @@ getopts al =
     ("--make" : tl) -> smode Make >> getopts tl
     ("-o" : f : tl) -> s2 ["-o", f] >> getopts tl
     ("-O" : tl) -> s2 ["-O"] >> getopts tl
+    (v@('-':'v':_) : tl) -> s1 [v] >> s2 [v] >> getopts tl
     ("-prof" : tl) -> s1 ["-prof"] >> s2 ["-prof"] >> getopts tl
     ("-fprof-auto-top" : tl) -> s1 ["-fprof-auto-top"] >> getopts tl
     ("-hidir" : f : tl) -> s1 ["-hidir", f] >> s2 ["-hidir", f] >> getopts tl
