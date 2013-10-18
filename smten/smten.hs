@@ -30,6 +30,8 @@ usage = unlines [
     "  -hidir dir           Set directory for interface files",
     "  -odir dir            Set directory for object files",
     "  -rtsopts             Enable RTS options in generated executable",
+    "  -fwarn-*             Turn on a standard GHC warning",
+    "  -fno-warn-*          Turn off a standard GHC warning",
     ""]
 
 data Mode = Help | Version | Make | Error String
@@ -73,6 +75,8 @@ getopts al =
     ("-hidir" : f : tl) -> s1 ["-hidir", f] >> s2 ["-hidir", f] >> getopts tl
     ("-odir" : f : tl) -> s1 ["-odir", f] >> s2 ["-odir", f] >> getopts tl
     ("-rtsopts" : tl) -> s2 ["-rtsopts"] >> getopts tl
+    (w@('-':'f':'w':'a':'r':'n':'-':_) : tl) -> s1 [w] >> getopts tl
+    (w@('-':'f':'n':'o':'-':'w':'a':'r':'n':'-':_) : tl) -> s1 [w] >> getopts tl
     (x@('-':'i':_) : tl) -> s1 [x] >> s2 [x] >> getopts tl
     (('-':f) : _) -> smode (Error $ "unrecognized flag: " ++ show ('-':f))
     (f : tl) -> s1 [f] >> getopts tl
