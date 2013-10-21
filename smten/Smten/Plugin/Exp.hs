@@ -24,9 +24,6 @@ bindCG b@(NonRec var body) = do
   --lift $ putMsg (ppr b)
   body' <- expCG body
   nm <- nameCG $ varName var
-  if isExportedId var
-     then addexport (S.VarExport nm)    
-     else return ()
   ty' <- topTypeCG $ varType var
   return [S.Val nm (Just ty') body']
 

@@ -37,7 +37,6 @@ newtypeD t constr = do
     vs <- mapM (qnameCG . varName) (tyConTyVars t)
     k <- mkcon constr
     addimport "Smten.Runtime.SmtenHS"
-    addexport (S.TyConExport nm')
     return [S.NewTypeD nm' vs k]
   
 -- Note: we currently don't support crazy kinded instances of SmtenHS. This

@@ -26,7 +26,6 @@ classCG t cls dc
       cn <- nameCG $ dataConName dc
       t' <- nameCG $ tyConName t
       vs <- mapM (qnameCG . varName) (tyConTyVars t)
-      addexport (S.TyConExport t')
       return [S.NewTypeD t' vs (S.RecC cn [denew])]
 
   | otherwise = do
@@ -40,7 +39,6 @@ classCG t cls dc
       cn <- nameCG $ dataConName dc
       t' <- nameCG $ tyConName t
       vs <- mapM (qnameCG . varName) (tyConTyVars t)
-      addexport (S.TyConExport t')
       return [S.DataD (S.Data t' vs [S.Con cn fields])]
 
 

@@ -64,7 +64,6 @@ mkDataD nm tyvars constrs = do
       allks = ks ++ [err, ite]
   addimport "Smten.Runtime.Types"
   addimport "Prelude"
-  addexport (S.TyConExport nm')
   return [S.DataD (S.Data nm' vs allks)]
 
 -- Note: we currently don't support crazy kinded instances of SmtenHS. This
