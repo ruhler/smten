@@ -1,5 +1,6 @@
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Smten.Plugin.Output.Ppr (
@@ -83,9 +84,18 @@ instance Ppr Con where
     ppr (Con nm tys) = ppr nm <+> hsep (map ppr tys)
     ppr (RecC nm fs) = ppr nm <+> braces (vsep $ punctuate comma (map ppr fs))
 
+deTupleNm :: String -> Maybe Int
+deTupleNm x =
+  let istpl = and [
+        head x == '(',
+        last x == ')',
+        all (== ',') (init (tail x))]
+  in if istpl then Just (length x - 1) else Nothing
+
 instance Ppr Type where
     ppr (ConAppT nm tys)
-      = parens (hsep (ppr nm : map ppr tys))
+      | Just n <- deTupleNm nm, length tys == n = tupled (map ppr tys)
+      | otherwise = parens (hsep (ppr nm : map ppr tys))
     ppr (ForallT vs ctx ty)
       = parens $ ppr "forall" <+> hsep (map ppr vs) <+> ppr "." <+> pprctx ctx <+> ppr ty
 
@@ -99,10 +109,19 @@ deLamE (LamE n e) =
      (vs, e') -> (n:vs, e')
 deLamE e = ([], e)
 
+deAppE :: Exp -> [Exp]
+deAppE (AppE a b) = deAppE a ++ [b]
+deAppE e = [e]
+
 instance Ppr Exp where
     ppr (VarE nm) = ppr nm
     ppr (LitE l) = ppr l
-    ppr (AppE a b) = parens (ppr a <+> ppr b)
+    ppr a@(AppE {}) =
+        case deAppE a of
+           (VarE nm:xs)
+             | Just n <- deTupleNm nm
+             , n == length xs -> tupled (map ppr xs)
+           xs -> parens (hsep (map ppr (deAppE a)))
     ppr (LetE xs b) = parens (vsep [
                          ppr "let" <+> ppr "{",
                          nest 2 (vsep $ map ppr xs),
@@ -137,7 +156,9 @@ instance Ppr Alt where
 
 instance Ppr Pat where
     ppr (LitP l) = ppr l
-    ppr (ConP nm xs) = parens (ppr nm <+> hsep (map ppr xs))
+    ppr (ConP nm xs)
+      | Just _ <- deTupleNm nm = tupled (map ppr xs)
+      | otherwise = parens (ppr nm <+> hsep (map ppr xs))
     ppr (RecP nm) = ppr nm <+> braces empty
     ppr (VarP nm) = ppr nm
     ppr (AsP nm p) = ppr nm <> ppr "@" <> ppr p
