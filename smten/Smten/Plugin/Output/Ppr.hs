@@ -23,14 +23,14 @@ instance Ppr String where
     ppr = text . pack
 
 instance Ppr Module where
-  ppr m = 
-    vcat (map ppr (mod_pragmas m)) <$>
-    ppr "module" <+> ppr (mod_name m) <+> ppr "(" <$>
-        (nest 4 $ vcat (punctuate comma (map ppr (mod_exports m)))) <$>
-        (nest 2 $ ppr ") where {") <$>
-    vcat [ppr ("import qualified " ++ x) <+> semi | x <- mod_imports m] <$>
-    vcat (map ppr $ mod_decs m) <$>
-    ppr "}"
+  ppr m = vsep [
+    vsep (map ppr (mod_pragmas m)),
+    ppr "module" <+> ppr (mod_name m) <+> ppr "(",
+    nest 4 $ vsep [ppr x <> comma | x <- mod_exports m],
+    nest 2 $ ppr ") where {",
+    vsep [ppr ("import qualified " ++ x) <+> semi | x <- mod_imports m],
+    vsep (map ppr $ mod_decs m),
+    ppr "}"]
 
 instance Ppr Pragma where
   ppr (LanguagePragma p) = ppr ("{-# LANGUAGE " ++ p ++ " #-}")
@@ -40,7 +40,7 @@ instance Ppr Pragma where
 pprctx :: [Class] -> Doc 
 pprctx ctx = if null ctx
                 then empty
-                else parens (sep (punctuate comma (map ppr ctx))) <+> ppr "=>"
+                else tupled (map ppr ctx) <+> ppr "=>"
 
 instance Ppr Export where
   ppr (VarExport x) = ppr x
@@ -50,21 +50,21 @@ instance Ppr Dec where
     ppr (DataD x) = ppr x
     ppr (ValD x) = ppr x
     ppr (InstD ctx ty ms)
-      = vcat [
+      = vsep [
           ppr "instance" <+> pprctx ctx <+> ppr ty <+> ppr "where {",
           nest 2 (ppr ms),
           ppr "}" <+> semi]
     ppr (NewTypeD nm vs c) =
-       ppr "newtype" <+> ppr nm <+> sep (map ppr vs) <+> ppr "=" <+> ppr c <+> semi
+       ppr "newtype" <+> ppr nm <+> hsep (map ppr vs) <+> ppr "=" <+> ppr c <+> semi
         
     
 instance Ppr Data where
     ppr (Data nm vs cs) =
-       ppr "data" <+> ppr nm <+> sep (map ppr vs) <+> ppr "=" <+>
+       ppr "data" <+> ppr nm <+> hsep (map ppr vs) <+> ppr "=" <+>
        sep (punctuate (ppr "|") (map ppr cs)) <+> semi 
 
 instance Ppr Val where
-    ppr (Val nm (Just ty) e) = sep[
+    ppr (Val nm (Just ty) e) = vsep [
       ppr nm <+> ppr "::" <+> ppr ty <+> semi,
       ppr nm <+> ppr "=" <+> ppr e <+> semi]
     ppr (Val nm Nothing e) =
@@ -74,20 +74,20 @@ instance Ppr Method where
     ppr (Method nm e) = ppr nm <+> ppr "=" <+> ppr e <+> semi
 
 instance Ppr [Method] where
-    ppr ms = sep (map ppr ms)
+    ppr ms = vsep (map ppr ms)
     
 instance Ppr RecField where
     ppr (RecField nm ty) = ppr nm <+> ppr "::" <+> ppr ty
 
 instance Ppr Con where
-    ppr (Con nm tys) = ppr nm <+> sep (map ppr tys)
-    ppr (RecC nm fs) = ppr nm <+> braces (sep $ punctuate comma (map ppr fs))
+    ppr (Con nm tys) = ppr nm <+> hsep (map ppr tys)
+    ppr (RecC nm fs) = ppr nm <+> braces (vsep $ punctuate comma (map ppr fs))
 
 instance Ppr Type where
     ppr (ConAppT nm tys)
       = parens (hsep (ppr nm : map ppr tys))
     ppr (ForallT vs ctx ty)
-      = parens $ ppr "forall" <+> sep (map ppr vs) <+> ppr "." <+> pprctx ctx <+> ppr ty
+      = parens $ ppr "forall" <+> hsep (map ppr vs) <+> ppr "." <+> pprctx ctx <+> ppr ty
 
     ppr (VarT n) = ppr n
     ppr (AppT a b) = parens $ ppr a <+> ppr b
@@ -97,20 +97,20 @@ instance Ppr Exp where
     ppr (VarE nm) = ppr nm
     ppr (LitE l) = ppr l
     ppr (AppE a b) = parens (ppr a <+> ppr b)
-    ppr (LetE xs b) = parens (sep [
+    ppr (LetE xs b) = parens (vsep [
                          ppr "let" <+> ppr "{",
-                         nest 2 (sep $ map ppr xs),
+                         nest 2 (vsep $ map ppr xs),
                          ppr "} in" <+> ppr b])
-    ppr (LamE n e) = parens (sep [ppr "\\" <+> ppr n <+> ppr "->",
+    ppr (LamE n e) = parens (hsep [ppr "\\" <+> ppr n <+> ppr "->",
                                   nest 2 $ ppr e])
-    ppr (CaseE x ms) = parens (sep [
+    ppr (CaseE x ms) = parens (vsep [
                          ppr "case" <+> ppr x <+> ppr "of {",
                          nest 2 (ppr ms),
                          ppr "}"])
-    ppr (ListE xs) = ppr "[" <+> sep (punctuate comma (map ppr xs)) <+> ppr "]"
-    ppr (RecE x ms) = parens (sep [
+    ppr (ListE xs) = list (map ppr xs)
+    ppr (RecE x ms) = parens (vsep [
                           ppr x <+> ppr "{",
-                          nest 2 (sep $ punctuate comma (map ppr ms)),
+                          nest 2 (vsep $ punctuate comma (map ppr ms)),
                           ppr "}"])
     ppr (SigE x t) = parens (ppr x <+> ppr "::" <+> ppr t)
     ppr (SccE nm x) = parens (ppr ("{-# SCC \"" ++ nm ++ "\" #-}") <+> ppr x)
@@ -119,14 +119,14 @@ instance Ppr Field where
     ppr (Field n v) = ppr n <+> ppr "=" <+> ppr v
 
 instance Ppr [Alt] where
-    ppr = sep . map ppr
+    ppr = vsep . map ppr
 
 instance Ppr Alt where
-    ppr (Alt p e) = sep [ppr p <+> ppr "->", nest 2 (ppr e <+> semi)]
+    ppr (Alt p e) = hsep [ppr p, ppr "->", ppr e, semi]
 
 instance Ppr Pat where
     ppr (LitP l) = ppr l
-    ppr (ConP nm xs) = parens (ppr nm <+> sep (map ppr xs))
+    ppr (ConP nm xs) = parens (ppr nm <+> hsep (map ppr xs))
     ppr (RecP nm) = ppr nm <+> braces empty
     ppr (VarP nm) = ppr nm
     ppr (AsP nm p) = ppr nm <> ppr "@" <> ppr p
