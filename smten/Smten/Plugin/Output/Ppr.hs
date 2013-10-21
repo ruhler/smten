@@ -93,6 +93,12 @@ instance Ppr Type where
     ppr (AppT a b) = parens $ ppr a <+> ppr b
     ppr (NumT x) = integer x
 
+deLamE :: Exp -> ([Name], Exp)
+deLamE (LamE n e) =
+  case deLamE e of
+     (vs, e') -> (n:vs, e')
+deLamE e = ([], e)
+
 instance Ppr Exp where
     ppr (VarE nm) = ppr nm
     ppr (LitE l) = ppr l
@@ -101,8 +107,13 @@ instance Ppr Exp where
                          ppr "let" <+> ppr "{",
                          nest 2 (vsep $ map ppr xs),
                          ppr "} in" <+> ppr b])
-    ppr (LamE n e) = parens (hsep [ppr "\\" <+> ppr n <+> ppr "->",
-                                  nest 2 $ ppr e])
+    ppr l@(LamE {}) =
+       case deLamE l of
+         (vs, e) -> parens (hsep [ppr "\\",
+                                  hsep (map ppr vs),
+                                  ppr "->",
+                                  ppr e])
+
     ppr (CaseE x ms) = parens (vsep [
                          ppr "case" <+> ppr x <+> ppr "of {",
                          nest 2 (ppr ms),
