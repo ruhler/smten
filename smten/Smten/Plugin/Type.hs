@@ -52,8 +52,8 @@ ctxCG :: TyVar -> CG [S.Class]
 ctxCG v
  | isLinearKind (tyVarKind v) = do
     tyv <- tyvarCG v
-    addimport "Smten.Runtime.SmtenHS"
-    return [S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show (knum (tyVarKind v))) [tyv]]
+    smtenhs <- usequalified "Smten.Runtime.SmtenHS" "SmtenHS"
+    return [S.ConAppT (smtenhs ++ show (knum (tyVarKind v))) [tyv]]
  | otherwise = return []
 
 knum :: Kind -> Int

@@ -36,7 +36,6 @@ newtypeD t constr = do
     nm' <- nameCG (tyConName t)
     vs <- mapM (qnameCG . varName) (tyConTyVars t)
     k <- mkcon constr
-    addimport "Smten.Runtime.SmtenHS"
     return [S.NewTypeD nm' vs k]
   
 -- Note: we currently don't support crazy kinded instances of SmtenHS. This
@@ -58,9 +57,9 @@ smtenHS nm tyvs constr = do
    tyvs' <- mapM tyvarCG dropped
    qtyname <- qtynameCG nm
    ctx <- concat <$> mapM ctxCG dropped
-   let ty = S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show n) [S.ConAppT qtyname tyvs']
+   smtenhsnm <- usequalified "Smten.Runtime.SmtenHS" ("SmtenHS" ++ show n)
+   let ty = S.ConAppT smtenhsnm [S.ConAppT qtyname tyvs']
        cn = dataConName constr
-   addimport "Smten.Runtime.SmtenHS"
    rel <- realizeD cn n
    ite <- iteD cn n
    err <- errorD cn n
@@ -69,11 +68,11 @@ smtenHS nm tyvs constr = do
 -- iteN = \p a b = Foo (ite0 p (__deNewTyFoo a) (__deNewTyFoo b))
 iteD :: Name -> Int -> CG S.Method
 iteD nm k = do
-  addimport "Smten.Runtime.SmtenHS"
+  ite0nm <- usequalified "Smten.Runtime.SmtenHS" "ite0"
   cn <- qnameCG nm
   dcn <- qdenewtynmCG nm
   let ite = foldl1 S.AppE [
-        S.VarE "Smten.Runtime.SmtenHS.ite0",
+        S.VarE ite0nm,
         S.VarE "p",
         S.AppE (S.VarE dcn) (S.VarE "a"),
         S.AppE (S.VarE dcn) (S.VarE "b")]
@@ -84,20 +83,20 @@ iteD nm k = do
 --   errorN = \msg -> Foo (error0 msg)
 errorD :: Name -> Int -> CG S.Method
 errorD nm n = do
-  addimport "Smten.Runtime.SmtenHS"
+  err0nm <- usequalified "Smten.Runtime.SmtenHS" "error0"
   cn <- qnameCG nm
-  let err = S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg")
+  let err = S.AppE (S.VarE err0nm) (S.VarE "msg")
       body = S.LamE "msg" (S.AppE (S.VarE cn) err)
   return $ S.Method ("error" ++ show n) body
 
 --   realizeN = \m x -> Foo (realize0 m (__deNewTyFoo x))
 realizeD :: Name -> Int -> CG S.Method
 realizeD nm k = do
-  addimport "Smten.Runtime.SmtenHS"
+  realize0nm <- usequalified "Smten.Runtime.SmtenHS" "realize0"
   cn <- qnameCG nm
   dcn <- qdenewtynmCG nm
   let rel = foldl1 S.AppE [
-                S.VarE "Smten.Runtime.SmtenHS.realize0",
+                S.VarE realize0nm,
                 S.VarE "m",
                 S.AppE (S.VarE dcn) (S.VarE "x")]
       foo = S.AppE (S.VarE cn) rel

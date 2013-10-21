@@ -51,10 +51,12 @@ mkDataD nm tyvars constrs = do
   iteerrnm <- iteerrnmCG nm
   iteflnms <- mapM (iteflnmCG . dataConName) constrs
   itenm <- itenmCG nm
+  errstrnm <- usequalified "Smten.Runtime.Types" "ErrorString"
+  boolnm <- usequalified "Smten.Runtime.Types" "Bool"
   let tyme = S.ConAppT qtyname tyvs'
-      err = S.Con errnm [S.ConAppT "Smten.Runtime.Types.ErrorString" []]
+      err = S.Con errnm [S.ConAppT errstrnm []]
 
-      tybool = S.ConAppT "Smten.Runtime.Types.Bool" []
+      tybool = S.ConAppT boolnm []
       tyfield = S.ConAppT "(,)" [tybool, tyme]
 
       iteerr = S.RecField iteerrnm tyfield
@@ -62,8 +64,6 @@ mkDataD nm tyvars constrs = do
       ite = S.RecC itenm (ites ++ [iteerr])
 
       allks = ks ++ [err, ite]
-  addimport "Smten.Runtime.Types"
-  addimport "Prelude"
   return [S.DataD (S.Data nm' vs allks)]
 
 -- Note: we currently don't support crazy kinded instances of SmtenHS. This
@@ -85,8 +85,8 @@ smtenHS nm tyvs cs = do
    tyvs' <- mapM tyvarCG dropped
    qtyname <- qtynameCG nm
    ctx <- concat <$> mapM ctxCG dropped
-   let ty = S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show n) [S.ConAppT qtyname tyvs']
-   addimport "Smten.Runtime.SmtenHS"
+   smtenhsnm <- usequalified "Smten.Runtime.SmtenHS" ("SmtenHS" ++ show n)
+   let ty = S.ConAppT smtenhsnm [S.ConAppT qtyname tyvs']
    rel <- realizeD nm n cs
    ite <- iteD nm n cs
    err <- errorD nm n
@@ -106,8 +106,9 @@ smtenHS nm tyvs cs = do
 --      _ -> ite p (__LiftIteFoo a) (__LiftIteFoo b)
 iteD :: Name -> Int -> [DataCon] -> CG S.Method
 iteD n k cs = do
-  addimport "Smten.Runtime.SmtenHS"
-  let ite a b = foldl1 S.AppE [S.VarE "Smten.Runtime.SmtenHS.ite", S.VarE "p", a, b]
+  itenm <- usequalified "Smten.Runtime.SmtenHS" "ite"
+  flmergenm <- usequalified "Smten.Runtime.SmtenHS" "flmerge"
+  let ite a b = foldl1 S.AppE [S.VarE itenm, S.VarE "p", a, b]
 
       mkcon :: DataCon -> CG S.Alt
       mkcon d = do
@@ -130,7 +131,7 @@ iteD n k cs = do
         iteflnm <- iteflnmCG $ dataConName d
         qiteflnm <- qiteflnmCG $ dataConName d
         return $ S.Field iteflnm (foldl1 S.AppE [
-                        S.VarE "Smten.Runtime.SmtenHS.flmerge",
+                        S.VarE flmergenm,
                         S.VarE "p",
                         S.AppE (S.VarE qiteflnm) (S.VarE "a"),
                         S.AppE (S.VarE qiteflnm) (S.VarE "b")])
@@ -138,7 +139,7 @@ iteD n k cs = do
   iteerrnm <- iteerrnmCG n
   qiteerrnm <- qiteerrnmCG n
   let efe = S.Field iteerrnm (foldl1 S.AppE [
-                        S.VarE "Smten.Runtime.SmtenHS.flmerge",
+                        S.VarE flmergenm,
                         S.VarE "p",
                         S.AppE (S.VarE qiteerrnm) (S.VarE "a"),
                         S.AppE (S.VarE qiteerrnm) (S.VarE "b")])
@@ -174,7 +175,8 @@ errorD nm n = do
 --       (Foo_Error _) -> x
 realizeD :: Name -> Int -> [DataCon] -> CG S.Method
 realizeD n k cs = do
-  addimport "Smten.Runtime.SmtenHS"
+  realizenm <- usequalified "Smten.Runtime.SmtenHS" "realize"
+  flrealizenm <- usequalified "Smten.Runtime.SmtenHS" "flrealize"
   let mkcon :: DataCon -> CG S.Alt
       mkcon d = do
         cn <- qnameCG $ dataConName d
@@ -182,7 +184,7 @@ realizeD n k cs = do
             xs = ["x" ++ show i | i <- [1..nargs]]
             pat = S.ConP cn (map S.VarP xs)
             rs = [foldl1 S.AppE [
-                    S.VarE "Smten.Runtime.SmtenHS.realize",
+                    S.VarE realizenm,
                     S.VarE "m",
                     S.VarE x] | x <- xs]
             body = S.conE cn rs
@@ -195,7 +197,7 @@ realizeD n k cs = do
       iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE "x")
       itepat = S.RecP qitenm
       itebody = foldl1 S.AppE [
-                    S.VarE $ "Smten.Runtime.SmtenHS.flrealize",
+                    S.VarE $ flrealizenm,
                     S.VarE $ "m",
                     S.ListE $ itecons ++ [iteerr]]
       itecon = S.Alt itepat itebody
@@ -229,8 +231,8 @@ mkNullIteD t n ts cs = do
   iteflnms <- mapM (iteflnmCG . dataConName) cs
   iteerrnm <- iteerrnmCG n
   qitenm <- qitenmCG n
-  addimport "Smten.Runtime.SmtenHS"
-  let nothing = S.VarE "Smten.Runtime.SmtenHS.unusedfield"
+  unusednm <- usequalified "Smten.Runtime.SmtenHS" "unusedfield"
+  let nothing = S.VarE unusednm
       fes = [S.Field iteflnm nothing | iteflnm <- iteflnms]
       efe = S.Field iteerrnm nothing
       body = S.RecE (S.VarE qitenm) (fes ++ [efe])

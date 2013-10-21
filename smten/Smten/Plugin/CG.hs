@@ -1,7 +1,7 @@
 
 module Smten.Plugin.CG (
    CG, runCG, lift,
-   addimport, getimports,
+   usequalified, getimports,
    gets,
     ) where
 
@@ -16,8 +16,25 @@ data CGS = CGS {
 
 type CG = StateT CGS CoreM
 
-addimport :: String -> CG ()
-addimport nm = modify $ \s -> s { cgs_imports = nm : cgs_imports s }
+-- | Use something from the given module in the generated code.
+-- This marks the module as requiring an import declaration.
+-- Returns the locally qualified name under which that module should be used.
+useimport :: String -> CG String
+useimport nm = do
+  modify $ \s -> s { cgs_imports = nm : cgs_imports s }
+  return nm -- for now, return the name unchanged.
+
+-- | Use the given qualified id.
+-- usequalified module varname
+-- This marks the module as requiring an import declaration, and returns the
+-- locally qualified name for the id.
+--
+-- For example: usequalified "Foo" "bar"
+--   Might return: "Foo.bar"
+usequalified :: String -> String -> CG String
+usequalified m v = do
+   m' <- useimport m
+   return (m' ++ "." ++ v)
 
 getimports :: CG [String]
 getimports = gets cgs_imports

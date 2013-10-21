@@ -76,9 +76,8 @@ expCG (Cast x c) = do
   let (at, bt) = unPair $ coercionKind c
   at' <- topTypeCG $ dropForAlls at
   bt' <- topTypeCG bt
-  addimport "GHC.Prim"
-  return (S.SigE (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") (S.SigE x' at')) bt')
-  --return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") x')
+  coerce <- usequalified "GHC.Prim" "unsafeCoerce#"
+  return (S.SigE (S.AppE (S.VarE coerce) (S.SigE x' at')) bt')
 expCG (Tick (ProfNote cc _ _) x) = do
    x' <- expCG x
    return (S.SccE (unpackFS $ cc_name cc) x')
@@ -119,11 +118,10 @@ caseCG :: CoreExpr -> Var -> Type -> [CoreAlt] -> CG S.Exp
 caseCG x v ty [] = do
   x' <- expCG x
   ty' <- typeCG ty
-  addimport "Prelude"
-  addimport "Smten.Runtime.SmtenHS"
-  let err = S.VarE "Smten.Runtime.SmtenHS.emptycase"
-      terr = S.SigE err ty'
-      seq = S.AppE (S.AppE (S.VarE "Prelude.seq") x') terr
+  seqnm <- usequalified "Prelude" "seq"
+  err <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "emptycase"
+  let terr = S.SigE err ty'
+      seq = S.AppE (S.AppE (S.VarE seqnm) x') terr
   return seq
 
 caseCG x v ty ms = do
@@ -163,9 +161,9 @@ mkSymAlts vnm argty ty mdef ms
 mkSymBool :: S.Name -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
 mkSymBool vnm mdef ms = do
   let mkite tb fb = do
-        addimport "Smten.Runtime.SmtenHS"
+        itenm <- usequalified "Smten.Runtime.SmtenHS" "ite"
         return $ foldl1 S.AppE [
-          S.VarE "Smten.Runtime.SmtenHS.ite", 
+          S.VarE itenm, 
           S.VarE vnm,
           tb, fb]
 
@@ -225,7 +223,9 @@ mkSymSmtenPrim vnm argty mdef ms = do
       tycon = fst (fromMaybe (error "mkSymSmtenPrim splitTyConApp failed") $
                        splitTyConApp_maybe argty)
       tynm = tyConName tycon
-  addimport "Smten.Runtime.SmtenHS"
+  
+  ite0nm <- usequalified "Smten.Runtime.SmtenHS" "ite0"
+  err0nm <- usequalified "Smten.Runtime.SmtenHS" "error0"
 
   vnmv' <- qnameCG vnmv
   casefnm <- qnameCG casef
@@ -233,7 +233,7 @@ mkSymSmtenPrim vnm argty mdef ms = do
   qitenm <- qitenmCG tynm
   defalt <- mkDefault mdef
   let itebody = foldl1 S.AppE [
-         S.VarE "Smten.Runtime.SmtenHS.ite0",
+         S.VarE ite0nm,
          S.VarE "p",
          S.AppE (S.VarE casefnm) (S.VarE "a"),
          S.AppE (S.VarE casefnm) (S.VarE "b")]
@@ -241,7 +241,7 @@ mkSymSmtenPrim vnm argty mdef ms = do
       itealt = S.Alt itepat itebody
 
       erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
-                     (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
+                     (S.AppE (S.VarE err0nm) (S.VarE "msg"))
 
       allalts = ms ++ [itealt, erralt] ++ defalt
       casee = S.CaseE (S.VarE vnmv') allalts
@@ -272,7 +272,8 @@ mkSymData vnm argty mdef ms = do
   case splitTyConApp_maybe argty of
       Just (tycon, _) -> do
           let tynm = tyConName tycon
-          addimport "Smten.Runtime.SmtenHS"
+          flsappnm <- usequalified "Smten.Runtime.SmtenHS" "flsapp"
+          err0nm <- usequalified "Smten.Runtime.SmtenHS" "error0"
 
           vnmv' <- qnameCG vnmv
           casefnm <- qnameCG casef
@@ -284,14 +285,14 @@ mkSymData vnm argty mdef ms = do
           let itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnmv') | qiteflnm <- qiteflnms]
               iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE vnmv')
               itebody = foldl1 S.AppE [
-                 S.VarE "Smten.Runtime.SmtenHS.flsapp",
+                 S.VarE flsappnm,
                  S.VarE casefnm,
                  S.VarE vnmv',
                  S.ListE (itefls ++ [iteerr])]
               itealt = S.Alt (S.RecP qitenm) itebody
 
               erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
-                             (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
+                             (S.AppE (S.VarE err0nm) (S.VarE "msg"))
 
               allalts = ms ++ [itealt, erralt] ++ defalt
               casee = S.CaseE (S.VarE vnmv') allalts
