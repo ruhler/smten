@@ -1,7 +1,7 @@
 
 module Smten.Plugin.Output.Syntax (
     Name, TyVar,
-    Module(..), Pragma(..), Export(..),
+    Module(..), Pragma(..), Export(..), Import(..),
     Con(..), Type(..), Class, Dec(..), Val(..), Data(..),
     Method(..), Field(..), Exp(..), Alt(..), Pat(..), Literal(..), RecField(..),
     arrowT,
@@ -20,9 +20,11 @@ data Module = Module {
   mod_pragmas :: [Pragma],
   mod_name :: Name,
   mod_exports :: [Export],
-  mod_imports :: [Name],
+  mod_imports :: [Import],
   mod_decs :: [Dec]
 }
+
+data Import = Import Name Name  -- import Foo as Bar
 
 data Export = VarExport Name    -- foo
             | TyConExport Name  -- Foo(..)

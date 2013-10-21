@@ -29,9 +29,17 @@ instance Ppr Module where
     ppr "module" <+> ppr (mod_name m) <+> ppr "(",
     nest 4 $ vsep [ppr x <> comma | x <- mod_exports m],
     nest 2 $ ppr ") where {",
-    vsep [ppr ("import qualified " ++ x) <+> semi | x <- mod_imports m],
+    vsep (map ppr (mod_imports m)),
     vsep (map ppr $ mod_decs m),
     ppr "}"]
+
+instance Ppr Import where
+  ppr (Import nm as) = hsep [
+    ppr "import qualified",
+    ppr nm,
+    ppr "as",
+    ppr as,
+    semi]
 
 instance Ppr Pragma where
   ppr (LanguagePragma p) = ppr ("{-# LANGUAGE " ++ p ++ " #-}")

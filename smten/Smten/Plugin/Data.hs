@@ -257,13 +257,14 @@ mkLiftIteD t n ts cs = do
   ty' <- topTypeCG ty
   liftitenm <- liftitenmCG n
   qnullitenm <- qnullitenmCG n
+  truenm <- usequalified "Smten.Runtime.Types" "True"
   let mkcon :: DataCon -> CG S.Alt
       mkcon d = do
         let cn = dataConName d
         qname <- qnameCG cn
         iteflnm <- iteflnmCG cn
         let pat = S.RecP qname
-            tuple = S.tup2E (S.conE "Smten.Runtime.Types.True" []) (S.VarE "x")
+            tuple = S.tup2E (S.conE truenm []) (S.VarE "x")
             fields = [S.Field iteflnm tuple]
             body = S.RecE (S.SigE (S.VarE qnullitenm) tyme) fields
         return $ S.Alt pat body
@@ -271,7 +272,7 @@ mkLiftIteD t n ts cs = do
   qerrnm <- qerrnmCG n
   iteerrnm <- iteerrnmCG n
   let errpat = S.RecP qerrnm
-      errtuple = S.tup2E (S.conE "Smten.Runtime.Types.True" []) (S.VarE "x")
+      errtuple = S.tup2E (S.conE truenm []) (S.VarE "x")
       errfields = [S.Field iteerrnm errtuple]
       errbody = S.RecE (S.SigE (S.VarE qnullitenm) tyme) errfields
       errcon = S.Alt errpat errbody

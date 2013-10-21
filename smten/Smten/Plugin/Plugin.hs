@@ -4,7 +4,6 @@
 module Smten.Plugin.Plugin (plugin) where
 
 import Data.Functor
-import Data.List
 import Data.Maybe
 import System.Directory
 
@@ -57,7 +56,8 @@ pass m = do
       hsc_env <- getHscEnv
       (cg, details) <- liftIO $ tidyProgram hsc_env m
       debugTraceMsg $ text "Smten Plugin: translating core..."
-      mod <- runCG (moduleCG cg details)
+      let modnm = moduleNameString $ moduleName (mg_module m)
+      mod <- runCG modnm (moduleCG cg details)
       debugTraceMsg $ text "Smten Plugin: outputting haskell..."
       flags <- getDynFlags
       let slashes = moduleNameSlashes $ moduleName (mg_module m)
@@ -80,11 +80,11 @@ moduleCG :: CgGuts -> ModDetails -> CG S.Module
 moduleCG cg details = do
   datas <- concat <$> mapM tyconCG (cg_tycons cg)
   vals <- concat <$> mapM bindCG (cg_binds cg)
-  importmods <- getimports
   exports <- concat <$> mapM exportCG (typeEnvElts (md_types details))
+  importmods <- getimports
   let myname = moduleName (cg_module cg)
       modnm = "Smten.Compiled." ++ moduleNameString myname
-      imports = filter ((/=) modnm) . nub $ importmods
+      imports = [S.Import nm as | (nm, as) <- importmods]
       langs = map S.LanguagePragma [
             "DataKinds", "MagicHash", "NoImplicitPrelude",
             "RankNTypes", "ScopedTypeVariables"]
