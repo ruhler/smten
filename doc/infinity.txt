@@ -1,0 +1,160 @@
+Implementing Infinity in Smten
+==============================
+Richard Uhler <ruhler@csail.mit.edu>
+October 2013
+
+Introduction
+------------
+The current implementation of Smten does not work correctly in the case of
+errors and infinite queries. This document discusses the issues in the hopes
+of finding a reasonable solution to this problem.
+
+Desired Behavior
+----------------
+Our ESOP 2014 submission spells out very clearly the desired behavior of
+Smten in the case of infinite queries:
+ 
+* If there exists a satisfying assignment, it should be found eventually.
+* If there is an infinite path, you should not return Unsat.
+
+For the actual implementation, we ideally would like to do an unsafe
+strictifying optimization:
+* If the SMT solver can prove Unsat, even in the presence of an infinite path,
+  you should return Unsat.
+
+While not semantically correct, this will, in practice, allow us to leverage 
+queries suited for underlying decision procedures such as linear integer
+arithmetic. But this is less important than correct behavior, and should be
+considered a secondary goal.
+
+We also have a performance goal:
+* finite queries should execute very fast.
+
+This is based on the assumption, consistent with current applications, that
+most queries are finite. It may be, if we could provide efficient support for
+infinite queries, however, that this assumption will no longer hold.
+Regardless, I think it's a good initial assumption to make.
+
+Where Infinity Shows Up
+-----------------------
+Infinity shows up in the implementation a number of different ways, each of
+which, I suspect, will need a different solution to handle.
+
+Infinite Symbolic Computation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Infinite symbolic computation means an infinite recursion in the Symbolic
+monad. For example, for defining non-primitive free integers:
+
+  free_Natural = mplus 0 ((+ 1) <$> free_Natural)
+
+If there is any solution in the presence of an infinite symbolic computation,
+it is because there is is choice of what to run, which comes from mplus and,
+more generally, ite of symbolic computations.
+
+Currently in the implementation, we always run both possible branches of an
+mplus or ite. It is possible to return a satisfying assignment by running only
+one of the branches, however, which could be used as the abstraction method
+here to avoid (or at least delay) infinity.
+
+Possible solutions:
+ * leverage current haskell to fairly evaluate branches, and approximate with
+   whichever branch returns first.
+
+Infinite Pure Computation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+For example, calling factorial on a negative number, when factorial
+(accidentally?) loops on that negative number. This may not show up as a
+symbolic computation, but rather a value returned lazily. Forcing a node of
+the formula during the +Assert+ traversal may trigger this infinity.
+
+Possible solutions:
+ * ??
+
+Infinitely Large Queries
+~~~~~~~~~~~~~~~~~~~~~~~~
+For example, a fully inlined version of factorial on a symbolic integer 'x'.
+This shows up as an infinite large formula to traverse during +Assert+.
+
+Possible solutions:
+ * Limit the depth of formula traversed in assert?
+
+False Infinite Paths
+~~~~~~~~~~~~~~~~~~~~
+Symbolic integers can, possibly, lead to false infinite paths. This is where
+the SMT solver could tell you a path is unreachable, but we don't know that
+with direct execution based on symbolic integer 'x'. In theory a false
+infinite path could only show up when using free_Integer, and would not show
+up if we didn't treat that as a primitive (instead we would see an infinite
+symbolic computation).
+
+Possible solutions:
+ * ??
+ 
+Solution Ideas
+--------------
+Leverage Concurrent Haskell
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+We could leverage concurrent haskell to fairly evaluate things, and abstract
+based on whichever result evaluates first.
+
+For example, (mplus a b) could be:
+  In parallel, execute a and b.
+  When at least one has returned: 
+   - if both have returned: great, go ahead as normal
+   - if only one has returned:
+        If it's mzero, choose the other.
+        Otherwise, abstract the computation has not having the choice of the
+        other.
+
+A big question is, how do we do the abstractions and refinements?
+
+Abstraction Options:
+ * under approximation: assume you only had the choice of the one which
+   finished. The rest of the query would be specialized for that one result
+   (good for performance). But in order to refine the result, it seems you
+   loose sharing: either you specialize for the other result and merge the
+   results, where each specialization did duplicate work, or you throw away
+   the first specialization and perform the general computation for the
+   result?
+
+ * over approximation: introduce symbolic variables representing the result of
+   the side which did not finish. Then do (over) general computation based on
+   those symbolic variables, which, perhaps, you could better refine later?
+
+Proposal
+--------
+We will evaluate all branches concurrently. This is necessary to avoid getting
+stuck on an infinite path.
+
+For performance reasons, we will 'merge' results where possible to share
+evaluation.
+
+How do we know when to merge? Wait some *finite* time past when the first
+result is available for others to finish, then merge everything that is
+finished.
+
+Details need to be worked out, but the high level is something like:
+
+return:: return the single result.
+bind:: apply bind to each result in parallel (they will already have been merged)
+mzero:: indicate there is no result for this path.
+msum:: Execute both paths in parallel and 'merge' the results.
+ite:: Execute both paths in parallel and 'merge' the results.
+
+merge::
+  Given a set of possibilities, returns a set of new possibilities which have
+  been grouped to improve performance. Groups are:
+    1. all those results which finish within time t1.
+    2. the remaining results which finish within time t2.
+    3. the remaining results which finish within time t3.
+      and so on until everything has finished.
+
+Note:
+  tN = 0  is fully non-deterministic (assuming we wait for at least one result)
+  t1 = infinity is fully SMT, as in the current implementation (but is not
+       correct).
+
+  Less tN: less time waiting, more duplicated work
+  More tN: more time waiting, less duplicated work
+  It's a tradeoff
+

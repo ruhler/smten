@@ -8,6 +8,7 @@ Release to Public::
 * SMT.Bit.Large fails for yices1 for some strange reason (github #7)
 
 Cleanup::
+* Does smten-base.cabal really need to expose all modules?
 * Support symbolic IO?
     Or is it okay because it can't ever appear in an assertion?
 * Figure out a way so that Bool and Integer and Bit definitions are not so
@@ -53,7 +54,7 @@ Documentation
 
 Runtime::
 * detect potential non-termination and perform appropriate abstraction and
-  refinement.
+  refinement. See doc/infinity.txt for discussion.
 
 Known Bugs::
 * yices1 seg faults on arch-extract isCF for rules 2, 4

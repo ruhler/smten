@@ -65,7 +65,7 @@ pass m = do
           tgt = odir ++ "/Smten/Compiled/" ++ slashes ++ ".hs"
       liftIO $ do
           createDirectoryIfMissing True (directory tgt)
-          writeFile tgt (S.render mod)
+          S.renderToFile tgt mod
   return m
 
 getIsPrim :: ModGuts -> CoreM Bool
