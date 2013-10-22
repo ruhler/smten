@@ -1,6 +1,8 @@
 Release to Public::
 * write up tutorials (github #3)
     T5-BitVectors
+      Requires Enum instance for Bit. (github #10)
+      Requires GHC.Enum.Enum instance for Bit??
     T6-Datatypes
     T7-SMTMonad
     T8-Profiling
@@ -74,8 +76,9 @@ Suspected Bugs::
 * I suspect problems with using a function called 'main' as a normal function
   exported to another module instead of just as a top level main function.
 * DEFAULT branches should use strict pattern matching?
+* Enum for Bit doesn't let you go up to maxBound. ex: [5 .. 7] with 3 bits
             
-Other::
+other::
 * TODO's inlined in the code
 * Do a code review of all of Smten, figure out what can be cleaned up and how.
 

@@ -80,3 +80,19 @@ instance (SingI n) => Ix (Bit n) where
           _ -> l : range (l + 1, h)
 
     index (l, _) x = fromInteger (bv_value (x - l))
+
+instance (SingI n) => Enum (Bit n) where
+    succ x = x + 1
+    pred x = x - 1
+    toEnum = fromInteger . toInteger
+    fromEnum = fromInteger . bv_value
+
+    enumFrom i = i : enumFrom (i+1)
+    enumFromThen a b = a : enumFromThen b (b + b - a)
+    enumFromTo a b = if a > b then [] else a : enumFromTo (a+1) b
+    enumFromThenTo a b c =
+        if a > c
+            then []
+            else a : enumFromThenTo b (b + b - a) c
+    
+    
