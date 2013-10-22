@@ -72,7 +72,7 @@ instance Functor Symbolic where
 -- The time in milliseconds we wait after getting the first result from a
 -- merge for the second result to return before giving up.
 waittime :: Int
-waittime = 1000
+waittime = 0
 
 instance SmtenHS1 Symbolic where
     -- TODO: this should indicate that it may fail.
@@ -128,7 +128,7 @@ bind_symbolic x f = Symbolic $ do
        Return (Result v p fr) restx -> do
            sfv <- runS (f v)
            case sfv of
-               MZero -> return MZero
+               MZero -> runS $ Symbolic restx `bind_symbolic` f
                Return (Result fv fp ffr) restf -> do
                  let result = Result fv (p `andB` fp) (fr `mappend` ffr)
                      rest = runS $ mplus_symbolic (Symbolic restx `bind_symbolic` f) (Symbolic restf)
@@ -144,8 +144,13 @@ mzero_symbolic = Symbolic $ return MZero
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
 mplus_symbolic a b = Symbolic $ do
     mvar <- newEmptyMVar
-    forkIO (runS a >>= (putMVar mvar . Just))
-    forkIO (runS b >>= (putMVar mvar . Just))
+    forkIO $ do
+       ra <- runS a
+       putMVar mvar (Just ra)
+
+    forkIO $ do
+       rb <- runS b
+       putMVar mvar (Just rb)
 
     -- Wait for the first branch to finish.
     sa <- fromJust <$> takeMVar mvar

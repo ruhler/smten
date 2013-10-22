@@ -13,10 +13,7 @@ freshpool :: IORef FreeID
 freshpool = unsafePerformIO $ newIORef 0
 
 fresh :: IO FreeID
-fresh = do
-  v <- readIORef freshpool
-  modifyIORef' freshpool (+ 1)
-  return v
+fresh = atomicModifyIORef' freshpool (\x -> (x+1, x))
 
 freenm :: FreeID -> String
 freenm x = "f~" ++ show x
