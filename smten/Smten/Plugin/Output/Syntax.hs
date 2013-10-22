@@ -83,6 +83,9 @@ data Literal =
   | IntL Integer
   | WordL Integer
   | IntegerL Integer
+  | FloatL Rational
+  | DoubleL Rational
+  | NullAddrL 
 
 arrowT :: Type -> Type -> Type
 arrowT a b = ConAppT "(->)" [a, b]

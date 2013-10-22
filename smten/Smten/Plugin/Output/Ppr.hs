@@ -177,4 +177,7 @@ instance Ppr Literal where
     ppr (IntL i) = ppr (show i) <> ppr "#"
     ppr (WordL i) = ppr (show i) <> ppr "##"
     ppr (IntegerL i) = integer i
+    ppr (FloatL x) = float (fromRational x) <> ppr "#"
+    ppr (DoubleL x) = double (fromRational x) <> ppr "##"
+    ppr NullAddrL = ppr "nullAddr#"
 
