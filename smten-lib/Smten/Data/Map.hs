@@ -7,6 +7,7 @@ module Smten.Data.Map (
     Map,
     lookup, insert,
     size, empty, singleton, fromList, toList,
+    elems, assocs,
   )  where
 
 import Smten.Prelude hiding (lookup, map, filter, null)
@@ -110,3 +111,10 @@ bin k x l r = Bin (size l + size r + 1) k x l r
 instance (Show k, Show a) => Show (Map k a) where
     showsPrec d m = showParen (d > 10) $
         showString "fromList " . shows (toList m)
+
+elems :: Map k a -> [a]
+elems m = [x | (_, x) <- assocs m]
+
+assocs :: Map k a -> [(k, a)]
+assocs m = toList m
+

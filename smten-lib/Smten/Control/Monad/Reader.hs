@@ -1,7 +1,9 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+
 module Smten.Control.Monad.Reader (
     module Smten.Control.Monad.Reader.Class,
     Reader(..),
@@ -18,6 +20,7 @@ import Smten.Data.Function
 import Smten.Data.Functor
 import Smten.Control.Monad
 import Smten.Control.Monad.Reader.Class
+import Smten.Control.Monad.State.Class
 import Smten.Control.Monad.Trans
 
 newtype Reader r a = Reader {
@@ -70,4 +73,8 @@ instance MonadTrans (ReaderT r) where
 
 instance MonadIO m => MonadIO (ReaderT r m) where
     liftIO = lift . liftIO
+
+instance (MonadState s m) => MonadState s (ReaderT r m) where
+    get = lift get
+    put = lift . put
 
