@@ -1,0 +1,14 @@
+
+Sun Oct 27 17:03:28 EDT 2013
+
+Problems:
+ * nqueens 4    - SMT solver lied?
+    adding debug solver causes issue to go away
+    waittime 1000: this does not show up.
+
+What's wrong with nqueens 4?
+How can I figure out what's wrong with it?
+
+Let me try tracing, see if that gives any hints without also destroying the
+problem?
+
