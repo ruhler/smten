@@ -7,22 +7,30 @@ module Smten.Compiled.Smten.Symbolic.Solver.Debug (debug) where
 
 import System.IO
 
+import qualified Smten.Runtime.Assert as A
 import Smten.Runtime.Bit
 import Smten.Runtime.Debug
+import Smten.Runtime.FreeID
 import Smten.Runtime.SolverAST
-import Smten.Runtime.Solver as D
+import Smten.Runtime.Solver
+import qualified Smten.Runtime.Types as S
 import qualified Smten.Compiled.Smten.Smten.Base as S
 
 data DebugLL = DebugLL {
-    dbg_handle :: Handle,
-    dbg_s :: SolverInst
+    dbg_handle :: Handle
 }
-
-dbgPutStr :: DebugLL -> String -> IO ()
-dbgPutStr dbg s = hPutStr (dbg_handle dbg) s
 
 dbgPutStrLn :: DebugLL -> String -> IO ()
 dbgPutStrLn dbg s = hPutStrLn (dbg_handle dbg) s
+
+dbgModelVar :: DebugLL -> (FreeID, S.Any) -> IO ()
+dbgModelVar dbg (n, S.BoolA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
+dbgModelVar dbg (n, S.IntegerA (S.Integer x)) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
+dbgModelVar dbg (n, S.BitA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
+
+dbgModel :: DebugLL -> S.Model -> IO ()
+dbgModel dbg m = mapM_ (dbgModelVar dbg) (S.m_vars m)
+
 
 -- mark a debug object for sharing.
 sh :: Debug -> Debug
@@ -33,36 +41,14 @@ op o _ a b = return $ dbgOp o (sh a) (sh b)
 
 instance SolverAST DebugLL Debug where
     declare dbg ty nm = do
-        dbgPutStrLn dbg $ "delare " ++ nm ++ " :: " ++ show ty
-        D.declare (dbg_s dbg) ty nm
+        dbgPutStrLn dbg $ "declare " ++ nm ++ " :: " ++ show ty
 
-    getBoolValue dbg n = do
-        dbgPutStr dbg $ n ++ " = "
-        r <- D.getBoolValue (dbg_s dbg) n
-        dbgPutStrLn dbg $ show r
-        return r
+    getBoolValue = error $ "Debug.getBoolValue: not implemented"
+    getIntegerValue = error $ "Debug.getIntegerValue: not implemented"
+    getBitVectorValue = error $ "Debug.getBitVectorValue: not implemented"
+    check = error $ "Debug.check not implemented"
 
-    getIntegerValue dbg n = do
-        dbgPutStr dbg $ n ++ " = "
-        r <- D.getIntegerValue (dbg_s dbg) n
-        dbgPutStrLn dbg $ show r
-        return r
-
-    getBitVectorValue dbg w n = do
-        dbgPutStr dbg $ n ++ " = "
-        r <- D.getBitVectorValue (dbg_s dbg) w n
-        dbgPutStrLn dbg $ show (bv_make w r)
-        return r
-
-    check dbg = do
-        dbgPutStrLn dbg $ "check... "
-        r <- D.check (dbg_s dbg)
-        dbgPutStrLn dbg $ show r
-        return r
-
-    cleanup dbg = do
-        hClose (dbg_handle dbg)
-        D.cleanup (dbg_s dbg)
+    cleanup dbg = hClose (dbg_handle dbg)
 
     assert dbg e = do
         dbgPutStrLn dbg "assert:"
@@ -101,13 +87,23 @@ instance SolverAST DebugLL Debug where
       dbgApp (sh x) (dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]")
 
 debug :: S.List__ S.Char -> Solver -> Solver
-debug fsmten s = do
+debug fsmten s = Solver $ \vars formula -> do
     let f = S.toHSString fsmten
     fout <- openFile f WriteMode
     hSetBuffering fout NoBuffering
-    slv <- s
-    let dbgs = solverInstFromAST (DebugLL fout slv)
-    return $ dbgs {
-        D.assert = \e -> ({-# SCC "DebugAssert" #-} D.assert dbgs e) >> D.assert slv e
-    }
+    let dbg = DebugLL fout
+    mapM_ (\(nm, ty) -> declare dbg ty (freenm nm)) vars
+    A.assert dbg formula
+    dbgPutStrLn dbg $ "check... "
+    res <- solve s vars formula
+    case res of
+      Just m -> do
+          dbgPutStrLn dbg "Sat"
+          dbgModel dbg m
+          cleanup dbg
+          return (Just m)
+      Nothing -> do
+          dbgPutStrLn dbg "Unsat"
+          cleanup dbg
+          return Nothing
 

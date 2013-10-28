@@ -7,7 +7,7 @@
 module Smten.Runtime.Types (
     Type(..), Any(..),
     ErrorString(..), errstr, doerr, stableNameEq,
-    Model, model, m_cached, lookupBool, lookupInteger, lookupBit,
+    Model, model, m_vars, m_cached, lookupBool, lookupInteger, lookupBit,
     Bool(..), andB, notB, iteB,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
     Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,

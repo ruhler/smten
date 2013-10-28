@@ -91,12 +91,11 @@ instance SolverAST SmtenSolver Exp where
   extract_bit = nobits
 
 smten :: Solver
-smten = do
+smten = solverFromAST $ do
    mref <- newIORef trueExp
    let base = SmtenSolver mref
    withints <- addIntegers base
-   withbits <- addBits withints
-   return $ solverInstFromAST withbits
+   addBits withints
 
 trueExp :: Exp
 trueExp = Exp trueBDD falseBDD
