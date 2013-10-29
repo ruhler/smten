@@ -35,9 +35,9 @@ symtest nm tst q = do
     else do
       liftIO $ do
         putStrLn $ nm ++ "..."
-        let slvr = if nm `elem` ss_debugs cfg
+        slvr <- if nm `elem` ss_debugs cfg
                       then debug (nm ++ ".dbg") (ss_solver cfg)
-                      else ss_solver cfg
+                      else return $ ss_solver cfg
         got <- run_symbolic slvr q
         test nm (tst got)
 

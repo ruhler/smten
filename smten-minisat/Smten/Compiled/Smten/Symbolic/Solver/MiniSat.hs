@@ -55,13 +55,12 @@ nointegers = error "There is no native support integers in MiniSat"
 nobits = error "There is no native support for bit vectors in MiniSat"
 
 minisat :: Solver
-minisat = do
+minisat = solverFromAST $ do
   ptr <- c_minisat_mksolver
   vars <- H.new
   let base = MiniSat ptr vars
   withints <- addIntegers base
-  withbits <- addBits withints
-  return $ solverInstFromAST (withbits)
+  addBits withints
 
 instance SolverAST MiniSat Literal where
   declare s S.BoolT nm = do 

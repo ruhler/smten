@@ -44,13 +44,12 @@ gceM s v = do
     return x
 
 stp :: Solver
-stp = do
+stp = solverFromAST $ do
   ptr <- c_vc_createValidityChecker
   vars <- H.new
   gc <- newIORef []
   let s = STP { stp_ctx = ptr, stp_vars = vars, stp_gc = gc }
-  withints <- addIntegers s
-  return $ solverInstFromAST withints
+  addIntegers s
 
 withvc :: STP -> (STP_VC -> IO a) -> IO a
 withvc s f = f (stp_ctx s)

@@ -73,7 +73,7 @@ proc smten {} {
     hrun cp -r -f -l smten build/
     substcabal smten
     indir build/smten {
-        hrun cabal install --force-reinstalls --with-compiler=$::GHC
+        hrun cabal install --with-compiler=$::GHC
         hrun cabal sdist
     }
 }
@@ -86,7 +86,7 @@ proc smten-base {} {
         hrun $::GHC --make -osuf o_smten -hisuf hi_smten -c \
             -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
 
-        hrun cabal install --force-reinstalls --with-compiler=$::GHC
+        hrun cabal install --with-compiler=$::GHC
         hrun cabal sdist
     }
 }
@@ -117,7 +117,7 @@ proc smten-lib {} {
         hrun cabal build
         hrun cabal test
         hrun cabal sdist
-        hrun cabal install --force-reinstalls --with-compiler=$::GHC
+        hrun cabal install --with-compiler=$::GHC
     }
 }
 
@@ -134,7 +134,7 @@ proc smten-stp {} {
         hrun cabal build
         hrun cabal test
         hrun cabal sdist
-        hrun cabal install --force-reinstalls --with-compiler=$::GHC
+        hrun cabal install --with-compiler=$::GHC
     }
 }
 
@@ -151,7 +151,7 @@ proc smten-minisat {} {
         hrun cabal build
         hrun cabal test
         hrun cabal sdist
-        hrun cabal install --force-reinstalls --with-compiler=$::GHC
+        hrun cabal install --with-compiler=$::GHC
     }
 }
 

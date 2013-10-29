@@ -142,7 +142,7 @@ instance SolverAST Z3 Z3Expr where
      c_Z3_mk_extract ctx (fromInteger hi) (fromInteger lo) x
 
 z3 :: Solver
-z3 = do
+z3 = solverFromAST $ do
   r <- c_Z3_load
   case r of
     0 -> return ()
@@ -154,5 +154,5 @@ z3 = do
   c_Z3_solver_inc_ref ctx slv
   vars <- H.new
   c_Z3_del_config cfg
-  return (solverInstFromAST $ Z3 ctx slv vars)
+  return $ Z3 ctx slv vars
 

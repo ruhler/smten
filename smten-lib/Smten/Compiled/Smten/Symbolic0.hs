@@ -10,14 +10,13 @@ module Smten.Compiled.Smten.Symbolic0 (
     ) where
 
 import Control.Concurrent
+import Prelude as P
 import Data.Functor
 import Data.Maybe
 import Data.Monoid (mappend, mempty)
 
-import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
 import Smten.Runtime.Types hiding (Integer)
-import qualified Smten.Runtime.Result as S
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
 
@@ -197,14 +196,9 @@ run_symbolic s q = do
   case sq of
     MZero -> return S.Nothing
     Return (Result x p f) rest -> do
-      solver <- s
-      mapM_ (declVar solver) f
-      assert solver p
-      res <- check solver
+      res <- solve s f p
       case res of
-        S.Sat -> do
-           vals <- mapM (getValue solver) f
-           m <- model $ zip (map fst f) vals
+        P.Just m -> do
            case {-# SCC "DoubleCheck" #-} realize m p of
               S.True -> return ()
               -- TODO: We shouldn't allow us to reach an error.
@@ -213,23 +207,6 @@ run_symbolic s q = do
               S.Bool_Err msg -> doerr msg
               x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied?"
                      ++ " Got: " ++ show x
-           cleanup solver
            return (S.Just ({-# SCC "Realize" #-} realize m x))
-        S.Unsat -> do
-           cleanup solver
-           run_symbolic s (Symbolic rest)
-
-getValue :: SolverInst -> (FreeID, Type) -> IO Any
-getValue s (f, BoolT) = do
-   b <- getBoolValue s (freenm f)
-   return (BoolA $ if b then S.True else S.False)
-getValue s (f, IntegerT) = do
-   b <- getIntegerValue s (freenm f)
-   return (IntegerA $ S.Integer b)
-getValue s (f, BitT w) = do
-   b <- getBitVectorValue s w (freenm f)
-   return (BitA $ bv_make w b)
-
-declVar :: SolverInst -> (FreeID, Type) -> IO ()
-declVar s (nm, ty) = declare s ty (freenm nm)
+        P.Nothing -> run_symbolic s (Symbolic rest)
 
