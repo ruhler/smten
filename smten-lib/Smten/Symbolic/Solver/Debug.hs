@@ -10,6 +10,9 @@ import Smten.Symbolic
 
 -- Solver which writes the queries to the given file, then calls the given
 -- solver to solve them.
-debug :: FilePath -> Solver -> Solver
+--
+-- The solver may be reused for multiple queries; the debug output will be
+-- appended to the file as needed.
+debug :: FilePath -> Solver -> IO Solver
 debug = primitive "Smten.Symbolic.Solver.Debug.debug"
 

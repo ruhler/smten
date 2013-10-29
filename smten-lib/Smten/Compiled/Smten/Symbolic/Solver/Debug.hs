@@ -48,8 +48,6 @@ instance SolverAST DebugLL Debug where
     getBitVectorValue = error $ "Debug.getBitVectorValue: not implemented"
     check = error $ "Debug.check not implemented"
 
-    cleanup dbg = hClose (dbg_handle dbg)
-
     assert dbg e = do
         dbgPutStrLn dbg "assert:"
         dbgstr <- dbgRender e
@@ -86,24 +84,26 @@ instance SolverAST DebugLL Debug where
     extract_bit dbg hi lo x = return $
       dbgApp (sh x) (dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]")
 
-debug :: S.List__ S.Char -> Solver -> Solver
-debug fsmten s = Solver $ \vars formula -> do
-    let f = S.toHSString fsmten
-    fout <- openFile f WriteMode
-    hSetBuffering fout NoBuffering
-    let dbg = DebugLL fout
-    mapM_ (\(nm, ty) -> declare dbg ty (freenm nm)) vars
-    A.assert dbg formula
-    dbgPutStrLn dbg $ "check... "
-    res <- solve s vars formula
-    case res of
-      Just m -> do
-          dbgPutStrLn dbg "Sat"
-          dbgModel dbg m
-          cleanup dbg
-          return (Just m)
-      Nothing -> do
-          dbgPutStrLn dbg "Unsat"
-          cleanup dbg
-          return Nothing
+debug :: S.List__ S.Char -> Solver -> IO Solver
+debug fsmten s = do
+  let f = S.toHSString fsmten
+  fout <- openFile f WriteMode
+  hSetBuffering fout NoBuffering
+  let dbg = DebugLL fout
+  return . Solver $ \vars formula -> do
+     dbgPutStrLn dbg $ ""
+     mapM_ (\(nm, ty) -> declare dbg ty (freenm nm)) vars
+     A.assert dbg formula
+     dbgPutStrLn dbg $ "check... "
+     res <- solve s vars formula
+     case res of
+       Just m -> do
+           dbgPutStrLn dbg "Sat"
+           dbgModel dbg m
+           dbgPutStrLn dbg $ ""
+           return (Just m)
+       Nothing -> do
+           dbgPutStrLn dbg "Unsat"
+           dbgPutStrLn dbg $ ""
+           return Nothing
 
