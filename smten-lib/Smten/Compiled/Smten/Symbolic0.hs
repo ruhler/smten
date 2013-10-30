@@ -67,7 +67,7 @@ instance Functor Symbolic where
 -- The time in milliseconds we wait after getting the first result from a
 -- merge for the second result to return before giving up.
 waittime :: Int
-waittime = 0
+waittime = 10000
 
 instance SmtenHS1 Symbolic where
     error1 msg = doerr msg
@@ -117,13 +117,7 @@ bind_symbolic x f = Symbolic $ do
    case sx of
        MZero -> return MZero
        Return (Result v p) restx -> do
-           sfv <- runS (f v)
-           case sfv of
-               MZero -> runS $ Symbolic restx `bind_symbolic` f
-               Return (Result fv fp) restf -> do
-                 let result = Result fv (p `andB` fp)
-                     rest = runS $ mplus_symbolic (Symbolic restx `bind_symbolic` f) (Symbolic restf)
-                 return $ Return result rest
+          runS $ mplus_symbolic (Symbolic restx `bind_symbolic` f) (Symbolic $ guardedwith p <$> runS (f v))
 
 
 mzero_symbolic :: (SmtenHS0 a) => Symbolic a
