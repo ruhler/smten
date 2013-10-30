@@ -11,7 +11,6 @@ module Smten.Compiled.Smten.Symbolic0 (
 
 import Prelude as P
 import Data.Functor
-import Data.Monoid (mappend, mempty)
 
 import Smten.Runtime.FreeID
 import Smten.Runtime.Types hiding (Integer)
@@ -31,10 +30,7 @@ data Sym a =
      _value :: a,
 
      -- The condition required for this computation:
-     _pred :: S.Bool,
-
-     -- The free variables declared in this computation:
-     _free :: [(FreeID, Type)]
+     _pred :: S.Bool
 }
      
 newtype Symbolic a = Symbolic {
@@ -49,21 +45,21 @@ instance Functor Symbolic where
        sx <- runS x
        case sx of
          MZero -> return MZero
-         Return v p fr -> return $ Return (f v) p fr
+         Return v p -> return $ Return (f v) p
 
 instance Monad Symbolic where
-    return x = Symbolic . return $ Return x S.True mempty
+    return x = Symbolic . return $ Return x S.True
 
     (>>=) x f = Symbolic $ do
         sx <- runS x
         case sx of
             MZero -> return MZero
-            Return v p fr -> do
+            Return v p -> do
                 sfv <- runS (f v)
                 case sfv of
                     MZero -> return MZero
-                    Return fv fp ffr -> do
-                      return $ Return fv (p `andB` fp) (fr `mappend` ffr)
+                    Return fv fp -> do
+                      return $ Return fv (p `andB` fp)
 
 instance SmtenHS1 Symbolic where
     -- TODO: this should indicate that it may fail.
@@ -78,13 +74,12 @@ instance SmtenHS1 Symbolic where
       sb <- runS b
       case (sa, sb) of
         (MZero, MZero) -> return MZero
-        (MZero, Return vb pb fb) -> return $ Return vb (notB p `andB` pb) fb 
-        (Return va pa fa, MZero) -> return $ Return va (p `andB` pa) fa
-        (Return va pa fa, Return vb pb fb) -> do
+        (MZero, Return vb pb) -> return $ Return vb (notB p `andB` pb)
+        (Return va pa, MZero) -> return $ Return va (p `andB` pa)
+        (Return va pa, Return vb pb) -> do
           let v = ite0 p va vb
               p = iteB p pa pb
-              f = fa `mappend` fb
-          return $ Return v p f
+          return $ Return v p
 
     realize1 m x = realize m <$> x
 
@@ -104,31 +99,30 @@ mplus_symbolic a b = Symbolic $ do
     case (sa, sb) of
        (MZero, _) -> return sb
        (_, MZero) -> return sa
-       (Return va pa fa, Return vb pb fb) -> do
+       (Return va pa, Return vb pb) -> do
          fid <- fresh
          let v = ite0 (S.Bool_Var fid) va vb
              p = pa `andB` pb
-             f = (fid, BoolT) : (fa `mappend` fb)
-         return $ Return v p f
+         return $ Return v p
 
 free_Integer :: Symbolic (S.Integer)
 free_Integer = Symbolic $ do
     fid <- fresh
-    return $ Return (S.Integer_Var fid) S.True [(fid, IntegerT)]
+    return $ Return (S.Integer_Var fid) S.True
 
 free_Bit :: SingI Nat n -> Symbolic (S.Bit n)
 free_Bit w = Symbolic $ do
     fid <- fresh
     let iw = (__deNewTyDGSingI w)
-    return $ Return (S.Bit_Var iw fid) S.True [(fid, BitT iw)]
+    return $ Return (S.Bit_Var iw fid) S.True
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
   sq <- runS q
   case sq of
     MZero -> return S.Nothing
-    Return x p f -> do
-      res <- solve s f p
+    Return x p -> do
+      res <- solve s p
       case res of
         P.Just m -> do
            case {-# SCC "DoubleCheck" #-} realize m p of

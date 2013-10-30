@@ -90,12 +90,11 @@ debug fsmten s = do
   fout <- openFile f WriteMode
   hSetBuffering fout NoBuffering
   let dbg = DebugLL fout
-  return . Solver $ \vars formula -> do
+  return . Solver $ \formula -> do
      dbgPutStrLn dbg $ ""
-     mapM_ (\(nm, ty) -> declare dbg ty (freenm nm)) vars
      A.assert dbg formula
      dbgPutStrLn dbg $ "check... "
-     res <- solve s vars formula
+     res <- solve s formula
      case res of
        Just m -> do
            dbgPutStrLn dbg "Sat"

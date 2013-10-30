@@ -18,6 +18,7 @@ import qualified Smten.Runtime.Types as S
 import Smten.Runtime.SolverAST as ST
 
 type Cache exp = H.BasicHashTable (StableName Any) exp
+type Vars = H.BasicHashTable FreeID S.Type
 
 data AR ctx exp = AR {
   ar_ctx :: ctx,
@@ -27,7 +28,10 @@ data AR ctx exp = AR {
 
   -- If we are currently defining the expression for a bit-vector object, this
   -- holds the width of that object.
-  ar_bitwidth :: Integer
+  ar_bitwidth :: Integer,
+
+  -- Track the user-visible SMT variables used in the assertion.
+  ar_vars :: Vars
 }
 
 type AM ctx exp = ReaderT (AR ctx exp) IO
@@ -42,13 +46,15 @@ class Supported a where
     -- The value of first argument is ignored.
     cache :: a -> AM ctx exp (Cache exp)
 
-assert :: (SolverAST ctx exp) => ctx -> S.Bool -> IO ()
+assert :: (SolverAST ctx exp) => ctx -> S.Bool -> IO [(FreeID, S.Type)]
 assert ctx p = {-# SCC "Assert" #-} do
     boolc <- H.new
     bitc <- H.new
     intc <- H.new
-    e <- runReaderT (define ctx p) (AR ctx boolc bitc intc (error "ar_bitwidth not set!"))
+    vars <- H.new
+    e <- runReaderT (define ctx p) (AR ctx boolc bitc intc (error "ar_bitwidth not set!") vars)
     ST.assert ctx e
+    H.toList vars
 
 {-# SPECIALIZE use :: (SolverAST ctx exp) => S.Bool -> AM ctx exp exp #-}
 {-# SPECIALIZE use :: (SolverAST ctx exp) => S.Integer -> AM ctx exp exp #-}
@@ -86,7 +92,7 @@ binary f a b = do
 instance Supported S.Bool where
     define ctx S.True = liftIO $ bool ctx True
     define ctx S.False = liftIO $ bool ctx False
-    define ctx (S.Bool_Var id) = liftIO $ var ctx (freenm id)
+    define ctx (S.Bool_Var id) = uservar ctx id S.BoolT
     define ctx (S.Bool_EqInteger a b) = binary (eq_integer ctx) a b
     define ctx (S.Bool_LeqInteger a b) = binary (leq_integer ctx) a b
     define ctx (S.Bool_EqBit w a b) = withbitwidth w $ binary (eq_bit ctx) a b
@@ -105,6 +111,18 @@ instance Supported S.Bool where
        var ctx (freenm id)
 
     cache _ = asks ar_boolcache
+
+uservar :: (SolverAST ctx exp) => ctx -> FreeID -> S.Type -> AM ctx exp exp
+uservar ctx id ty = do
+  vars <- asks ar_vars
+  liftIO $ do
+    m <- H.lookup vars id
+    case m of
+        Nothing -> do
+           declare ctx ty (freenm id)
+           H.insert vars id ty
+        Just _ -> return ()
+    var ctx (freenm id)
        
 instance Supported S.Integer where
     define ctx (S.Integer i) = liftIO $ integer ctx i
@@ -115,7 +133,7 @@ instance Supported S.Integer where
         a' <- use a
         b' <- use b
         liftIO $ ite_integer ctx p' a' b'
-    define ctx (S.Integer_Var id) = liftIO $ var ctx (freenm id)
+    define ctx (S.Integer_Var id) = uservar ctx id S.IntegerT
     define ctx (S.Integer_Err msg) = liftIO $ do
         id <- fresh
         declare ctx S.IntegerT (freenm id)
@@ -152,7 +170,7 @@ instance Supported (S.Bit n) where
         a' <- use a
         b' <- use b
         liftIO $ ite_bit ctx p' a' b'
-    define ctx (S.Bit_Var _ id) = liftIO $ var ctx (freenm id)
+    define ctx (S.Bit_Var w id) = uservar ctx id (S.BitT w)
     define ctx (S.Bit_Err msg) = do
       w <- asks ar_bitwidth
       liftIO $ do

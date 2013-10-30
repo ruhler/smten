@@ -75,7 +75,7 @@ lookupBool m nm =
   case lookup nm (m_vars m) of
     Just (BoolA x) -> x
     Just _ -> error "lookupBool: type mismatch"
-    Nothing -> False    -- ^ any value will do for the default.
+    Nothing -> False    -- any value will do for the default.
 
 lookupInteger :: Model -> FreeID -> Integer
 lookupInteger m nm =

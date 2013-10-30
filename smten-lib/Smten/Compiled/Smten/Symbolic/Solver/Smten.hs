@@ -161,7 +161,7 @@ andBDD xa@(Var x xt xf) ya@(Var y yt yf)
 
 lookupBDD :: String -> BDD -> Bool
 lookupBDD nm None = error $ "no possible assignment for " ++ nm
-lookupBDD nm Done = False    -- ^ Doesn't matter, just pick false.
+lookupBDD nm Done = False    -- Doesn't matter, just pick false.
 lookupBDD nm (Var x None f)
   | nm <= x = False
   | otherwise = lookupBDD nm f
