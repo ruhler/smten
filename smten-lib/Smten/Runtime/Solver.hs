@@ -16,11 +16,12 @@ newtype Solver = Solver {
     -- | Use a solver to solve a single SMT query.
     -- solve s vars formula
     --  s - the solver to use
-    --  vars - the free variables used in the query along with their types
     --  formula - the formula for the query
     -- Returns: Just a model if the query is satisfiable,
     --          Nothing if the query is unsatisfiable
-    solve :: [(FreeID, S.Type)] -> S.Bool -> IO (Maybe S.Model)
+    --   The model contains values for all user-level variables that appear in
+    --   the formula.
+    solve :: S.Bool -> IO (Maybe S.Model)
 }
 
 -- TODO: why do we need this?
@@ -31,10 +32,9 @@ instance SmtenHS0 Solver where
   
 
 solverFromAST :: (AST.SolverAST ctx exp) => IO ctx -> Solver
-solverFromAST mksolver = Solver $ \vars formula -> do
+solverFromAST mksolver = Solver $ \formula -> do
     solver <- mksolver
-    mapM_ (\(nm, ty) -> AST.declare solver ty (freenm nm)) vars
-    A.assert solver formula
+    vars <- A.assert solver formula
     res <- AST.check solver
     case res of 
         Sat -> do

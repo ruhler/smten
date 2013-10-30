@@ -13,7 +13,6 @@ import Control.Concurrent
 import Prelude as P
 import Data.Functor
 import Data.Maybe
-import Data.Monoid (mappend, mempty)
 
 import Smten.Runtime.FreeID
 import Smten.Runtime.Types hiding (Integer)
@@ -32,14 +31,11 @@ data Result a = Result {
      _value :: a,
 
      -- The condition required for this computation:
-     _pred :: S.Bool,
-
-     -- The free variables declared in this computation:
-     _free :: [(FreeID, Type)]
+     _pred :: S.Bool
 }
 
 instance Functor Result where
-    fmap f (Result v p fr) = Result (f v) p fr
+    fmap f (Result v p) = Result (f v) p
 
 data Results a = 
     MZero     -- There are no more results.
@@ -51,8 +47,8 @@ guardedwith :: S.Bool -> Results a -> Results a
 guardedwith gd v =
   case v of
       MZero -> MZero
-      Return (Result a p fr) rest ->
-         Return (Result a (gd `andB` p) fr) (guardedwith gd <$> rest)
+      Return (Result a p) rest ->
+         Return (Result a (gd `andB` p)) (guardedwith gd <$> rest)
 
 finish :: Result a -> IO (Results a)
 finish r = return (Return r (return MZero))
@@ -100,36 +96,35 @@ instance SmtenHS1 Symbolic where
             return $ guardedwith p r
         ((_, MZero), Just (_, MZero)) -> return MZero
         ((_, MZero), Just (p, r)) -> return $ guardedwith p r
-        ((p, Return (Result va pa fa) resta), Nothing) -> do
-            let result = Result va (p `andB` pa) fa
+        ((p, Return (Result va pa) resta), Nothing) -> do
+            let result = Result va (p `andB` pa)
                 restb = snd . fromJust <$> takeMVar mvar
                 rest = ite0 p (Symbolic resta) (Symbolic restb)
             return $ Return result (runS rest)
         ((p, r), Just (_, MZero)) -> return $ guardedwith p r
-        ((p, Return (Result va pa fa) resta), Just (_, Return (Result vb pb fb) restb)) -> do
+        ((p, Return (Result va pa) resta), Just (_, Return (Result vb pb) restb)) -> do
           let v = ite0 p va vb
               p = iteB p pa pb
-              f = fa `mappend` fb
-              result = Result v p f
+              result = Result v p
               rest = ite0 p (Symbolic resta) (Symbolic restb)
           return $ Return result (runS rest)
 
     realize1 m x = realize m <$> x
 
 return_symbolic :: a -> Symbolic a
-return_symbolic x = Symbolic $ finish (Result x S.True mempty)
+return_symbolic x = Symbolic $ finish (Result x S.True)
 
 bind_symbolic :: (SmtenHS0 a, SmtenHS0 b) => Symbolic a -> (a -> Symbolic b) -> Symbolic b
 bind_symbolic x f = Symbolic $ do
    sx <- runS x
    case sx of
        MZero -> return MZero
-       Return (Result v p fr) restx -> do
+       Return (Result v p) restx -> do
            sfv <- runS (f v)
            case sfv of
                MZero -> runS $ Symbolic restx `bind_symbolic` f
-               Return (Result fv fp ffr) restf -> do
-                 let result = Result fv (p `andB` fp) (fr `mappend` ffr)
+               Return (Result fv fp) restf -> do
+                 let result = Result fv (p `andB` fp)
                      rest = runS $ mplus_symbolic (Symbolic restx `bind_symbolic` f) (Symbolic restf)
                  return $ Return result rest
 
@@ -169,13 +164,12 @@ mplus_symbolic a b = Symbolic $ do
            let rest' = mplus_symbolic (Symbolic rest) (Symbolic $ fromJust <$> takeMVar mvar)
            return $ Return result (runS rest')
        (Return {}, Just MZero) -> return sa
-       (Return (Result va pa fa) resta, Just (Return (Result vb pb fb) restb)) -> do
+       (Return (Result va pa) resta, Just (Return (Result vb pb) restb)) -> do
          fid <- fresh
          let v = ite0 (S.Bool_Var fid) va vb
              p = pa `andB` pb
-             f = (fid, BoolT) : (fa `mappend` fb)
             
-             result = Result v p f
+             result = Result v p
              rest = mplus_symbolic (Symbolic resta) (Symbolic restb)
          return $ Return result (runS rest)
 
@@ -183,20 +177,20 @@ mplus_symbolic a b = Symbolic $ do
 free_Integer :: Symbolic (S.Integer)
 free_Integer = Symbolic $ do
     fid <- fresh
-    finish $ Result (S.Integer_Var fid) S.True [(fid, IntegerT)]
+    finish $ Result (S.Integer_Var fid) S.True
 
 free_Bit :: SingI Nat n -> Symbolic (S.Bit n)
 free_Bit w = Symbolic $ do
     fid <- fresh
-    finish $ Result (S.Bit_Var fid) S.True [(fid, BitT (__deNewTyDGSingI w))]
+    finish $ Result (S.Bit_Var (__deNewTyDGSingI w) fid) S.True
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
   sq <- runS q
   case sq of
     MZero -> return S.Nothing
-    Return (Result x p f) rest -> do
-      res <- solve s f p
+    Return (Result x p) rest -> do
+      res <- solve s p
       case res of
         P.Just m -> do
            case {-# SCC "DoubleCheck" #-} realize m p of

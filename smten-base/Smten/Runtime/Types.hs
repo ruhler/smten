@@ -71,19 +71,25 @@ m_cached m f x = unsafeDupablePerformIO $ do
          return v
 
 lookupBool :: Model -> FreeID -> Bool
-lookupBool m nm
-  | Just (BoolA x) <- lookup nm (m_vars m) = x
-  | otherwise = error "lookupBool failed"
+lookupBool m nm =
+  case lookup nm (m_vars m) of
+    Just (BoolA x) -> x
+    Just _ -> error "lookupBool: type mismatch"
+    Nothing -> False    -- any value will do for the default.
 
 lookupInteger :: Model -> FreeID -> Integer
-lookupInteger m nm
-  | Just (IntegerA x) <- lookup nm (m_vars m) = x
-  | otherwise = error "lookupInteger failed"
+lookupInteger m nm =
+  case lookup nm (m_vars m) of
+    Just (IntegerA x) -> x
+    Just _ -> error "lookupInteger: type mismatch"
+    Nothing -> Integer 0
 
-lookupBit :: Model -> FreeID -> Bit n
-lookupBit m nm
-  | Just (BitA x) <- lookup nm (m_vars m) = Bit x
-  | otherwise = error "lookupBit failed"
+lookupBit :: Model -> P.Integer -> FreeID -> Bit n
+lookupBit m w nm =
+  case lookup nm (m_vars m) of
+    Just (BitA x) -> Bit x
+    Just _ -> error "lookupBit: type mismatch"
+    Nothing -> Bit (P.bv_make w 0)
 
 data Bool where
    True :: Bool
@@ -190,7 +196,7 @@ data Bit (n :: Nat) where
   -- Bit_Extract x_width hi lo x
   Bit_Extract :: P.Integer -> P.Integer -> P.Integer -> Bit m -> Bit n
   Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
-  Bit_Var :: FreeID -> Bit n
+  Bit_Var :: P.Integer -> FreeID -> Bit n
   Bit_Err :: ErrorString -> Bit n
 
 instance Show (Bit n) where
@@ -207,7 +213,7 @@ instance Show (Bit n) where
   show (Bit_SignExtend {}) = "?Bit_SignExtend?"
   show (Bit_Extract _ hi lo x) = show x ++ "[" ++ show hi ++ ":" ++ show lo ++ "]"
   show (Bit_Ite p a b) = "(" ++ show p ++ " ? " ++ show a ++ " : " ++ show b ++ ")"
-  show (Bit_Var x) = freenm x
+  show (Bit_Var _ x) = freenm x
   show (Bit_Err msg) = "Bit_Err " ++ show msg
     
 
@@ -358,5 +364,5 @@ instance SymEq (Bit n) where
 --        = a1 == b1 && a2 == b2 && a3 `symeq` b3
     symeq (Bit_Ite ap a1 a2) (Bit_Ite bp b1 b2)
       = ap `symeq` bp && a1 `symeq` b1 && a2 `symeq` b2
-    symeq (Bit_Var a) (Bit_Var b) = a == b
+    symeq (Bit_Var _ a) (Bit_Var _ b) = a == b
     symeq a b = P.False

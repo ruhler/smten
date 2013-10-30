@@ -143,7 +143,7 @@ instance SmtenHS0 (Bit n) where
         Bit_SignExtend by x -> sign_extend_Bit by (realize m x)
         Bit_Extract wx hi lo x -> extract_Bit wx hi lo (realize m x)
         Bit_Ite p a b -> iterealize p a b m
-        Bit_Var n -> lookupBit m n
+        Bit_Var w n -> lookupBit m w n
         Bit_Err msg -> Bit_Err (realize m msg)
     ite0 = Bit_Ite
 
