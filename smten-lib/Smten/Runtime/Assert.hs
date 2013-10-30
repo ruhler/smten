@@ -152,7 +152,7 @@ instance Supported (S.Bit n) where
         a' <- use a
         b' <- use b
         liftIO $ ite_bit ctx p' a' b'
-    define ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
+    define ctx (S.Bit_Var _ id) = liftIO $ var ctx (freenm id)
     define ctx (S.Bit_Err msg) = do
       w <- asks ar_bitwidth
       liftIO $ do

@@ -119,7 +119,8 @@ free_Integer = Symbolic $ do
 free_Bit :: SingI Nat n -> Symbolic (S.Bit n)
 free_Bit w = Symbolic $ do
     fid <- fresh
-    return $ Return (S.Bit_Var fid) S.True [(fid, BitT (__deNewTyDGSingI w))]
+    let iw = (__deNewTyDGSingI w)
+    return $ Return (S.Bit_Var iw fid) S.True [(fid, BitT iw)]
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
