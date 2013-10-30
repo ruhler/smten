@@ -70,10 +70,7 @@ waittime :: Int
 waittime = 0
 
 instance SmtenHS1 Symbolic where
-    -- TODO: this should indicate that it may fail.
-    -- That is, running (error) should not return Just error, it should 
-    -- return error.
-    error1 msg = return_symbolic (error0 msg)
+    error1 msg = doerr msg
 
     ite1 S.True a _ = a
     ite1 S.False _ b = b
@@ -104,8 +101,8 @@ instance SmtenHS1 Symbolic where
         ((p, r), Just (_, MZero)) -> return $ guardedwith p r
         ((p, Return (Result va pa) resta), Just (_, Return (Result vb pb) restb)) -> do
           let v = ite0 p va vb
-              p = iteB p pa pb
-              result = Result v p
+              p' = iteB p pa pb
+              result = Result v p'
               rest = ite0 p (Symbolic resta) (Symbolic restb)
           return $ Return result (runS rest)
 
@@ -166,8 +163,9 @@ mplus_symbolic a b = Symbolic $ do
        (Return {}, Just MZero) -> return sa
        (Return (Result va pa) resta, Just (Return (Result vb pb) restb)) -> do
          fid <- fresh
-         let v = ite0 (S.Bool_Var fid) va vb
-             p = pa `andB` pb
+         let c = S.Bool_Var fid
+             v = ite0 c va vb
+             p = ite0 c pa pb
             
              result = Result v p
              rest = mplus_symbolic (Symbolic resta) (Symbolic restb)
