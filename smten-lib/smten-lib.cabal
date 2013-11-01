@@ -127,6 +127,7 @@ library
     Smten.Runtime.AnyKeyMap
     Smten.Runtime.Assert
     Smten.Runtime.Debug
+    Smten.Runtime.RunBoth
     Smten.Runtime.Yices1.FFI
     Smten.Runtime.Yices2.FFI
     Smten.Runtime.Z3.FFI
@@ -171,17 +172,6 @@ test-suite y2tests
   c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
              Smten/Runtime/Yices1/y1.c
 
-test-suite z3tests
-  type: exitcode-stdio-1.0
-  main-is: z3tests.hs
-  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
-                 pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
-                 template-haskell ==2.8.*, containers ==0.5.*,
-                 smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
-  extra-libraries: dl
-  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
-             Smten/Runtime/Yices1/y1.c
-    
 test-suite y1tests
   type: exitcode-stdio-1.0
   main-is: y1tests.hs
@@ -193,3 +183,14 @@ test-suite y1tests
   c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
              Smten/Runtime/Yices1/y1.c
 
+test-suite z3tests
+  type: exitcode-stdio-1.0
+  main-is: z3tests.hs
+  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
+                 pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
+                 template-haskell ==2.8.*, containers ==0.5.*,
+                 smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
+  extra-libraries: dl
+  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
+             Smten/Runtime/Yices1/y1.c
+    

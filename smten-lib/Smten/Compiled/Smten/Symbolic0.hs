@@ -9,12 +9,11 @@ module Smten.Compiled.Smten.Symbolic0 (
     free_Integer, free_Bit,
     ) where
 
-import Control.Concurrent
 import Prelude as P
 import Data.Functor
-import Data.Maybe
 
 import Smten.Runtime.FreeID
+import Smten.Runtime.RunBoth
 import Smten.Runtime.Types hiding (Integer)
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
@@ -151,33 +150,3 @@ run_symbolic s q = do
                      ++ " Got: " ++ show x
            return (S.Just ({-# SCC "Realize" #-} realize m x))
         P.Nothing -> run_symbolic s (Symbolic rest)
-
-
-data RunBothResult a = OneFinished a (IO a)
-                     | BothFinished a a
-
--- The time in milliseconds we wait after getting the first result from a
--- merge for the second result to return before giving up.
-runBothWait :: Int
-runBothWait = 10000
-
--- Run two IO computations together.
---   Waits for at least one result to finish.
-runBoth :: IO a -> IO a -> IO (RunBothResult a)
-runBoth a b = do
-  mvar <- newEmptyMVar
-  forkIO (a >>= putMVar mvar . Just)
-  forkIO (b >>= putMVar mvar . Just)
-
-  -- Wait for the one to finish.
-  -- The result is guarenteed to be 'Just'
-  s1 <- fromJust <$> takeMVar mvar
-
-  -- Wait at most a little more time for the other to finish
-  forkIO (threadDelay runBothWait >> putMVar mvar Nothing)
-  ms2 <- takeMVar mvar
-
-  case ms2 of
-    Just s2 -> return $ BothFinished s1 s2
-    Nothing -> return $ OneFinished s1 (fromJust <$> takeMVar mvar)
-
