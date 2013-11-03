@@ -18,6 +18,7 @@ tests = do
   test "p.quotRem.Int" ((10, 4) == quotRem (74 :: Int) 7)
   test "p.read.Int" ((10 :: Int) == read "10")
   test "p.read.Integer" ((10 :: Integer) == read "10")
+  test "p.Show.Maybe" ("Just (Just Nothing)" == show (Just (Just (Nothing :: Maybe Bool))))
 
   putStrLn "Prelude PASSED"
 

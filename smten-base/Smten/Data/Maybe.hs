@@ -1,4 +1,5 @@
 
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Maybe (
     Maybe(Nothing, Just), maybe,
@@ -10,8 +11,10 @@ import Smten.Control.Monad
 import Smten.Data.Bool
 import Smten.Data.Eq
 import Smten.Data.Functor
-import Smten.Data.List0
+import Smten.Data.Function
+import Smten.Data.Ord
 import Smten.Data.Show
+import Smten.Derive.Show
 import Smten.Smten.Base
 
 data Maybe a = Nothing | Just a
@@ -21,9 +24,11 @@ instance (Eq a) => Eq (Maybe a) where
     (==) (Just a) (Just b) = a == b
     (==) _ _ = False
 
+showsPrecMaybe :: (Show a) => Int -> Maybe a -> ShowS
+showsPrecMaybe = $(derive_showsPrec ''Maybe)
+
 instance (Show a) => Show (Maybe a) where
-    show (Just x) = "Just " ++ show x
-    show Nothing = "Nothing"
+   showsPrec = showsPrecMaybe
 
 instance Functor Maybe where
     fmap _ Nothing = Nothing

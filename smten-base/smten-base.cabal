@@ -49,6 +49,7 @@ library
     Smten.Data.Ord0
     Smten.Data.Ord1
     Smten.Data.Tuple
+    Smten.Derive.Show
     Smten.Smten.Base
     Smten.Smten.Char
     Smten.Smten.Int
@@ -115,7 +116,7 @@ library
     Smten.Compiled.GHC.Types
 
   build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten ==@VERSIONMAJOR@.*,
-                 hashtables ==1.0.*
+                 hashtables ==1.0.*, template-haskell ==2.8.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
