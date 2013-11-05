@@ -64,6 +64,7 @@ instance SymbolicOf [P.Char] (List__ Char) where
 fromList__ :: List__ a -> [a]
 fromList__ Nil__ = []
 fromList__ (Cons__ x xs) = x : fromList__ xs
+fromList__ (List___Err msg) = doerr msg
 
 error :: (SmtenHS0 a) => List__ Char -> a
 error = {-# SCC "PRIM_ERROR" #-} symapp (\msg -> error0 (errstr msg))
