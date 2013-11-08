@@ -1,0 +1,194 @@
+Implementing Infinity Again in Smten
+====================================
+Richard Uhler <ruhler@csail.mit.edu>
+November 2013
+
+Introduction
+------------
+The file doc/infinity.txt co-located with this document describes
+a bug in the smten implementation with regards to infinite queries, and
+proposes a solution. The proposed solution has been implemented and appears to
+work well enough in practice, but it fails to work in all cases. This document
+describes a new proposal for entirely correctly implementing infinite queries.
+
+The problem with the current approach is, though infinite computations of type
+'Symbolic a' are properly threaded to ensure fairness, the entirely pure
+computations used for conditions are not properly threaded. This proposal
+adapts ideas from the current implementation for fairness of 'Symbolic a' to
+fairness in evaluation of pure computations.
+
+The Proposal
+------------
+The high level idea of the proposal is to not distinguish between pure
+evaluation and evaluation of the 'Symbolic' monad. Instead, build threading
+and incremental queries into pure evaluation. The symbolic monad, then, is
+only used to enforce that pure computations outside of a symbolic context will
+be singleton.
+
+Conceptually, an object of type A at the smten user level will be represented
+as a set of values of type A in the runtime, where a specific value can be
+selected by assigning values to variables in a boolean network. Some
+assignments of variables in the network may be 'invalid', in the sense that
+they don't lead to any specific value. Some assignments of variables in the
+network may lead to a specific value. And other assignments of variables in
+the network may lead to an error or infinite computation. To properly ensure
+fair evaluation of all paths, the runtime representation of the object should
+distinguish between those specific values which are assured to be finite, and
+values which may be infinite or error.
+
+The runSymbolic function takes a smten level object, which is represented as a
+set of values in the runtime. It should behave as follows:
+1. Use a SAT solver to find a satisfying assignment of variables to the
+   boolean network for those values assured to be finite.
+     If a solution is found, return the value associated with that assignment.
+     It is guaranteed to be finite.
+2. Otherwise there is no value contained in those values assured to be finite.
+   Test (using a SAT solver, or maybe it will be obvious) whether there are
+   any assignments which lead to a potentially infinite value.
+     If there are: go back to step (1) using the potentially infinite values.
+     Otherwise, there are no values, so return Nothing.
+
+Note that the separation of values into finite and potentially infinite is
+recursive, or a hierarchy. If fully unrolled, it would look something like
+    A. Those values immediately available
+    B.    Those values available a little bit later
+    C.       Those values available a little bit later
+    D.          Those values available a little bit later
+    ...
+                     Those values which are infinite or error in fact.
+
+Note that any of these levels may be empty. runSymbolic search one level at a
+time for a solution, until it has exhausted them all.
+
+How can we represent properly the above hierarchy of values in the runtime?
+
+For the initial proposal, for simplicity and purposes of understanding, I will
+avoid all optimizations not related to correctness or generation of sharing
+and SAT solver use. In particular, we treat all errors as nontermination for
+the initial proposal.
+
+Assume we have a data type called 'Formula', which corresponds to a guaranteed
+finite boolean formula. It is finite by construction: if you can reduce it to
+weak head normal form, it is fully evaluated and finite.
+
+Consider an arbitrary smten level datatype of the form:
+
+data Foo = FooA a1 a2 a3 ...
+         | FooB b1 b2 b3 ...
+         | ...
+
+The proposal is to represent this in the runtime as;
+
+data Foo = Foo {
+   gdA :: Formula  -- The conditions under which Foo has constructor FooA
+   f1A :: a1,      -- The fields for constructor FooA when gdA is satisfied
+   f2A :: a2,
+   ...
+
+   gdB :: Formula  -- The conditions under which Foo has constructor FooB
+   f1B :: b1,
+   f2B :: b2,
+   ...
+
+    ...
+
+   gdErr :: Formula   -- The conditions under which Foo may be infinite or
+                      -- error
+   fErr :: Foo        -- The next hierarchy level for Foo, when gdErr is
+                      -- satisfied
+}
+
+We have the following operations for manipulating Foo
+
+mzero::
+  gd* is False for all guards,
+  f*  is mzero for all fields.
+ We should have an invariant that a field is not accessed unless its guard is
+ satisfied to avoid loops here.
+
+FooX x1 x2 ... ::
+  gdX is True, all other gd* are False.
+  f1X is x1, f2X is x2, ...  all other f* are mzero.
+ In other words:
+    mzero {
+        gdX = True,
+        f1X = x1,
+        f2X = x2, ...}
+
+error msg ::
+  Use Haskell's error. We don't need anything explicit here.
+
+mplus a b::
+  Zero, one, or both of 'a' and 'b' may be _|_.
+  We want: mplus _|_ _|_ to be _|_
+           mplus a _|_ to push the _|_ of 'b' into the error field of a
+           mplus _|_ b to push the _|_ of 'a' into the error field of b
+           mplus a b to join the finite and error fields of a and b properly
+  Use unsafeIO so we can do threading to detect potential _|_ as we do in the
+  current implementation. Then merge as described above.
+
+case x of
+    FooA a1 a2 ... -> fa a1 a2 ...
+    FooB b1 b2 ... -> fb b1 b2 ...
+    ...
+
+Goes to:
+let casef v =
+      case v of
+        Foo { ... } -> 
+           merge [(gdA, fa f1A f2A ...),
+                  (gdB, fb f1B f2B ...),
+                  ...,
+                  (gdErr, casef fErr)]
+in casef x
+
+Now we need to define merge. It's just an ITE chain.
+  ite gdA a (ite gdB b (ite gdC c ... (ite gdErr fErr mzero)))
+
+And we need ite, where the predicate is a formula:
+  ite p a b:
+     Use threading in unsafeIO to determine if a or b is potentially _|_
+
+  ite p _|_ _|_: _|_
+  ite p a _|_:  Push _|_ of b using ite into 'a's err field
+  ite p _|_ b:  Push _|_ of a using ite into 'b's err field
+  ite p a b: Do field-wise ite.
+
+And, something important: treat Bool as a normal user defined datatype, so
+that it properly handles infinity and such.
+
+
+Next we need an interface for runSymbolic to use:
+  finite :: a -> Formula
+    - the conditions under which the object 'a' represents a finite value.
+  infinite :: a -> (Formula, a)
+    - the condition and future for when the object 'a' represents infinite
+      value.
+  realize :: a -> Model -> a
+    - realize the value of a thing with given model,
+      where the model is assumed to come from the finite subset of the thing.
+
+Potential Optimizations
+-----------------------
+These are optimizations I believe could make a significant improvement in
+performance, but should not be attempted until I have something working, and
+should not be committed until I have evidence they really do help performance.
+Fortunately, I now have a decent set of benchmarks to evaluate these on:
+ 1. shampi
+ 2. nqueens
+ 3. sudoku
+ 4. sketch
+ 5. arch-extract (?)
+
+1. Make mzero explicit
+Have a special constructor Foo_MZero for each data type. We could perhaps
+leverage this to optimize better.
+
+2. Make constructors explicit
+Have a special constructor for each constructor, to optimize the singleton
+case (which is the concrete case)
+
+3. Make explicit errors explicit
+So we can report them rather than looping forever, and we don't keep trying to
+evaluate them over and over again.
+
