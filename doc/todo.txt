@@ -9,6 +9,11 @@ Release to Public::
 * put smten on hackage (after tutorials are posted nicely?)
 * SMT.Bit.Large fails for yices1 for some strange reason (github #7)
 
+Runtime::
+* handle error and infinity correctly. See doc/infinity2.txt for discussion.
+ ** How to even get started?
+
+
 Cleanup::
 * Does smten-base.cabal really need to expose all modules?
 * Support symbolic IO?
@@ -53,10 +58,6 @@ Documentation
 * Generated code should have a comment saying it was automatically generated.
 * Make it so generated haddock documentation for smten-base is nice
 * Make it so generated haddock documentation for smten-lib is nice
-
-Runtime::
-* detect potential non-termination and perform appropriate abstraction and
-  refinement. See doc/infinity.txt for discussion.
 
 Known Bugs::
 * yices1 seg faults on arch-extract isCF for rules 2, 4

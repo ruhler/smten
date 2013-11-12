@@ -192,3 +192,74 @@ case (which is the concrete case)
 So we can report them rather than looping forever, and we don't keep trying to
 evaluate them over and over again.
 
+
+Update: Tue, Nov 12
+-------------------
+We should not associate mzero with values. MZero must be part of the Symbolic
+monad.
+
+To see why, consider the following:
+
+   mzero >>= (\_ -> return 3)
+
+The semantics say this must be mzero, but if mzero is associated with the
+value, then when we apply the function, the mzero will disappear. It's not
+clear when the effect of the mzero takes place.
+
+This suggests the current implementation is already along the right lines:
+
+ * The runtime object of type A represent a non-empty set of values of smten
+   level type A: you give an assignment, it gives a value which may or may not
+   be an error.
+ * The Symbolic monad is an object of type A (representing a set of values)
+   along with an additional indication of whether that object is valid.
+
+The Symbolic monad handles everything to do with MZero. Both the symbolic
+monad and values should handle possible errors in ite.
+
+Revised Proposal
+~~~~~~~~~~~~~~~~
+type Symbolic a = (Formula, a)
+
+The formula says when the object is valid. You can get a specific value from
+the object given an assignment.
+
+What's important is this:
+ * Formula is separated into a (possibly infinite) hierarchy of finite chunks
+   (as describe earlier in the document)
+
+I want to keep the notion of 'Bool' and 'Formula' separate. Treat 'Bool' like
+any other user defined data type, but 'Formula' is special.
+
+This suggests all I need to do is have a way to represent Formulas, including
+formulas of type bool, bit vector, and int, where finite pieces are explicitly
+separated from potentially infinite pieces. Then propagate this information
+when I construct the formulas: from andB, iteB, orB, notB, eqBit, addBit, and
+all those friends.
+
+I believe I need to use unsafeIO to preserve sharing of formulas constructed
+this way.
+
+Notes:
+ * everything should work! (namely functions)
+ * nothing should need to keep track of errors explicitly except for formula.
+
+Questions:
+ * is Symbolic a still in IO? Or could it be pure? (assuming we had a
+   reasonable way to allocate variable names)
+
+We could do it lazily, as long as we had a way to (lazily) access the formula
+returned by everything. Then push all the IO and multithreading into the
+formula part. It may be at a cost of introducing an unnecessary variable for
+mplus.
+
+
+Implementation Plan:
+ * Separate Bool and Formula (this should clean up the compiler a bunch too)
+ * Update Formula to distinguish between finite and (maybe) infinite parts
+ * Re-implement symbolic monad as pure and lazy.
+
+The first step can be done on the master branch. The second two, we probably
+want to move to a different branch, because they are big, and probably won't
+work until a number of adjustments have been made.
+
