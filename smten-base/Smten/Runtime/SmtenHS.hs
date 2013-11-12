@@ -83,8 +83,8 @@ flrealize _ [] = error "flrealize failed"
 -- Merge two fields of an ite constructor.
 {-# INLINEABLE flmerge #-}
 flmerge :: (SmtenHS0 a) => Bool -> (Bool, a) -> (Bool, a) -> (Bool, a)
-flmerge p (g, v) (False, _) = (andB p g, v)
-flmerge p (False, _) (g, v) = (andB (notB p) g, v)
+flmerge p (g, v) (False, _) = (andF p g, v)
+flmerge p (False, _) (g, v) = (andF (notF p) g, v)
 flmerge p (ga, va) (gb, vb) = (ite p ga gb, ite p va vb)
 
 {-# INLINEABLE flsapp #-}
@@ -99,14 +99,14 @@ flsapp f x zs =
 
 instance SmtenHS0 Bool where
     error0 = Bool_Err
-    ite0 = iteB
+    ite0 = iteF
     realize0 m x =
       case x of
         True -> True
         False -> False
         Bool_Ite p a b -> iterealize p a b m
-        Bool_And a b -> andB (realize m a) (realize m b)
-        Bool_Not p -> notB (realize m p)
+        Bool_And a b -> andF (realize m a) (realize m b)
+        Bool_Not p -> notF (realize m p)
         Bool_EqInteger a b -> eq_Integer (realize m a) (realize m b)
         Bool_LeqInteger a b -> leq_Integer (realize m a) (realize m b)
         Bool_EqBit w a b -> eq_Bit w (realize m a) (realize m b)

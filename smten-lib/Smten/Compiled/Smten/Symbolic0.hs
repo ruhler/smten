@@ -47,7 +47,7 @@ guardedwith gd v =
   case v of
       MZero -> MZero
       Return (Result a p) rest ->
-         Return (Result a (gd `andB` p)) (guardedwith gd <$> rest)
+         Return (Result a (gd `andF` p)) (guardedwith gd <$> rest)
 
 finish :: Result a -> IO (Results a)
 finish r = return (Return r (return MZero))
@@ -69,20 +69,20 @@ instance SmtenHS1 Symbolic where
     ite1 S.True a _ = a
     ite1 S.False _ b = b
     ite1 pred a b = Symbolic $ do
-      runresult <- runBoth ((,) pred <$> runS a) ((,) (notB pred) <$> runS b)
+      runresult <- runBoth ((,) pred <$> runS a) ((,) (notF pred) <$> runS b)
       case runresult of
         OneFinished (_, MZero) rest2 -> do
             (p, r) <- rest2
             return $ guardedwith p r
         OneFinished (p, Return (Result v1 p1) rest1) rest2 -> do
-            let result = Result v1 (p `andB` p1)
+            let result = Result v1 (p `andF` p1)
                 rest = ite0 p (Symbolic rest1) (Symbolic $ snd <$> rest2)
             return $ Return result (runS rest)
         BothFinished (_, MZero) (p, r) -> return $ guardedwith p r
         BothFinished (p, r) (_, MZero) -> return $ guardedwith p r
         BothFinished (p, Return (Result v1 p1) rest1)
                      (_, Return (Result v2 p2) rest2) -> do
-          let result = Result (ite0 p v1 v2) (iteB p p1 p2)
+          let result = Result (ite0 p v1 v2) (iteF p p1 p2)
               rest = ite0 p (Symbolic rest1) (Symbolic rest2)
           return $ Return result (runS rest)
 

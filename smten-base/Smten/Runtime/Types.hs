@@ -8,7 +8,7 @@ module Smten.Runtime.Types (
     Type(..), Any(..),
     ErrorString(..), errstr, doerr, stableNameEq,
     Model, model, m_vars, m_cached, lookupBool, lookupInteger, lookupBit,
-    Bool(..), andB, notB, iteB,
+    Bool(..), andF, notF, iteF,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
     Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,
     or_Bit, and_Bit, shl_Bit, lshr_Bit, not_Bit, concat_Bit,
@@ -117,31 +117,31 @@ instance Show Bool where
     show (Bool_Var a) = freenm a
     show (Bool_Err msg) = "Bool_Err " ++ show msg
 
-andB :: Bool -> Bool -> Bool
-andB True x = x
-andB False x = False
-andB a@(Bool_Err {}) _ = a
-andB a True = a
-andB a False = False
---andB _ b@(Bool_Err {}) = b
-andB a b = Bool_And a b
+andF :: Bool -> Bool -> Bool
+andF True x = x
+andF False x = False
+andF a@(Bool_Err {}) _ = a
+andF a True = a
+andF a False = False
+--andF _ b@(Bool_Err {}) = b
+andF a b = Bool_And a b
 
-notB :: Bool -> Bool
-notB True = False
-notB False = True
-notB (Bool_Not x) = x
-notB x@(Bool_Err {}) = x
-notB x = Bool_Not x
+notF :: Bool -> Bool
+notF True = False
+notF False = True
+notF (Bool_Not x) = x
+notF x@(Bool_Err {}) = x
+notF x = Bool_Not x
 
-iteB :: Bool -> Bool -> Bool -> Bool
-iteB True x _ = x
-iteB False _ x = x
-iteB (Bool_Not x) a b = iteB x b a
-iteB x@(Bool_Err {}) _ _ = x
-iteB p True True = True
-iteB p False b = notB p `andB` b
-iteB p a False = p `andB` a
-iteB p a b = Bool_Ite p a b
+iteF :: Bool -> Bool -> Bool -> Bool
+iteF True x _ = x
+iteF False _ x = x
+iteF (Bool_Not x) a b = iteF x b a
+iteF x@(Bool_Err {}) _ _ = x
+iteF p True True = True
+iteF p False b = notF p `andF` b
+iteF p a False = p `andF` a
+iteF p a b = Bool_Ite p a b
 
 data Integer =
     Integer P.Integer
