@@ -95,6 +95,6 @@ smttests = do
 
 tests :: IO ()
 tests = do
-   runtest (SMTTestCfg smten [] []) smttests
+   runtest (SMTTestCfg smten [] ["Datatype.Mix"]) smttests
    putStrLn "SMT.DataType PASSED"
 

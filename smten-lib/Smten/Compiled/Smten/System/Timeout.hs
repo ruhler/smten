@@ -13,7 +13,7 @@ timeout :: (SmtenHS0 a) => Int -> P.IO a -> P.IO (Maybe a)
 timeout = symapp (\t x -> do
     v <- P.timeout t x
     case v of
-        P.Just x -> P.return (Just x)
-        P.Nothing -> P.return Nothing
+        P.Just x -> P.return (__Just x)
+        P.Nothing -> P.return __Nothing
     )
 

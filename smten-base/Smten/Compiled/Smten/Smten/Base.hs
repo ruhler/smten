@@ -1,13 +1,15 @@
 
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Base (
     Char(..), Int(..), Integer(..),
-    List__(..), Tuple2__(..), Tuple3__(..), Tuple4__(..), Unit__(..), 
     error,
-
     fromList__, toHSChar, toHSString, fromHSString,
+    module Smten.Compiled.Smten.Smten.List,
+    module Smten.Compiled.Smten.Smten.Tuple,
+    module Smten.Compiled.Smten.Smten.Unit,
  )  where
 
 import qualified Prelude as P
@@ -24,47 +26,28 @@ import Smten.Compiled.Smten.Smten.Tuple
 import Smten.Compiled.Smten.Smten.Unit
 
 instance SymbolicOf [a] (List__ a) where
-    tosym [] = Nil__
-    tosym (x:xs) = Cons__ x (tosym xs)
+    tosym [] = __Nil__
+    tosym (x:xs) = __Cons__ x (tosym xs)
 
-    symapp f x =
-      case x of
-         Nil__ -> f []
-         Cons__ x xs -> symapp (\xsl -> f (x:xsl)) xs
-         List___Err msg -> error0 msg
-         List___Ite itenil itcon iteerr -> 
-           let zs = [itenil, itcon, iteerr]
-
-               join [(_, v)] = f $$ v
-               join ((p, a):bs) = ite p (f $$ a) (join bs)
-
-               isvalid (False, _) = P.False
-               isvalid _ = P.True
-           in join (P.filter isvalid zs)
+    symapp f x = merge [
+        (gdNil__ x, f []),
+        (gdCons__ x, symapp (\xsl -> f ((flCons__1 x) : xsl)) (flCons__2 x)),
+        (gdErr_List__ x, error0 (flErr_List__ x))]
 
 instance SymbolicOf [P.Char] (List__ Char) where
-    tosym [] = Nil__
-    tosym (x:xs) = Cons__ (tosym x) (tosym xs)
+    tosym [] = __Nil__
+    tosym (x:xs) = __Cons__ (tosym x) (tosym xs)
 
-    symapp f x =
-      case x of
-         Nil__ -> f []
-         Cons__ x xs -> symapp2 (\xv xsv -> f (xv:xsv)) x xs
-         List___Err msg -> error0 msg
-         List___Ite itenil itcon iteerr ->
-           let zs = [itenil, itcon, iteerr]
-
-               join [(_, v)] = f $$ v
-               join ((p, a):bs) = ite p (f $$ a) (join bs)
-
-               isvalid (False, _) = P.False
-               isvalid _ = P.True
-           in join (P.filter isvalid zs)
-
+    symapp f x = merge [
+        (gdNil__ x, f []),
+        (gdCons__ x, symapp2 (\xv xsv -> f (xv : xsv)) (flCons__1 x) (flCons__2 x)),
+        (gdErr_List__ x, error0 (flErr_List__ x))]
+                    
 fromList__ :: List__ a -> [a]
-fromList__ Nil__ = []
-fromList__ (Cons__ x xs) = x : fromList__ xs
-fromList__ (List___Err msg) = doerr msg
+fromList__ x
+  | True <- gdNil__ x = []
+  | True <- gdCons__ x = flCons__1 x : fromList__ (flCons__2 x)
+  | True <- gdErr_List__ x = doerr (flErr_List__ x)
 
 error :: (SmtenHS0 a) => List__ Char -> a
 error = {-# SCC "PRIM_ERROR" #-} symapp (\msg -> error0 (errstr msg))

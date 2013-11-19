@@ -135,7 +135,7 @@ run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
   sq <- runS q
   case sq of
-    MZero -> return S.Nothing
+    MZero -> return S.__Nothing
     Return (Result x p) rest -> do
       res <- solve s p
       case res of
@@ -148,5 +148,5 @@ run_symbolic s q = do
               S.Bool_Err msg -> doerr msg
               x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied?"
                      ++ " Got: " ++ show x
-           return (S.Just ({-# SCC "Realize" #-} realize m x))
+           return (S.__Just ({-# SCC "Realize" #-} realize m x))
         P.Nothing -> run_symbolic s (Symbolic rest)

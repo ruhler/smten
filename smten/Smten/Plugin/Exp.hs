@@ -28,7 +28,9 @@ bindCG b@(NonRec var body) = do
   return [S.Val nm (Just ty') body']
 
 expCG :: CoreExpr -> CG S.Exp
-expCG (Var x) = S.VarE <$> (qnameCG $ varName x)
+expCG (Var x)
+  | isConstructor x = S.VarE <$> (qconnmCG $ varName x)
+  | otherwise = S.VarE <$> (qnameCG $ varName x)
 expCG (Lit l) = return (S.LitE (litCG l))
 expCG x@(App a t@(Type {})) = do
   let tya = exprType a
@@ -54,7 +56,22 @@ expCG x@(Lam b body)
     body' <- expCG body
     return $ S.LamE b' body'
 
-expCG (Case x v ty ms) = caseCG x v ty ms
+expCG (Case x v ty ms) = do
+  let (ndefs, def) = findDefault ms
+  vnm <- qnameCG $ varName v
+  arg <- expCG x
+
+  let argty = varType v
+      mkBody | [] <- ms = mkEmptyCase vnm ty
+             | isBoolType argty = mkBoolCase vnm def ndefs
+             | isConcreteType argty = mkConcreteCase vnm def ndefs
+             | isSmtenPrimType argty = mkSmtenPrimCase vnm argty def ndefs
+             | otherwise = mkDataCase vnm argty def ndefs
+
+  body <- mkBody
+  let binds = [S.Val vnm Nothing arg]
+  return $ S.LetE binds body
+  
         
 -- newtype construction cast
 expCG (Cast x c)
@@ -108,64 +125,31 @@ denewtypeCast c =
            in Just $ dataConName dcon
         _ -> Nothing
 
--- Generate code for a case expression.
-caseCG :: CoreExpr -> Var -> Type -> [CoreAlt] -> CG S.Exp
 
 -- Empty case expressions:
 --   case x of {}
 -- Translated to:
 --   x `seq` (emptycase :: t)
-caseCG x v ty [] = do
-  x' <- expCG x
+mkEmptyCase :: S.Name -> Type -> CG S.Exp
+mkEmptyCase x ty = do
   ty' <- typeCG ty
   seqnm <- usequalified "Prelude" "seq"
   err <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "emptycase"
   let terr = S.SigE err ty'
-      seq = S.AppE (S.AppE (S.VarE seqnm) x') terr
-  return seq
+  return $ S.AppE (S.AppE (S.VarE seqnm) (S.VarE x)) terr
 
-caseCG x v ty ms = do
-  let (ndefs, def) = findDefault ms
-  vnm <- qnameCG $ varName v
-  arg <- expCG x
 
-  -- generate the concrete alternatives. We always do this in order to keep
-  -- concrete evaluation fast.
-  (mbs, cms) <- unzip <$> mapM altCG ndefs
-
-  -- generate the symbolic (and default) alternatives.
-  sms <- mkSymAlts vnm (varType v) ty def cms
-  let casee = S.CaseE (S.VarE vnm) (concat [cms, sms])
-      binds = [S.Val vnm Nothing arg] ++ mbs
-  return $ S.LetE binds casee
-               
-
--- mkSymAlts vnm argty ty default alts
---  Generate the set of alternatives for the case branch which will follow the
---  concrete alternatives. This should also generate a concrete default
---  alternative if needed.
-mkSymAlts :: S.Name -> Type -> Type -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
-mkSymAlts vnm argty ty mdef ms 
- | isBoolType argty = mkSymBool vnm mdef ms
- | isConcreteType argty = mkDefault mdef
- | isSmtenPrimType argty = mkSymSmtenPrim vnm argty mdef ms
- | otherwise = mkSymData vnm argty mdef ms
-
--- mkSymBool v mdef ms
---   Generate the symbolic alternatives for case expression with boolean
---   argument.
---
---  _ -> ite0 v tb fb
+-- mkBoolCase v mdef ms
+-- Generates code for a case expression with boolean arguments:
+--  ite0 v tb fb
 --    where tb is the True body
 --          fb is the False body
-mkSymBool :: S.Name -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
-mkSymBool vnm mdef ms = do
+mkBoolCase :: S.Name -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
+mkBoolCase vnm mdef ms = do
+  alts <- mapM altCG ms
   let mkite tb fb = do
         itenm <- usequalified "Smten.Runtime.SmtenHS" "ite"
-        return $ foldl1 S.AppE [
-          S.VarE itenm, 
-          S.VarE vnm,
-          tb, fb]
+        return $ foldl1 S.AppE [S.VarE itenm, S.VarE vnm, tb, fb]
 
       getFalse :: S.Alt -> Maybe S.Exp
       getFalse (S.Alt (S.ConP n []) x)
@@ -175,43 +159,47 @@ mkSymBool vnm mdef ms = do
       getTrue :: S.Alt -> Maybe S.Exp
       getTrue (S.Alt (S.ConP n []) x)
            | take 4 (reverse n) == reverse "True" = Just x
-            
       getTrue _ = Nothing
 
-  body <- case (ms, mdef) of
-            ([a, b], Nothing)
-               | Just fb <- getFalse a, Just tb <- getTrue b -> mkite tb fb
-            ([a], Just b)
-               | Just tb <- getTrue a -> do
-                    fb <- expCG b
-                    mkite tb fb
-               | Just fb <- getFalse a -> do
-                    tb <- expCG b
-                    mkite tb fb
-            ([], Just b) -> expCG b
-  return [S.Alt (S.VarP "_") body]
+  case (alts, mdef) of
+    ([a, b], Nothing)
+       | Just fb <- getFalse a
+       , Just tb <- getTrue b -> mkite tb fb
+    ([a], Just b)
+       | Just tb <- getTrue a -> do
+            fb <- expCG b
+            mkite tb fb
+       | Just fb <- getFalse a -> do
+            tb <- expCG b
+            mkite tb fb
+    ([], Just b) -> expCG b
 
--- mkDefault mdef
---  Generate the default alternative.
+-- mkConcreteCase vnm mdef ms
+--  Generate code for a concrete case expression.
+mkConcreteCase :: S.Name -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
+mkConcreteCase vnm mdef ms = do
+  ms' <- mapM altCG ms 
+  def <- mkDefault mdef
+  return $ S.CaseE (S.VarE vnm) (ms' ++ def)
+
 mkDefault :: Maybe CoreExpr -> CG [S.Alt]
 mkDefault Nothing = return []
 mkDefault (Just b) = do
-  b' <- expCG b
-  return [S.Alt (S.VarP "_") b']
+  x <- S.Alt S.wildP <$> expCG b
+  return [x]
 
 -- For "Smten" primitive types: Char and Int
---   X# _ -> default    
---   _ -> let casef __vnm =
---              case __vnm of
---                   X# ... -> ...
---                   X# ... -> ...
---                   X# -> default
---                   Ite p a b -> ite0 p (casef a) (casef b)
---                   Error msg -> error0 msg
---        in casef vnm
--- TODO: actually generate the first 'default' alternative.
-mkSymSmtenPrim :: S.Name -> Type -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
-mkSymSmtenPrim vnm argty mdef ms = do
+--   let casef __vnm =
+--         case __vnm of
+--              X# ... -> ...
+--              X# ... -> ...
+--              X# -> default
+--              Ite p a b -> ite0 p (casef a) (casef b)
+--              Error msg -> error0 msg
+--   in casef vnm
+mkSmtenPrimCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
+mkSmtenPrimCase vnm argty mdef ms = do
+  alts <- mapM altCG ms
   uniqf <- lift $ getUniqueM
   uniqv <- lift $ getUniqueM
   let occf = mkVarOcc "casef"
@@ -243,94 +231,72 @@ mkSymSmtenPrim vnm argty mdef ms = do
       erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
                      (S.AppE (S.VarE err0nm) (S.VarE "msg"))
 
-      allalts = ms ++ [itealt, erralt] ++ defalt
+      allalts = alts ++ [itealt, erralt] ++ defalt
       casee = S.CaseE (S.VarE vnmv') allalts
       lame = S.LamE vnmv' casee
       bind = S.Val casefnm Nothing lame
       ine = S.AppE (S.VarE casefnm) (S.VarE vnm)
-  return [S.Alt (S.VarP "_") (S.LetE [bind] ine)]
+  return (S.LetE [bind] ine)
 
 -- For regular algebraic data types.
---   _ -> let casef __vnm =
---              case __vnm of
---                FooA a b ... -> ...
---                FooB a b ... -> ...
---                ...
---                Foo_Error msg -> error0 msg
---                Foo_Ite {} -> flsapp casef __vnm [__iteFooA __vnm, __iteFooB __vnm, ...]
---                _ -> default
---        in casef vnm
-mkSymData :: S.Name -> Type -> Maybe CoreExpr -> [S.Alt] -> CG [S.Alt]
-mkSymData vnm argty mdef ms = do
-  uniqf <- lift $ getUniqueM
-  uniqv <- lift $ getUniqueM
-  let occf = mkVarOcc "casef"
-      casef = mkSystemName uniqf occf
-
-      occv = mkVarOcc vnm
-      vnmv = mkSystemName uniqv occv
+-- merge [(gdA v, let x1 = flA1 v
+--                    x2 = flA2 v
+--                    ...
+--                in bodyA),
+--        (gdB v, let ... in bodyB),
+--        (gdErr v, error0 (flErr v)),
+--        (True, default)]
+mkDataCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
+mkDataCase vnm argty mdef ms = do
   case splitTyConApp_maybe argty of
       Just (tycon, _) -> do
           let tynm = tyConName tycon
-          flsappnm <- usequalified "Smten.Runtime.SmtenHS" "flsapp"
+              mkalt :: CoreAlt -> CG S.Exp
+              mkalt (DataAlt k, xs, body) = do
+                gdnm <- qguardnmCG (dataConName k)
+                let first = S.AppE (S.VarE gdnm) (S.VarE vnm)
+                    mkbind (i, x) = do
+                      flnm <- qfieldnmCG i (dataConName k)
+                      x' <- qnameCG $ varName x
+                      return $ S.Val x' Nothing (S.AppE (S.VarE flnm) (S.VarE vnm)) 
+                binds <- mapM mkbind (zip [1..] xs)
+                body' <- expCG body
+                let second = S.LetE binds body'
+                return $ S.tup2E first second
+
           err0nm <- usequalified "Smten.Runtime.SmtenHS" "error0"
+          gderrnm <- qguarderrnmCG tynm
+          flerrnm <- qfielderrnmCG tynm
+          let errfst = S.AppE (S.VarE gderrnm) (S.VarE vnm)
+              errsnd = S.AppE (S.VarE err0nm) (S.AppE (S.VarE flerrnm) (S.VarE vnm))
+              erralt = S.tup2E errfst errsnd
 
-          vnmv' <- qnameCG vnmv
-          casefnm <- qnameCG casef
-          qerrnm <- qerrnmCG tynm
-          qitenm <- qitenmCG tynm
-          qiteflnms <- mapM (qiteflnmCG . dataConName) (tyConDataCons tycon)
-          qiteerrnm <- qiteerrnmCG tynm
-          defalt <- mkDefault mdef
-          let itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnmv') | qiteflnm <- qiteflnms]
-              iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE vnmv')
-              itebody = foldl1 S.AppE [
-                 S.VarE flsappnm,
-                 S.VarE casefnm,
-                 S.VarE vnmv',
-                 S.ListE (itefls ++ [iteerr])]
-              itealt = S.Alt (S.RecP qitenm) itebody
+          def <- case mdef of
+                   Nothing -> return []
+                   Just b -> do
+                     tt <- S.VarE <$> usequalified "Smten.Runtime.Types" "True"
+                     e <- S.tup2E tt <$> expCG b
+                     return [e]
 
-              erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
-                             (S.AppE (S.VarE err0nm) (S.VarE "msg"))
-
-              allalts = ms ++ [itealt, erralt] ++ defalt
-              casee = S.CaseE (S.VarE vnmv') allalts
-              lame = S.LamE vnmv' casee
-              bind = S.Val casefnm Nothing lame
-              ine = S.AppE (S.VarE casefnm) (S.VarE vnm)
-          return [S.Alt (S.VarP "_") (S.LetE [bind] ine)]
+          alts <- mapM mkalt ms
+          let choices = alts ++ [erralt] ++ def
+          merge <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "merge"
+          return $ S.AppE merge (S.ListE choices)
       _ -> do
           lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr argty)
-          return [S.Alt (S.VarP "_") (S.VarE "???")]
+          return (S.VarE "???")
       
 
--- | Translate a case alternative directly to haskell
-altCG :: CoreAlt -> CG (S.Val, S.Alt)
-altCG (LitAlt l, _, body) = do
-  uniqf <- lift $ getUniqueM
-  let occf = mkVarOcc "f"
-      ff = mkSystemName uniqf occf
-  ff' <- nameCG ff
-  body' <- expCG body
-  let altf = S.Val ff' Nothing body'
-      alta = S.Alt (S.LitP (litCG l)) (S.VarE ff')
-  return (altf, alta)
+-- | Translate a case alternative directly to haskell,
+-- without special translation for handling symbolic things.
+altCG :: CoreAlt -> CG S.Alt
+altCG (LitAlt l, _, body) = S.Alt (S.LitP (litCG l)) <$> expCG body
 altCG (DataAlt k, xs, body) = do
-  uniqf <- lift $ getUniqueM
-  let occf = mkVarOcc "f"
-      ff = mkSystemName uniqf occf
-  ff' <- nameCG ff
   xs' <- mapM (qnameCG . varName) xs
   body' <- expCG body
   k' <- qnameCG $ getName k
-  ty <- topTypeCG $ mkFunTys (map varType xs) (exprType body)
-  let lam = foldr (S.LamE) body' xs'
-      altf = S.Val ff' (Just ty) lam
-
-      applied = foldl S.AppE (S.VarE ff') (map S.VarE xs')
-      alta = S.Alt (S.ConP k' (map S.VarP xs')) applied
-  return (altf, alta)
+  let alta = S.Alt (S.ConP k' (map S.VarP xs')) body'
+  return alta
 
 isBoolType :: Type -> Bool
 isBoolType = isType "Bool" ["Smten.Data.Bool0", "GHC.Types"]
@@ -353,9 +319,14 @@ isType wnm wmods t =
                 modnm = moduleNameString . moduleName <$> nameModule_maybe nm
             in occnm == wnm && modnm `elem` (map Just wmods)
         _ -> False
+
+isConstructor :: Var -> Bool
+isConstructor v = case idDetails v of
+                    DataConWorkId _ -> True
+                    _ -> False
             
 litCG :: Literal -> S.Literal
-litCG (MachStr str) = S.StringL (unpackFS str)
+litCG (MachStr str) = S.StringHashL (unpackFS str)
 litCG (MachChar c) = S.CharL c
 litCG (MachInt i) = S.IntL i
 litCG (MachWord i) = S.WordL i

@@ -1,12 +1,15 @@
 
 module Smten.Plugin.Name (
-    nameCG, qnameCG, qtynameCG,
+    nameCG, qnameCG,
     errnmCG, qerrnmCG,
-    iteerrnmCG, qiteerrnmCG,
-    iteflnmCG, qiteflnmCG,
     itenmCG, qitenmCG,
-    nullitenmCG, qnullitenmCG,
-    liftitenmCG, qliftitenmCG,
+    tynameCG, qtynameCG,
+    guardnmCG, qguardnmCG,
+    fieldnmCG, qfieldnmCG,
+    guarderrnmCG, qguarderrnmCG,
+    fielderrnmCG, qfielderrnmCG,
+    nullnmCG, qnullnmCG,
+    connmCG, qconnmCG,
     denewtynmCG, qdenewtynmCG,
     ) where
 
@@ -99,53 +102,64 @@ nameCG = nmCG False id False
 qnameCG :: Name -> CG S.Name
 qnameCG = nmCG False id True
 
--- Generate code for a qualified name.
+tynameCG :: Name -> CG S.Name
+tynameCG = nmCG True id False
+
 qtynameCG :: Name -> CG S.Name
 qtynameCG = nmCG True id True
 
--- | Generate code for the err constructor of a given data type.
-errnmCG :: Name -> CG S.Name
-errnmCG = nmCG True (++ "_Err") False
+guardnmCG :: Name -> CG S.Name
+guardnmCG = nmCG False ("gd" ++) False
 
--- | qualified type constructor name.
-qerrnmCG :: Name -> CG S.Name
-qerrnmCG = nmCG True (++ "_Err") True
+qguardnmCG :: Name -> CG S.Name
+qguardnmCG = nmCG False ("gd" ++) True
 
--- | Generate code for the ite constructor of a given data type.
-itenmCG :: Name -> CG S.Name
-itenmCG = nmCG True (++ "_Ite") False
+fieldnmCG :: Int -> Name -> CG S.Name
+fieldnmCG i = nmCG False (("fl" ++) . (++ show i)) False
 
--- | qualified type constructor name.
-qitenmCG :: Name -> CG S.Name
-qitenmCG = nmCG True (++ "_Ite") True
+qfieldnmCG :: Int -> Name -> CG S.Name
+qfieldnmCG i = nmCG False (("fl" ++) . (++ show i)) True
 
-iteflnmCG :: Name -> CG S.Name
-iteflnmCG = nmCG False ("__ite" ++) False
+guarderrnmCG :: Name -> CG S.Name
+guarderrnmCG = nmCG True ("gdErr_" ++) False
 
-qiteflnmCG :: Name -> CG S.Name
-qiteflnmCG = nmCG False ("__ite" ++) True
+qguarderrnmCG :: Name -> CG S.Name
+qguarderrnmCG = nmCG True ("gdErr_" ++) True
 
-iteerrnmCG ::  Name -> CG S.Name
-iteerrnmCG = nmCG True ("__iteErr" ++) False
+fielderrnmCG :: Name -> CG S.Name
+fielderrnmCG = nmCG True ("flErr_" ++) False
 
-qiteerrnmCG :: Name -> CG S.Name
-qiteerrnmCG = nmCG True ("__iteErr" ++) True
+qfielderrnmCG :: Name -> CG S.Name
+qfielderrnmCG = nmCG True ("flErr_" ++) True
 
-nullitenmCG :: Name -> CG S.Name
-nullitenmCG = nmCG True ("__NullIte" ++) False
+nullnmCG :: Name -> CG S.Name
+nullnmCG = nmCG True ("__Null" ++) False
 
-qnullitenmCG :: Name -> CG S.Name
-qnullitenmCG = nmCG True ("__NullIte" ++) True
+qnullnmCG :: Name -> CG S.Name
+qnullnmCG = nmCG True ("__Null" ++) True
 
-liftitenmCG :: Name -> CG S.Name
-liftitenmCG = nmCG True ("__LiftIte" ++) False
+-- Name of the constructor function for a given constructor.
+connmCG :: Name -> CG S.Name
+connmCG = nmCG False ("__" ++) False
 
-qliftitenmCG :: Name -> CG S.Name
-qliftitenmCG = nmCG True ("__LiftIte" ++) True
+qconnmCG :: Name -> CG S.Name
+qconnmCG = nmCG False ("__" ++) True
 
 denewtynmCG :: Name -> CG S.Name
 denewtynmCG = nmCG True ("__deNewTy" ++) False
 
 qdenewtynmCG :: Name -> CG S.Name
 qdenewtynmCG = nmCG True ("__deNewTy" ++) True
+
+errnmCG :: Name -> CG S.Name
+errnmCG = nmCG True (++ "_Err") False
+
+qerrnmCG :: Name -> CG S.Name
+qerrnmCG = nmCG True (++ "_Err") True
+
+qitenmCG :: Name -> CG S.Name
+qitenmCG = nmCG True (++ "_Ite") True
+
+itenmCG :: Name -> CG S.Name
+itenmCG = nmCG True (++ "_Ite") False
 

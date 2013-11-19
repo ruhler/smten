@@ -79,6 +79,7 @@ data Pat = LitP Literal
 
 data Literal = 
     StringL String
+  | StringHashL String
   | CharL Char
   | IntL Integer
   | WordL Integer

@@ -26,7 +26,10 @@ classCG t cls dc
       cn <- nameCG $ dataConName dc
       t' <- nameCG $ tyConName t
       vs <- mapM (qnameCG . varName) (tyConTyVars t)
-      return [S.NewTypeD t' vs (S.RecC cn [denew])]
+      cn' <- connmCG $ dataConName dc
+      return [
+        S.NewTypeD t' vs (S.RecC cn [denew]),
+        S.ValD $ S.Val cn' Nothing (S.VarE cn)]
 
   | otherwise = do
       let mkfield :: Id -> CG S.Type
@@ -39,7 +42,10 @@ classCG t cls dc
       cn <- nameCG $ dataConName dc
       t' <- nameCG $ tyConName t
       vs <- mapM (qnameCG . varName) (tyConTyVars t)
-      return [S.DataD (S.Data t' vs [S.Con cn fields])]
+      cn' <- connmCG $ dataConName dc
+      return [
+        S.DataD (S.Data t' vs [S.Con cn fields]),
+        S.ValD $ S.Val cn' Nothing (S.VarE cn)]
 
 
 

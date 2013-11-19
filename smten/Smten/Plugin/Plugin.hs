@@ -102,7 +102,9 @@ exportCG (AnId x)
   | otherwise = do
     nm <- qnameCG (varName x)
     return [S.VarExport nm]
-exportCG (ADataCon _) = return []
+exportCG (ADataCon d) = do
+    nm <- qconnmCG $ dataConName d
+    return [S.VarExport nm]
 exportCG (ATyCon t)
   | isSynTyCon t = return []
   | otherwise = do

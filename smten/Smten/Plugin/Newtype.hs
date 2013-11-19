@@ -18,8 +18,9 @@ newtypeCG t constr = do
     let n = tyConName t
         tyvars = tyConTyVars t
     ntD <- newtypeD t constr
+    conD <- conD n
     shsD <- smtenHS n tyvars constr
-    return $ concat [ntD, shsD]
+    return $ concat [ntD, conD, shsD]
 
 -- newtype Foo a b ... = Foo {
 --   deFoo :: ...
@@ -37,6 +38,13 @@ newtypeD t constr = do
     vs <- mapM (qnameCG . varName) (tyConTyVars t)
     k <- mkcon constr
     return [S.NewTypeD nm' vs k]
+
+-- __Foo = Foo
+conD :: Name -> CG [S.Dec]
+conD n = do
+  nm <- nameCG n
+  cnm <- connmCG n
+  return [S.ValD $ S.Val cnm Nothing (S.VarE nm)]
   
 -- Note: we currently don't support crazy kinded instances of SmtenHS. This
 -- means we are limited to "linear" kinds of the form (* -> * -> ... -> *)

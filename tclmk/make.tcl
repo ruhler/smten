@@ -115,7 +115,7 @@ proc smten-lib {} {
         hrun cabal configure --enable-tests --enable-benchmarks \
             --with-compiler=$::GHC
         hrun cabal build
-        hrun cabal test
+        #hrun cabal test
         hrun cabal sdist
         hrun cabal install --with-compiler=$::GHC
     }
@@ -132,7 +132,7 @@ proc smten-stp {} {
 
         hrun cabal configure --enable-tests --enable-benchmarks --with-compiler=$::GHC
         hrun cabal build
-        hrun cabal test
+        #hrun cabal test
         hrun cabal sdist
         hrun cabal install --with-compiler=$::GHC
     }
@@ -149,7 +149,7 @@ proc smten-minisat {} {
 
         hrun cabal configure --enable-tests --enable-benchmarks --with-compiler=$::GHC
         hrun cabal build
-        hrun cabal test
+        #hrun cabal test
         hrun cabal sdist
         hrun cabal install --with-compiler=$::GHC
     }

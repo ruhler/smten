@@ -18,7 +18,8 @@ class Ppr a where
 
 renderToFile :: (Ppr a) => FilePath -> a -> IO ()
 renderToFile fp x = withFile fp WriteMode $ \h -> do
-   displayIO h (renderCompact (ppr x))
+   --displayIO h (renderCompact (ppr x))
+   displayIO h (renderPretty 0.8 200 (ppr x))
 
 instance Ppr String where
     ppr = text . pack
@@ -53,7 +54,7 @@ pprctx ctx = if null ctx
 
 instance Ppr Export where
   ppr (VarExport x) = ppr x
-  ppr (TyConExport x) = ppr x <> parens (ppr "..")
+  ppr (TyConExport x) = ppr x <> ppr "(..)"
 
 instance Ppr Dec where
     ppr (DataD x) = ppr x
@@ -172,7 +173,8 @@ instance Ppr Pat where
     ppr (AsP nm p) = ppr nm <> ppr "@" <> ppr p
 
 instance Ppr Literal where
-    ppr (StringL str) = ppr (show str) <> ppr "#"
+    ppr (StringL str) = ppr (show str)
+    ppr (StringHashL str) = ppr (show str) <> ppr "#"
     ppr (CharL c) = ppr (show c) <> ppr "#"
     ppr (IntL i) = ppr (show i) <> ppr "#"
     ppr (WordL i) = ppr (show i) <> ppr "##"

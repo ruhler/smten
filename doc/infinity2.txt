@@ -263,3 +263,47 @@ The first step can be done on the master branch. The second two, we probably
 want to move to a different branch, because they are big, and probably won't
 work until a number of adjustments have been made.
 
+Update: Mon, Nov 18
+-------------------
+1. I started separating Bool from Formula, but there are complications. Mainly
+that many primitives involve the Bool type, such as integer and bit-vector
+comparisons. It would be nice for me to know what the Bool type looks like so
+I can implement those primitives properly, but if I separate Bool from
+Formula, I don't really know what that bool type looks like.
+
+2. Optimizations lead to problems
+I don't understand how the optimizations for concrete value data types
+interact with handling errors. There is certainly some undesired complication
+there.
+
+If, however, I remove these optimizations entirely, I believe the
+implementation makes much more sense. For that reason, I propose the removal
+of these optimizations first, achieve a correct (if a bit slow)
+implementation, then think about how I can improve the performance of that
+implementation.
+
+This is especially supported by the knowledge that I've never actually
+evaluated these optimizations. Who knows? The "unoptimized" version may be
+just as fast or faster, and is certainly much cleaner.
+
+
+Required Implementation Steps (order not important?):
+* Remove explicit errors from general datatypes.
+  To start we can try to catch these in the assert traversal.
+  If that doesn't fix all, we can try to catch errors in iteF and friends and
+  convert them to explicit errors.
+
+* Remove optimizations from datatypes:
+** Each datatype should have a single constructor.
+** ite for the datatype must be lazy in the branches.
+   Which only works without the optimizations!
+
+* Remove optimizations from Symbolic monad:
+   Change it to be Fresh (Bool, a), where Fresh is a monad for allocating free
+   variables with the property that the fresh variables are allocated on
+   demand, in the order demanded (not a fixed order).
+
+* Change representation of Bool to be a disjunction of Finite formulas.
+ We may also need to change Integer and Bit. I'm not sure.
+ Update iteF and friends to properly maintain the disjunction.
+ 

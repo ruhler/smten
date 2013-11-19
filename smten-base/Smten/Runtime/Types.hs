@@ -8,7 +8,7 @@ module Smten.Runtime.Types (
     Type(..), Any(..),
     ErrorString(..), errstr, doerr, stableNameEq,
     Model, model, m_vars, m_cached, lookupBool, lookupInteger, lookupBit,
-    Bool(..), andF, notF, iteF,
+    Bool(..), __True, __False, andF, notF, iteF,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
     Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,
     or_Bit, and_Bit, shl_Bit, lshr_Bit, not_Bit, concat_Bit,
@@ -104,6 +104,12 @@ data Bool where
    Bool_Var :: FreeID -> Bool
    Bool_Err :: ErrorString -> Bool
 
+__True :: Bool
+__True = True
+
+__False :: Bool
+__False = False
+
 instance Show Bool where
     show True = "True"
     show False = "False"
@@ -121,8 +127,8 @@ andF :: Bool -> Bool -> Bool
 andF True x = x
 andF False x = False
 andF a@(Bool_Err {}) _ = a
-andF a True = a
-andF a False = False
+--andF a True = a
+--andF a False = False
 --andF _ b@(Bool_Err {}) = b
 andF a b = Bool_And a b
 
@@ -138,9 +144,10 @@ iteF True x _ = x
 iteF False _ x = x
 iteF (Bool_Not x) a b = iteF x b a
 iteF x@(Bool_Err {}) _ _ = x
-iteF p True True = True
-iteF p False b = notF p `andF` b
-iteF p a False = p `andF` a
+-- -- TODO: these optimizations are too strict!
+--iteF p True True = True
+--iteF p False b = notF p `andF` b
+--iteF p a False = p `andF` a
 iteF p a b = Bool_Ite p a b
 
 data Integer =

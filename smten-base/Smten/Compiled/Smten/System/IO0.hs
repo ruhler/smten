@@ -15,7 +15,7 @@ bind_io :: P.IO a -> (a -> P.IO b) -> P.IO b
 bind_io = {-# SCC "PRIM_BIND_IO" #-} (P.>>=)
 
 putChar :: Char -> P.IO Unit__
-putChar c = {-# SCC "PRIM_PUT_CHAR" #-} P.putChar (toHSChar c) P.>> P.return Unit__
+putChar c = {-# SCC "PRIM_PUT_CHAR" #-} P.putChar (toHSChar c) P.>> P.return __Unit__
 
 readFile :: List__ Char -> P.IO (List__ Char)
 readFile = {-# SCC "PRIM_READ_FILE" #-} symapp (\x -> do
