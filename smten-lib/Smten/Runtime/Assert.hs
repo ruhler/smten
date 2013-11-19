@@ -105,10 +105,6 @@ instance Supported S.Bool where
 
     define ctx (S.Bool_And a b) = binary (and_bool ctx) a b
     define ctx (S.Bool_Not a) = unary (not_bool ctx) a
-    define ctx (S.Bool_Err msg) = liftIO $ do
-       id <- fresh
-       declare ctx S.BoolT (freenm id)
-       var ctx (freenm id)
 
     cache _ = asks ar_boolcache
 
@@ -134,10 +130,6 @@ instance Supported S.Integer where
         b' <- use b
         liftIO $ ite_integer ctx p' a' b'
     define ctx (S.Integer_Var id) = uservar ctx id S.IntegerT
-    define ctx (S.Integer_Err msg) = liftIO $ do
-        id <- fresh
-        declare ctx S.IntegerT (freenm id)
-        var ctx (freenm id)
 
     cache _ = asks ar_intcache
 
@@ -171,11 +163,5 @@ instance Supported (S.Bit n) where
         b' <- use b
         liftIO $ ite_bit ctx p' a' b'
     define ctx (S.Bit_Var w id) = uservar ctx id (S.BitT w)
-    define ctx (S.Bit_Err msg) = do
-      w <- asks ar_bitwidth
-      liftIO $ do
-        id <- fresh
-        declare ctx (S.BitT w) (freenm id)
-        var ctx (freenm id)
 
     cache _ = asks ar_bitcache

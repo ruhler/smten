@@ -27,14 +27,11 @@ dataCG t constrs = do
 --    gd_A :: Bool, flA1 :: A1, flA2 :: A2, flA3 :: A3, ...
 --    gd_B :: Bool, flB1 :: B1, flB2 :: B2, flB3 :: B3, ...
 --    ...
---    gdError :: Bool, flError ErrorString 
 -- }
 mkDataD :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 mkDataD nm tyvars constrs = do
-  errstrnm <- usequalified "Smten.Runtime.Types" "ErrorString"
   boolnm <- usequalified "Smten.Runtime.Types" "Bool"
   let boolty = S.ConAppT boolnm []
-      errty = S.ConAppT errstrnm []
       mkcon :: DataCon -> CG [S.RecField]
       mkcon d = do
         let dnm = dataConName d
@@ -47,11 +44,8 @@ mkDataD nm tyvars constrs = do
 
   nm' <- tynameCG nm
   vs <- mapM (qnameCG . varName) tyvars
-  ks <- concat <$> mapM mkcon constrs
-  gderrnm <- guarderrnmCG nm
-  flerrnm <- fielderrnmCG nm
-  let fields = S.RecField gderrnm boolty : S.RecField flerrnm errty : ks
-      con = S.RecC nm' fields
+  fields <- concat <$> mapM mkcon constrs
+  let con = S.RecC nm' fields
   return [S.DataD (S.Data nm' vs [con])]
 
 -- Note: we currently don't support crazy kinded instances of SmtenHS. This
@@ -63,7 +57,6 @@ mkDataD nm tyvars constrs = do
 --
 -- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
 --   realizeN = ...
---   errorN = ...
 --   ...
 smtenHS :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 smtenHS nm tyvs cs = do
@@ -77,8 +70,7 @@ smtenHS nm tyvs cs = do
    let ty = S.ConAppT smtenhsnm [S.ConAppT qtyname tyvs']
    rel <- realizeD nm n cs
    ite <- iteD nm n cs
-   err <- errorD nm n
-   return [S.InstD ctx ty [rel, ite, err]]
+   return [S.InstD ctx ty [rel, ite]]
 
 -- iteN = \p a b -> Foo {
 --   gd* = ite0 p (gd* a) (gd* b),
@@ -107,25 +99,10 @@ iteD nm k cs = do
 
   nm' <- qtynameCG nm
   ks <- concat <$> mapM mkcon cs
-  gderrnm <- qguarderrnmCG nm
-  flerrnm <- qfielderrnmCG nm
-  let upds = map mkupd $ gderrnm : flerrnm : ks
+  let upds = map mkupd $ ks
       upd = S.RecE (S.VarE nm') upds
       body = S.LamE "p" (S.LamE "a" (S.LamE "b" upd))
   return $ S.Method ("ite" ++ show k) body
-
---   errorN = \x -> __NullFoo { gdError = True, flError = x }
-errorD :: Name -> Int -> CG S.Method
-errorD nm n = do
-  truenm <- usequalified "Smten.Runtime.Types" "True"
-  nullnm <- qnullnmCG nm
-  gderrnm <- qguarderrnmCG nm
-  flerrnm <- qfielderrnmCG nm
-  let body = S.RecE (S.VarE nullnm) [
-                S.Field gderrnm (S.VarE truenm),
-                S.Field flerrnm (S.VarE "x")]
-      lam = S.LamE "x" body
-  return $ S.Method ("error" ++ show n) lam
 
 --   realizeN = \m -> \x -> Foo {
 --     gd* = realize m (gd* x),
@@ -153,9 +130,7 @@ realizeD nm k cs = do
 
   nm' <- qtynameCG nm
   ks <- concat <$> mapM mkcon cs
-  gderrnm <- qguarderrnmCG nm
-  flerrnm <- qfielderrnmCG nm
-  let upds = map mkupd $ gderrnm : flerrnm : ks
+  let upds = map mkupd $ ks
       upd = S.RecE (S.VarE nm') upds
       body = S.LamE "m" (S.LamE "x" upd)
   return $ S.Method ("realize" ++ show k) body
@@ -181,13 +156,8 @@ mkNullD t nm ts cs = do
         fields <- mapM (mkfield . fst) $ zip [1..] (dataConOrigArgTys d)
         return (S.Field gdnm (S.VarE false) : fields)
 
-  ks <- concat <$> mapM mkcon cs
-  gderrnm <- qguarderrnmCG nm
-  flerrnm <- qfielderrnmCG nm
-  let upds = S.Field gderrnm (S.VarE false)
-           : S.Field flerrnm (S.AppE (S.VarE unused) (S.LitE (S.StringL flerrnm)))
-           : ks
-      body = S.RecE (S.VarE nm') upds
+  upds <- concat <$> mapM mkcon cs
+  let body = S.RecE (S.VarE nm') upds
       dt = mkTyConApp t (mkTyVarTys ts)
   ty <- topTypeCG dt
   nullnm <- nullnmCG nm

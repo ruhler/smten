@@ -195,7 +195,6 @@ mkDefault (Just b) = do
 --              X# ... -> ...
 --              X# -> default
 --              Ite p a b -> ite0 p (casef a) (casef b)
---              Error msg -> error0 msg
 --   in casef vnm
 mkSmtenPrimCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkSmtenPrimCase vnm argty mdef ms = do
@@ -213,11 +212,9 @@ mkSmtenPrimCase vnm argty mdef ms = do
       tynm = tyConName tycon
   
   ite0nm <- usequalified "Smten.Runtime.SmtenHS" "ite0"
-  err0nm <- usequalified "Smten.Runtime.SmtenHS" "error0"
 
   vnmv' <- qnameCG vnmv
   casefnm <- qnameCG casef
-  qerrnm <- qerrnmCG tynm
   qitenm <- qitenmCG tynm
   defalt <- mkDefault mdef
   let itebody = foldl1 S.AppE [
@@ -228,10 +225,7 @@ mkSmtenPrimCase vnm argty mdef ms = do
       itepat = S.ConP qitenm [S.VarP "p", S.VarP "a", S.VarP "b"]
       itealt = S.Alt itepat itebody
 
-      erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
-                     (S.AppE (S.VarE err0nm) (S.VarE "msg"))
-
-      allalts = alts ++ [itealt, erralt] ++ defalt
+      allalts = alts ++ [itealt] ++ defalt
       casee = S.CaseE (S.VarE vnmv') allalts
       lame = S.LamE vnmv' casee
       bind = S.Val casefnm Nothing lame
@@ -244,14 +238,12 @@ mkSmtenPrimCase vnm argty mdef ms = do
 --                    ...
 --                in bodyA),
 --        (gdB v, let ... in bodyB),
---        (gdErr v, error0 (flErr v)),
 --        (True, default)]
 mkDataCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkDataCase vnm argty mdef ms = do
   case splitTyConApp_maybe argty of
       Just (tycon, _) -> do
-          let tynm = tyConName tycon
-              mkalt :: CoreAlt -> CG S.Exp
+          let mkalt :: CoreAlt -> CG S.Exp
               mkalt (DataAlt k, xs, body) = do
                 gdnm <- qguardnmCG (dataConName k)
                 let first = S.AppE (S.VarE gdnm) (S.VarE vnm)
@@ -264,13 +256,6 @@ mkDataCase vnm argty mdef ms = do
                 let second = S.LetE binds body'
                 return $ S.tup2E first second
 
-          err0nm <- usequalified "Smten.Runtime.SmtenHS" "error0"
-          gderrnm <- qguarderrnmCG tynm
-          flerrnm <- qfielderrnmCG tynm
-          let errfst = S.AppE (S.VarE gderrnm) (S.VarE vnm)
-              errsnd = S.AppE (S.VarE err0nm) (S.AppE (S.VarE flerrnm) (S.VarE vnm))
-              erralt = S.tup2E errfst errsnd
-
           def <- case mdef of
                    Nothing -> return []
                    Just b -> do
@@ -279,7 +264,7 @@ mkDataCase vnm argty mdef ms = do
                      return [e]
 
           alts <- mapM mkalt ms
-          let choices = alts ++ [erralt] ++ def
+          let choices = alts ++ def
           merge <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "merge"
           return $ S.AppE merge (S.ListE choices)
       _ -> do
@@ -337,3 +322,4 @@ litCG (MachWord64 {}) = error "Smten Plugin TODO: litCG MachWord64"
 litCG (MachFloat x) = S.FloatL x
 litCG (MachDouble x) = S.DoubleL x
 litCG (MachLabel {}) = error "Smten Plugin TODO: litCG MachLabel"
+

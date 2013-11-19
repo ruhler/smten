@@ -55,7 +55,6 @@ conD n = do
 --
 -- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
 --   realizeN = ...
---   errorN = ...
 --   ...
 smtenHS :: Name -> [TyVar] -> DataCon -> CG [S.Dec]
 smtenHS nm tyvs constr = do
@@ -70,8 +69,7 @@ smtenHS nm tyvs constr = do
        cn = dataConName constr
    rel <- realizeD cn n
    ite <- iteD cn n
-   err <- errorD cn n
-   return [S.InstD ctx ty [rel, ite, err]]
+   return [S.InstD ctx ty [rel, ite]]
 
 -- iteN = \p a b = Foo (ite0 p (__deNewTyFoo a) (__deNewTyFoo b))
 iteD :: Name -> Int -> CG S.Method
@@ -87,15 +85,6 @@ iteD nm k = do
       foo = S.AppE (S.VarE cn) ite
       body = S.LamE "p" (S.LamE "a" (S.LamE "b" foo))
   return $ S.Method ("ite" ++ show k) body
-
---   errorN = \msg -> Foo (error0 msg)
-errorD :: Name -> Int -> CG S.Method
-errorD nm n = do
-  err0nm <- usequalified "Smten.Runtime.SmtenHS" "error0"
-  cn <- qnameCG nm
-  let err = S.AppE (S.VarE err0nm) (S.VarE "msg")
-      body = S.LamE "msg" (S.AppE (S.VarE cn) err)
-  return $ S.Method ("error" ++ show n) body
 
 --   realizeN = \m x -> Foo (realize0 m (__deNewTyFoo x))
 realizeD :: Name -> Int -> CG S.Method

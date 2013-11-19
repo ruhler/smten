@@ -31,8 +31,7 @@ instance SymbolicOf [a] (List__ a) where
 
     symapp f x = merge [
         (gdNil__ x, f []),
-        (gdCons__ x, symapp (\xsl -> f ((flCons__1 x) : xsl)) (flCons__2 x)),
-        (gdErr_List__ x, error0 (flErr_List__ x))]
+        (gdCons__ x, symapp (\xsl -> f ((flCons__1 x) : xsl)) (flCons__2 x))]
 
 instance SymbolicOf [P.Char] (List__ Char) where
     tosym [] = __Nil__
@@ -40,20 +39,17 @@ instance SymbolicOf [P.Char] (List__ Char) where
 
     symapp f x = merge [
         (gdNil__ x, f []),
-        (gdCons__ x, symapp2 (\xv xsv -> f (xv : xsv)) (flCons__1 x) (flCons__2 x)),
-        (gdErr_List__ x, error0 (flErr_List__ x))]
+        (gdCons__ x, symapp2 (\xv xsv -> f (xv : xsv)) (flCons__1 x) (flCons__2 x))]
                     
 fromList__ :: List__ a -> [a]
 fromList__ x
   | True <- gdNil__ x = []
   | True <- gdCons__ x = flCons__1 x : fromList__ (flCons__2 x)
-  | True <- gdErr_List__ x = doerr (flErr_List__ x)
 
 error :: (SmtenHS0 a) => List__ Char -> a
-error = {-# SCC "PRIM_ERROR" #-} symapp (\msg -> error0 (errstr msg))
+error msg = {-# SCC "PRIM_ERROR" #-} P.error (toHSString msg)
 
 instance SmtenHS1 P.IO where
-    error1 msg = doerr msg
     realize1 = P.error "TODO: P.IO.realize1"
     ite1 = P.error "TODO: P.IO.ite1"
 

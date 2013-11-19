@@ -26,7 +26,6 @@ newtype Solver = Solver {
 
 -- TODO: why do we need this?
 instance SmtenHS0 Solver where
-  error0 = error "TODO: Solver.error0"
   ite0 = error "TODO: Solver.ite0"
   realize0 = error "TODO: Solver.realize0"
   

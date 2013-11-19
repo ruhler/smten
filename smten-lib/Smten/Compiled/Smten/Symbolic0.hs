@@ -64,8 +64,6 @@ instance Functor Symbolic where
     fmap f x = Symbolic $ fmap f <$> runS x
 
 instance SmtenHS1 Symbolic where
-    error1 msg = doerr msg
-
     ite1 S.True a _ = a
     ite1 S.False _ b = b
     ite1 pred a b = Symbolic $ do
@@ -142,10 +140,6 @@ run_symbolic s q = do
         P.Just m -> do
            case {-# SCC "DoubleCheck" #-} realize m p of
               S.True -> return ()
-              -- TODO: We shouldn't allow us to reach an error.
-              -- Instead, treat explicit error like an infinite computation?
-              -- Only, ideally, smarter.
-              S.Bool_Err msg -> doerr msg
               x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied?"
                      ++ " Got: " ++ show x
            return (S.__Just ({-# SCC "Realize" #-} realize m x))

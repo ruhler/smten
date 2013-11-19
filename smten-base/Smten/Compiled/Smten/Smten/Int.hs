@@ -17,7 +17,6 @@ import Smten.Runtime.SymbolicOf
 data Int =
     I# P.Int#
   | Int_Ite Bool Int Int
-  | Int_Err ErrorString
 
 instance SymbolicOf P.Int Int where
     tosym (P.I# x) = I# x
@@ -28,15 +27,12 @@ instance SymbolicOf P.Int Int where
       case x of
         I# i -> f (P.I# i)
         Int_Ite p a b -> ite0 p (f $$ a) (f $$ b)
-        Int_Err msg -> error0 msg
 
 instance SmtenHS0 Int where
-    error0 = Int_Err
     realize0 m x = 
       case x of
         I# {} -> x
         Int_Ite p a b -> iterealize p a b m
-        Int_Err msg -> Int_Err (realize m msg)
     ite0 = Int_Ite
 
 instance P.Num Int where

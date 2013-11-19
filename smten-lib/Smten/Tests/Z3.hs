@@ -26,6 +26,8 @@ main = do
     runtest (SMTTestCfg z3 [] []) Bit.smttests
     putStrLn "Z3.SMT.Bit PASSED"
 
-    runtest (SMTTestCfg z3 [] []) Error.smttests
+    runtest (SMTTestCfg z3 ["SMT.Error.Bool",
+                            "SMT.Error.Integer",
+                            "SMT.Error.Bit"] []) Error.smttests
     putStrLn "Z3.SMT.Error PASSED"
 

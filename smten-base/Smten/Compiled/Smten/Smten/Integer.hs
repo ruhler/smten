@@ -60,7 +60,6 @@ instance SymbolicOf P.Integer Integer where
       case x of
         Integer i -> f i
         Integer_Ite p a b -> ite0 p (f $$ a) (f $$ b)
-        Integer_Err msg -> error0 msg
         _ -> symapp f (allcases x)
 
 

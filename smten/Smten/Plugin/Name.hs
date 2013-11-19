@@ -1,13 +1,10 @@
 
 module Smten.Plugin.Name (
     nameCG, qnameCG,
-    errnmCG, qerrnmCG,
     itenmCG, qitenmCG,
     tynameCG, qtynameCG,
     guardnmCG, qguardnmCG,
     fieldnmCG, qfieldnmCG,
-    guarderrnmCG, qguarderrnmCG,
-    fielderrnmCG, qfielderrnmCG,
     nullnmCG, qnullnmCG,
     connmCG, qconnmCG,
     denewtynmCG, qdenewtynmCG,
@@ -120,18 +117,6 @@ fieldnmCG i = nmCG False (("fl" ++) . (++ show i)) False
 qfieldnmCG :: Int -> Name -> CG S.Name
 qfieldnmCG i = nmCG False (("fl" ++) . (++ show i)) True
 
-guarderrnmCG :: Name -> CG S.Name
-guarderrnmCG = nmCG True ("gdErr_" ++) False
-
-qguarderrnmCG :: Name -> CG S.Name
-qguarderrnmCG = nmCG True ("gdErr_" ++) True
-
-fielderrnmCG :: Name -> CG S.Name
-fielderrnmCG = nmCG True ("flErr_" ++) False
-
-qfielderrnmCG :: Name -> CG S.Name
-qfielderrnmCG = nmCG True ("flErr_" ++) True
-
 nullnmCG :: Name -> CG S.Name
 nullnmCG = nmCG True ("__Null" ++) False
 
@@ -150,12 +135,6 @@ denewtynmCG = nmCG True ("__deNewTy" ++) False
 
 qdenewtynmCG :: Name -> CG S.Name
 qdenewtynmCG = nmCG True ("__deNewTy" ++) True
-
-errnmCG :: Name -> CG S.Name
-errnmCG = nmCG True (++ "_Err") False
-
-qerrnmCG :: Name -> CG S.Name
-qerrnmCG = nmCG True (++ "_Err") True
 
 qitenmCG :: Name -> CG S.Name
 qitenmCG = nmCG True (++ "_Ite") True

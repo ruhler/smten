@@ -14,48 +14,39 @@ import Prelude hiding (Bool(..), Integer)
 import Smten.Runtime.Types
 
 class SmtenHS0 a where
-    error0 :: ErrorString -> a
     ite0 :: Bool -> a -> a -> a
     realize0 :: Model -> a -> a
 
 class SmtenHS1 m where
-    error1 :: (SmtenHS0 a) => ErrorString -> m a
     ite1 :: (SmtenHS0 a) => Bool -> m a -> m a -> m a
     realize1 :: (SmtenHS0 a) => Model -> m a -> m a
 
 instance (SmtenHS0 a, SmtenHS1 m) => SmtenHS0 (m a) where
-    error0 = error1
     ite0 = ite1
     realize0 = realize1
 
 class SmtenHS2 m where
-    error2 :: (SmtenHS0 a, SmtenHS0 b) => ErrorString -> m a b
     ite2 :: (SmtenHS0 a, SmtenHS0 b) => Bool -> m a b -> m a b -> m a b
     realize2 :: (SmtenHS0 a, SmtenHS0 b) => Model -> m a b -> m a b
 
 instance (SmtenHS0 a, SmtenHS2 m) => SmtenHS1 (m a) where
-    error1 = error2
     ite1 = ite2
     realize1 = realize2
 
 class SmtenHS3 m where
-    error3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c) => ErrorString -> m a b c
     ite3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c) => Bool -> m a b c -> m a b c -> m a b c
     realize3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c) => Model -> m a b c -> m a b c
 
 instance (SmtenHS0 a, SmtenHS3 m) => SmtenHS2 (m a) where
-    error2 = error3
     ite2 = ite3
     realize2 = realize3
 
 class SmtenHS4 m where
-    error4 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => ErrorString -> m a b c d
     ite4 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => Bool -> m a b c d -> m a b c d -> m a b c d
     realize4 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => Model -> m a b c d -> m a b c d
 
 
 instance (SmtenHS0 a, SmtenHS4 m) => SmtenHS3 (m a) where
-    error3 = error4
     ite3 = ite4
     realize3 = realize4
 
@@ -91,7 +82,6 @@ merge xs =
   in f xs'
 
 instance SmtenHS0 Bool where
-    error0 = Bool_Err
     ite0 = iteF
     realize0 m x =
       case x of
@@ -105,10 +95,8 @@ instance SmtenHS0 Bool where
         Bool_EqBit w a b -> eq_Bit w (realize m a) (realize m b)
         Bool_LeqBit w a b -> leq_Bit w (realize m a) (realize m b)
         Bool_Var n -> lookupBool m n
-        Bool_Err msg -> Bool_Err (realize m msg)
 
 instance SmtenHS0 Integer where
-   error0 = Integer_Err
    ite0 = Integer_Ite
    realize0 m x = 
       case x of
@@ -117,10 +105,8 @@ instance SmtenHS0 Integer where
          Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
          Integer_Ite p a b -> iterealize p a b m
          Integer_Var n -> lookupInteger m n
-         Integer_Err msg -> Integer_Err (realize m msg)
    
 instance SmtenHS0 (Bit n) where
-    error0 = Bit_Err
     realize0 m x = 
       case x of
         Bit {} -> x
@@ -137,23 +123,15 @@ instance SmtenHS0 (Bit n) where
         Bit_Extract wx hi lo x -> extract_Bit wx hi lo (realize m x)
         Bit_Ite p a b -> iterealize p a b m
         Bit_Var w n -> lookupBit m w n
-        Bit_Err msg -> Bit_Err (realize m msg)
     ite0 = Bit_Ite
 
-instance SmtenHS0 ErrorString where
-   realize0 m x@(ErrorString str) = x
-   realize0 m (ErrorString_Ite p a b) = iterealize p a b m
-   error0 = id
-   ite0 = ErrorString_Ite
-
 instance SmtenHS2 (->) where
-    error2 msg = \x -> error0 msg
     realize2 m f = \x -> realize m (f (realize m x))
     ite2 p fa fb = \x -> ite p (fa x) (fb x)
 
 emptycase :: a
-emptycase = P.error "inaccessable case"
+emptycase = error "inaccessable case"
 
 unusedfield :: P.String -> a
-unusedfield msg = P.error ("unused field access " ++ msg)
+unusedfield msg = error ("unused field access " ++ msg)
 

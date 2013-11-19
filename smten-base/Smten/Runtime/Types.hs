@@ -6,7 +6,7 @@
 
 module Smten.Runtime.Types (
     Type(..), Any(..),
-    ErrorString(..), errstr, doerr, stableNameEq,
+    stableNameEq,
     Model, model, m_vars, m_cached, lookupBool, lookupInteger, lookupBit,
     Bool(..), __True, __False, andF, notF, iteF,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
@@ -34,18 +34,6 @@ data Type = BoolT | IntegerT | BitT P.Integer
 data Any = BoolA Bool
          | IntegerA Integer
          | BitA P.Bit
-
-data ErrorString =
-   ErrorString String
- | ErrorString_Ite Bool ErrorString ErrorString
-    deriving (Show)
-
-errstr :: String -> ErrorString
-errstr = ErrorString
-
-doerr :: ErrorString -> a
-doerr (ErrorString msg) = error $ "smten user error: " ++ msg
-
 
 data Model = Model {
     m_vars :: [(FreeID, Any)],
@@ -102,7 +90,6 @@ data Bool where
    Bool_EqBit :: P.Integer -> Bit n -> Bit n -> Bool
    Bool_LeqBit :: P.Integer -> Bit n -> Bit n -> Bool
    Bool_Var :: FreeID -> Bool
-   Bool_Err :: ErrorString -> Bool
 
 __True :: Bool
 __True = True
@@ -121,29 +108,24 @@ instance Show Bool where
     show (Bool_EqBit _ a b) = "(" ++ show a ++ " == " ++ show b ++ ")"
     show (Bool_LeqBit _ a b) = "(" ++ show a ++ " <= " ++ show b ++ ")"
     show (Bool_Var a) = freenm a
-    show (Bool_Err msg) = "Bool_Err " ++ show msg
 
 andF :: Bool -> Bool -> Bool
 andF True x = x
 andF False x = False
-andF a@(Bool_Err {}) _ = a
 --andF a True = a
 --andF a False = False
---andF _ b@(Bool_Err {}) = b
 andF a b = Bool_And a b
 
 notF :: Bool -> Bool
 notF True = False
 notF False = True
 notF (Bool_Not x) = x
-notF x@(Bool_Err {}) = x
 notF x = Bool_Not x
 
 iteF :: Bool -> Bool -> Bool -> Bool
 iteF True x _ = x
 iteF False _ x = x
 iteF (Bool_Not x) a b = iteF x b a
-iteF x@(Bool_Err {}) _ _ = x
 -- -- TODO: these optimizations are too strict!
 --iteF p True True = True
 --iteF p False b = notF p `andF` b
@@ -156,31 +138,22 @@ data Integer =
   | Integer_Sub Integer Integer
   | Integer_Ite Bool Integer Integer
   | Integer_Var FreeID
-  | Integer_Err ErrorString
 
 eq_Integer :: Integer -> Integer -> Bool
 eq_Integer (Integer a) (Integer b) = if a == b then True else False
 eq_Integer a b | a `symeq` b = True
-eq_Integer (Integer_Err msg) _ = Bool_Err msg
-eq_Integer _ (Integer_Err msg) = Bool_Err msg
 eq_Integer a b = Bool_EqInteger a b
 
 leq_Integer :: Integer -> Integer -> Bool
 leq_Integer (Integer a) (Integer b) = if a <= b then True else False
-leq_Integer (Integer_Err msg) _ = Bool_Err msg
-leq_Integer _ (Integer_Err msg) = Bool_Err msg
 leq_Integer a b = Bool_LeqInteger a b
 
 add_Integer :: Integer -> Integer -> Integer
 add_Integer (Integer a) (Integer b) = Integer (a + b)
-add_Integer (Integer_Err msg) _ = Integer_Err msg
-add_Integer _ (Integer_Err msg) = Integer_Err msg
 add_Integer a b = Integer_Add a b
 
 sub_Integer :: Integer -> Integer -> Integer
 sub_Integer (Integer a) (Integer b) = Integer (a - b)
-sub_Integer (Integer_Err msg) _ = Integer_Err msg
-sub_Integer _ (Integer_Err msg) = Integer_Err msg
 sub_Integer a b = Integer_Sub a b
 
 data Bit (n :: Nat) where
@@ -204,7 +177,6 @@ data Bit (n :: Nat) where
   Bit_Extract :: P.Integer -> P.Integer -> P.Integer -> Bit m -> Bit n
   Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
   Bit_Var :: P.Integer -> FreeID -> Bit n
-  Bit_Err :: ErrorString -> Bit n
 
 instance Show (Bit n) where
   show (Bit x) = show x
@@ -221,83 +193,59 @@ instance Show (Bit n) where
   show (Bit_Extract _ hi lo x) = show x ++ "[" ++ show hi ++ ":" ++ show lo ++ "]"
   show (Bit_Ite p a b) = "(" ++ show p ++ " ? " ++ show a ++ " : " ++ show b ++ ")"
   show (Bit_Var _ x) = freenm x
-  show (Bit_Err msg) = "Bit_Err " ++ show msg
     
 
 eq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
 eq_Bit _ (Bit a) (Bit b) = if a == b then True else False
 eq_Bit _ a b | a `symeq` b = True
-eq_Bit _ (Bit_Err msg) _ = Bool_Err msg
-eq_Bit _ _ (Bit_Err msg) = Bool_Err msg
 eq_Bit w a b = Bool_EqBit w a b
 
 leq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
 leq_Bit _ (Bit a) (Bit b) = if a <= b then True else False
-leq_Bit _ (Bit_Err msg) _ = Bool_Err msg
-leq_Bit _ _ (Bit_Err msg) = Bool_Err msg
 leq_Bit w a b = Bool_LeqBit w a b
 
 add_Bit :: Bit n -> Bit n -> Bit n
 add_Bit (Bit a) (Bit b) = Bit (a + b)
-add_Bit (Bit_Err msg) _ = Bit_Err msg
-add_Bit _ (Bit_Err msg) = Bit_Err msg
 add_Bit a b = Bit_Add a b
 
 sub_Bit :: Bit n -> Bit n -> Bit n
 sub_Bit (Bit a) (Bit b) = Bit (a - b)
-sub_Bit (Bit_Err msg) _ = Bit_Err msg
-sub_Bit _ (Bit_Err msg) = Bit_Err msg
 sub_Bit a b = Bit_Sub a b
 
 mul_Bit :: Bit n -> Bit n -> Bit n
 mul_Bit (Bit a) (Bit b) = Bit (a * b)
-mul_Bit (Bit_Err msg) _ = Bit_Err msg
-mul_Bit _ (Bit_Err msg) = Bit_Err msg
 mul_Bit a b = Bit_Mul a b
 
 or_Bit :: Bit n -> Bit n -> Bit n
 or_Bit (Bit a) (Bit b) = Bit (a .|. b)
-or_Bit (Bit_Err msg) _ = Bit_Err msg
-or_Bit _ (Bit_Err msg) = Bit_Err msg
 or_Bit a b = Bit_Or a b
 
 and_Bit :: Bit n -> Bit n -> Bit n
 and_Bit (Bit a) (Bit b) = Bit (a .&. b)
-and_Bit (Bit_Err msg) _ = Bit_Err msg
-and_Bit _ (Bit_Err msg) = Bit_Err msg
 and_Bit a b = Bit_And a b
 
 shl_Bit :: Bit n -> Bit n -> Bit n
 shl_Bit (Bit a) (Bit b) = Bit (a `P.bv_shl` b)
-shl_Bit (Bit_Err msg) _ = Bit_Err msg
-shl_Bit _ (Bit_Err msg) = Bit_Err msg
 shl_Bit a b = Bit_Shl a b
 
 lshr_Bit :: Bit n -> Bit n -> Bit n
 lshr_Bit (Bit a) (Bit b) = Bit (a `P.bv_lshr` b)
-lshr_Bit (Bit_Err msg) _ = Bit_Err msg
-lshr_Bit _ (Bit_Err msg) = Bit_Err msg
 lshr_Bit a b = Bit_Lshr a b
 
 concat_Bit :: P.Integer -> Bit a -> Bit b -> Bit n
 concat_Bit _ (Bit a) (Bit b) = Bit (a `P.bv_concat` b)
-concat_Bit _ (Bit_Err msg) _ = Bit_Err msg
-concat_Bit _ _ (Bit_Err msg) = Bit_Err msg
 concat_Bit w a b = Bit_Concat w a b
 
 not_Bit :: Bit n -> Bit n
 not_Bit (Bit a) = Bit (complement a)
-not_Bit (Bit_Err msg) = Bit_Err msg
 not_Bit a = Bit_Not a
 
 sign_extend_Bit :: P.Integer -> Bit m -> Bit n
 sign_extend_Bit by (Bit a) = Bit (P.bv_sign_extend by a)
-sign_extend_Bit _ (Bit_Err msg) = Bit_Err msg
 sign_extend_Bit by x = Bit_SignExtend by x
 
 extract_Bit :: P.Integer -> P.Integer -> P.Integer -> Bit m -> Bit n
 extract_Bit _ hi lo (Bit a) = Bit (P.bv_extract hi lo a)
-extract_Bit _ _ _ (Bit_Err msg) = Bit_Err msg
 extract_Bit wx hi lo x = Bit_Extract wx hi lo x
 
 stableNameEq :: a -> a -> P.Bool
@@ -308,7 +256,6 @@ stableNameEq x y = unsafeDupablePerformIO $ do
 
 class SymEq a where
     -- Return 'True' if the two (symbolic) objects are structurally equal.
-    -- Error constructors are never equal (even if they have the same message).
     symeq :: a -> a -> P.Bool
 
 instance SymEq Bool where

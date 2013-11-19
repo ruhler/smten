@@ -13,15 +13,15 @@ smttests = do
    symtesteq "SMT.Error.Bool" (Just ()) $ do
       p <- free_Bool
       assert p
-      assert (if p then True else error "Smten.Error.Bool error hit")
+      assert (if p then True else error "SMT.Error.Bool error hit")
 
    symtesteq "SMT.Error.Integer" (Just ()) $ do
       p <- free_Bool
       assert p
-      assert ((if p then 1 else error "Smten.Error.Integer error hit") == (1 :: Integer))
+      assert ((if p then 1 else error "SMT.Error.Integer error hit") == (1 :: Integer))
 
    symtesteq "SMT.Error.Bit" (Just ()) $ do
       p <- free_Bool
       assert p
-      assert ((if p then 1 else error "Smten.Error.Bit error hit") == (1 :: Bit 3))
+      assert ((if p then 1 else error "SMT.Error.Bit error hit") == (1 :: Bit 3))
 
