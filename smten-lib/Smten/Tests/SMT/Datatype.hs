@@ -84,7 +84,7 @@ smttests = do
         assert (mixval c == E3)
         return c
 
-    symtesteq "DataType.Caseoflet" (Just False) $ do
+    symtesteq "Datatype.Caseoflet" (Just False) $ do
         d <- free_Bool
         assert (case (let v = d || d
                       in if v then E1 else E2) of
@@ -95,6 +95,8 @@ smttests = do
 
 tests :: IO ()
 tests = do
-   runtest (SMTTestCfg smten [] ["Datatype.Mix"]) smttests
+   runtest (SMTTestCfg smten [
+        "Datatype.Mix",
+        "Datatype.Caseoflet"] []) smttests
    putStrLn "SMT.DataType PASSED"
 

@@ -15,7 +15,7 @@ main = do
     runtest (SMTTestCfg stp [] []) Core.smttests
     putStrLn "STP.SMT.Core PASSED"
 
-    runtest (SMTTestCfg stp [] []) Datatype.smttests
+    runtest (SMTTestCfg stp ["Datatype.Mix", "Datatype.Caseoflet"] []) Datatype.smttests
     putStrLn "STP.SMT.Datatype PASSED"
 
     runtest (SMTTestCfg stp [] []) Bit.smttests

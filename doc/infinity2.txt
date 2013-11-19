@@ -307,3 +307,44 @@ Required Implementation Steps (order not important?):
  We may also need to change Integer and Bit. I'm not sure.
  Update iteF and friends to properly maintain the disjunction.
  
+Tue Nov 19 15:15:32 EST 2013
+
+Update:
+* I removed optimizations from datatypes. There is a 5x performance
+  degradation in shampi. We are not handling errors properly: we run into some
+  "unreachable" implicit errors which aren't being abstracted away.
+
+Specifically the issue with error is:
+  We have a datatype like: Either Bool ()
+  We form:
+        mplus (Left True) (Right ())
+  This leads to:
+     Either { flLeft1 = ite x True _|_ }
+  Then, say we assert:
+     case v of
+        Left p -> assert p
+        _ -> return ()
+
+  Now the assertion predicate is: ite x True _|_, which contains an implicit
+  _|_. When we do the assert traversal, we trigger it.
+
+There are a number of possible solutions to the problem:
+
+A. Make unused field an explicit error instead of an implicit one
+   Problem: this requires __Null and constructors and friends have proper
+   SmtenHS in their context, and for some reason that isn't just happening
+   (when I thought it should).
+
+B. Convert implicit error to explicit error in assert traversal
+   Problem: this is slightly annoying, in that we have to define a wrapper
+   function for 'define' which catches errors, but otherwise should be
+   straight-forward.
+
+C. Convert implicit error to explicit error in iteF and friends 
+   This is more like the envisioned long term solution
+
+
+I'm tempted to just ignore this problem for now, and fix it properly when
+the time is right. In the mean time we can clean up things, get rid of
+explicit errors in general, and all that fun stuff.
+

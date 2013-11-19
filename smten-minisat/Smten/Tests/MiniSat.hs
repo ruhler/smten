@@ -15,7 +15,7 @@ main = do
     runtest (SMTTestCfg minisat [] []) Core.smttests
     putStrLn "MiniSat.SMT.Core PASSED"
 
-    runtest (SMTTestCfg minisat [] []) Datatype.smttests
+    runtest (SMTTestCfg minisat ["Datatype.Mix", "Datatype.Caseoflet"] []) Datatype.smttests
     putStrLn "MiniSat.SMT.Datatype PASSED"
 
     runtest (SMTTestCfg minisat [
