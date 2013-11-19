@@ -4,7 +4,7 @@
 
 module Smten.Runtime.SmtenHS (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
-    ite, iterealize, realize, flrealize, flmerge, flsapp,
+    ite, iterealize, realize,
     merge, emptycase, unusedfield,
     ) where
 
@@ -75,11 +75,6 @@ iterealize p a b m = ite (realize m p) (realize m a) (realize m b)
 realize :: (SmtenHS0 a) => Model -> a -> a
 realize m x = m_cached m realize0 x
 
-{-# DEPRECATED flrealize "is this used anywhere?" #-}
-flrealize :: (SmtenHS0 a) => Model -> [(Bool, a)] -> a
-flrealize m ((p, v) : xs) = ite (realize m p) (realize m v) (flrealize m xs)
-flrealize _ [] = error "flrealize failed"
-
 -- merge
 -- Merge all the arguments into a single object.
 -- Assumptions: It is always that case that at least one of the guards is True.
@@ -94,26 +89,6 @@ merge xs =
       f [(_, v)] = v
       f ((p, v):vs) = ite p v (f vs)
   in f xs'
-
--- flmerge
--- Merge two fields of an ite constructor.
-{-# DEPRECATED flmerge "is this used anywhere?" #-}
-{-# INLINEABLE flmerge #-}
-flmerge :: (SmtenHS0 a) => Bool -> (Bool, a) -> (Bool, a) -> (Bool, a)
-flmerge p (g, v) (False, _) = (andF p g, v)
-flmerge p (False, _) (g, v) = (andF (notF p) g, v)
-flmerge p (ga, va) (gb, vb) = (ite p ga gb, ite p va vb)
-
-{-# DEPRECATED flsapp "is this used anywhere?" #-}
-{-# INLINEABLE flsapp #-}
-flsapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> [(Bool, a)] -> b
-flsapp f x zs =
- let join [(_, v)] = f v
-     join ((p, a):bs) = ite p (f a) (join bs)
-
-     isvalid (False, _) = P.False
-     isvalid _ = P.True
- in join (filter isvalid zs)
 
 instance SmtenHS0 Bool where
     error0 = Bool_Err
