@@ -348,3 +348,17 @@ I'm tempted to just ignore this problem for now, and fix it properly when
 the time is right. In the mean time we can clean up things, get rid of
 explicit errors in general, and all that fun stuff.
 
+Tue Nov 19 20:14:01 EST 2013
+
+Update:
+* I removed explicit errors from datatypes
+* I removed optimizations and IO from symbolic
+
+shampi is now at about 60 seconds, instead of the original 15s (and in the
+past we have seen as good as 11s).
+
+The next step is to change how Bool is defined to explicitly partition those
+parts of the expression which are surely finite, and those which may take a
+little bit longer. Something like Bool_Partial, which we promise to stay on
+the outside, might be nice.
+

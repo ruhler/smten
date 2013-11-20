@@ -17,7 +17,7 @@ main = do
     runtest (SMTTestCfg z3 [] []) Core.smttests
     putStrLn "Z3.SMT.Core PASSED"
 
-    runtest (SMTTestCfg z3 ["Datatype.Mix", "Datatype.Caseoflet"] []) Datatype.smttests
+    runtest (SMTTestCfg z3 ["Datatype.Enum", "Datatype.Struct", "Datatype.Mix", "Datatype.Caseoflet"] []) Datatype.smttests
     putStrLn "Z3.SMT.Datatype PASSED"
 
     runtest (SMTTestCfg z3 [] []) Integer.smttests

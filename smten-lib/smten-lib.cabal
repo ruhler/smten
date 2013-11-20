@@ -127,7 +127,6 @@ library
     Smten.Runtime.AnyKeyMap
     Smten.Runtime.Assert
     Smten.Runtime.Debug
-    Smten.Runtime.RunBoth
     Smten.Runtime.Yices1.FFI
     Smten.Runtime.Yices2.FFI
     Smten.Runtime.Z3.FFI
