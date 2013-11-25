@@ -12,47 +12,33 @@ import Smten.Runtime.Select
 import Smten.Runtime.FiniteFormula
 
 -- | Representation of a boolean formula which may contain infinite parts or _|_
--- We represent the formula in one of two ways:
---  Finite - the entire formula is finite and contains no _|_.
---  Partial a b x_ - the formula is partially finite.
+-- We represent the formula as follows:
+--  BoolF a b x_
 --    Where:
---     * Logically this is equivalent to:  a + bx_
---     * Note: bx_ can only be true if b is satisfiable
+--     * Logically this is equivalent to:  a + b*x_
+--     * Note: b*x_ can only be true if b is satisfiable
+--       That is, b is an approximation of b*x_
 --     * 'a' and 'b' are finite
 --     * 'x_' has not yet finished evaluating to weak head normal form: it
 --       might be _|_.
 --  By convention in the code that follows, a boolean variable
 --  name ending in an underscore refers to a potential _|_ value. A boolean
 --  variable name not ending in an underscore refers to a finite value.
-data BoolF =
-   Finite BoolFF
- | Partial BoolFF BoolFF BoolF
+data BoolF = BoolF BoolFF BoolFF BoolF
      deriving (Show)
-
-trueF :: BoolF
-trueF = Finite trueFF
-
-falseF :: BoolF
-falseF = Finite falseFF
-
-varF :: FreeID -> BoolF
-varF = Finite . varFF
 
 -- Construct a finite BoolF of the form:
 --   a
 -- where a is finite.
 finiteF :: BoolFF -> BoolF
-finiteF = Finite
+finiteF x = BoolF x falseFF (error "finiteF._|_")
 
 -- Construct a partially finite BoolF of the form:
 --   a + bx_
 -- where a, b are finite, x_ is potentially _|_
 -- This is lazy in x_.
 partialF :: BoolFF -> BoolFF -> BoolF -> BoolF
-partialF TrueFF _ _ = trueF
-partialF a FalseFF _ = Finite a
-partialF FalseFF TrueFF x = x
-partialF a b c = Partial a b c
+partialF = BoolF
 
 -- Construct a partially finite BoolF of the form:
 --   a + bx_ + cy_ + dx_y_
@@ -63,65 +49,62 @@ partial2F :: BoolFF -> BoolFF -> BoolFF -> BoolFF -> BoolF -> BoolF -> BoolF
 partial2F TrueFF _ _ _ _ _ = trueF
 partial2F a FalseFF c FalseFF _ y_ = partialF a c y_
 partial2F a b FalseFF FalseFF x_ _ = partialF a b x_
-partial2F a b c d x_ y_ = partialF a (b + c + d) (wait2F trueFF b c trueFF x_ y_)
+partial2F a b c d x_ y_ = partialF a (b + c + d) (wait2F b c trueFF x_ y_)
+
+-- Select between two formulas.
+-- selectF x_ y_
+--   x_, y_ may be infinite.
+-- The select call waits for at least one of x_ or y_ to reach weak head
+-- normal form, then returns WHNF representations for both x_ and y_.
+selectF :: BoolF -> BoolF -> (BoolF, BoolF)
+selectF x_ y_ = 
+  case select x_ y_ of
+    Both x y -> (x, y)
+    Left x -> (x, BoolF falseFF trueFF y_)
+    Right y -> (y, BoolF falseFF trueFF x_)
 
 -- Wait for more information about a BoolF of the form:
---   a + bx_ + cy_ + dx_y_
--- where a, b, c, d are finite, x_ and y_ are potentially _|_
+--   bx_ + cy_ + dx_y_
+-- where b, c, d are finite, x_ and y_ are potentially _|_
 -- This is strict in one of x_ or y_ (which ever finishes first)
-wait2F :: BoolFF -> BoolFF -> BoolFF -> BoolFF -> BoolF -> BoolF -> BoolF
-wait2F a b c d x_ y_ =
-  case select x_ y_ of
-    Both (Finite x) (Finite y) -> finiteF (a + b*x + c*y + d*x*y)
-    Both (Finite x) (Partial ya yb yc_) -> 
-      let c_dx = c + d*x
-      in partialF (a + b*x + c_dx*ya) (c_dx*yb) yc_
-    Both (Partial xa xb xc_) (Finite y) ->
-      let b_dy = b + d*y
-      in partialF (a + c*y + b_dy*xa) (b_dy*xb) xc_
-    Both (Partial xa xb xc_) (Partial ya yb yc_) ->
-      let a' = a + b*xa + c*ya + d*xa*ya
+wait2F :: BoolFF -> BoolFF -> BoolFF -> BoolF -> BoolF -> BoolF
+wait2F b c d x_ y_ =
+  case selectF x_ y_ of
+    (BoolF xa xb xc_, BoolF ya yb yc_) ->
+      let a' = b*xa + c*ya + d*xa*ya
           b' = xb*(b + ya)
           c' = yb*(c + xa)
           d' = xb*yb
       in partial2F a' b' c' d' xc_ yc_
-    Left (Finite x) -> partialF (a + b*x) (c + d*x) y_
-    Left (Partial xa xb xc_) ->
-      let a' = a + b*xa
-          b' = b * xb
-          c' = c + d*xa
-          d' = d * xb
-      in partial2F a' b' c' d' xc_ y_
-    Right (Finite y) -> partialF (a + c*y) (b + d*y) x_
-    Right (Partial ya yb yc_) ->
-      let a' = a + c*ya
-          b' = b + d*ya
-          c' = c * yb
-          d' = d * yb
-      in partial2F a' b' c' d' x_ yc_
-    
+
+trueF :: BoolF
+trueF = finiteF trueFF
+
+falseF :: BoolF
+falseF = finiteF falseFF
+
+varF :: FreeID -> BoolF
+varF = finiteF . varFF
 
 -- Notes
---  Finite:     -a = -a
---  Partial:    -(a + bx_)
---            = (-a)(-(bx_))
---            = (-a)(-b + (-x_))
---            = (-a)(-b) + (-a)(-x_)
+--  Partial:    ~(a + bx_)
+--            = (~a)(~(bx_))
+--            = (~a)(~b + (~x_))
+--            = (~a)(~b) + (~a)(~x_)
 notF :: BoolF -> BoolF
-notF (Finite a) = Finite (-a)
-notF (Partial a b x_) =
+notF (BoolF a b x_) =
   let nota = (-a)
   in partialF (nota * (-b)) nota (notF x_)
 
 -- x_ * y_
 -- Note: x_ * y_ = 0 + 0*x_ + 0*y_ + 1*x_*y_
 andF :: BoolF -> BoolF -> BoolF
-andF = wait2F falseFF falseFF falseFF trueFF
+andF = wait2F falseFF falseFF trueFF
 
 -- x_ + y_
 -- Note: x_ + y_ = 0 + 1*x_ + 1*y_ + 0*x_*y_
 orF :: BoolF -> BoolF -> BoolF
-orF = wait2F falseFF trueFF trueFF falseFF
+orF = wait2F trueFF trueFF falseFF
 
 iteF :: BoolF -> BoolF -> BoolF -> BoolF
 iteF p a b = (p `andF` a) `orF` (notF p `andF` b)
