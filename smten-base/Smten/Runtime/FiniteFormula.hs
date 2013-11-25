@@ -3,6 +3,7 @@
 module Smten.Runtime.FiniteFormula (
   FreeID,
   BoolFF(..), trueFF, falseFF, andFF, orFF, notFF, iteFF, varFF,
+  IntegerFF(..), integerFF, iaddFF, isubFF, iiteFF, ivarFF, ieqFF, ileqFF,
   ) where
 
 type FreeID = String
@@ -16,6 +17,8 @@ data BoolFF =
  | OrFF BoolFF BoolFF
  | NotFF BoolFF
  | VarFF FreeID
+ | IEqFF IntegerFF IntegerFF
+ | ILeqFF IntegerFF IntegerFF
   deriving (Eq, Show)
 
 trueFF :: BoolFF
@@ -72,5 +75,48 @@ instance Num BoolFF where
   abs = error "BoolFF.abs"
   signum = error "BoolFF.signum"
   
+-- | An Integer finite formula which contains no _|_
+data IntegerFF =
+    IntegerFF Integer
+  | IAddFF IntegerFF IntegerFF
+  | ISubFF IntegerFF IntegerFF
+  | IIteFF BoolFF IntegerFF IntegerFF
+  | IVarFF FreeID
+  deriving (Show, Eq)
 
+integerFF :: Integer -> IntegerFF
+integerFF = IntegerFF
 
+ieqFF :: IntegerFF -> IntegerFF -> BoolFF
+ieqFF (IntegerFF a) (IntegerFF b) = if a == b then trueFF else falseFF
+ieqFF a b 
+ | a == b = trueFF
+ | otherwise = IEqFF a b
+
+ileqFF :: IntegerFF -> IntegerFF -> BoolFF
+ileqFF (IntegerFF a) (IntegerFF b) = if a <= b then trueFF else falseFF
+ileqFF a b = ILeqFF a b
+
+iaddFF :: IntegerFF -> IntegerFF -> IntegerFF
+iaddFF (IntegerFF a) (IntegerFF b) = IntegerFF (a + b)
+iaddFF a b = IAddFF a b
+
+isubFF :: IntegerFF -> IntegerFF -> IntegerFF
+isubFF (IntegerFF a) (IntegerFF b) = IntegerFF (a - b)
+isubFF a b = ISubFF a b
+
+ivarFF :: FreeID -> IntegerFF
+ivarFF = IVarFF
+
+iiteFF :: BoolFF -> IntegerFF -> IntegerFF -> IntegerFF
+iiteFF TrueFF a _ = a
+iiteFF FalseFF _ b = b
+iiteFF p a b = IIteFF p a b
+
+instance Num IntegerFF where
+  fromInteger = integerFF
+  (+) = iaddFF
+  (-) = isubFF
+  (*) = error "IntegerFF.*"
+  abs = error "IntegerFF.abs"
+  signum = error "IntegerFF.signum"
