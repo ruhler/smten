@@ -40,17 +40,6 @@ finiteF x = BoolF x falseFF (error "finiteF._|_")
 partialF :: BoolFF -> BoolFF -> BoolF -> BoolF
 partialF = BoolF
 
--- Construct a partially finite BoolF of the form:
---   a + bx_ + cy_ + dx_y_
--- where a, b, c, d are finite, x_ and y_ are potentially _|_
--- This is lazy in both x_ and y_
--- Note: a + bx_ + cy_ + dx_y_ = a + (b+c+d)(bx_ + cy_ + x_y_)
-partial2F :: BoolFF -> BoolFF -> BoolFF -> BoolFF -> BoolF -> BoolF -> BoolF
-partial2F TrueFF _ _ _ _ _ = trueF
-partial2F a FalseFF c FalseFF _ y_ = partialF a c y_
-partial2F a b FalseFF FalseFF x_ _ = partialF a b x_
-partial2F a b c d x_ y_ = partialF a (b + c + d) (wait2F b c trueFF x_ y_)
-
 -- Select between two formulas.
 -- selectF x_ y_
 --   x_, y_ may be infinite.
@@ -61,21 +50,7 @@ selectF x_ y_ =
   case select x_ y_ of
     Both x y -> (x, y)
     Left x -> (x, BoolF falseFF trueFF y_)
-    Right y -> (y, BoolF falseFF trueFF x_)
-
--- Wait for more information about a BoolF of the form:
---   bx_ + cy_ + dx_y_
--- where b, c, d are finite, x_ and y_ are potentially _|_
--- This is strict in one of x_ or y_ (which ever finishes first)
-wait2F :: BoolFF -> BoolFF -> BoolFF -> BoolF -> BoolF -> BoolF
-wait2F b c d x_ y_ =
-  case selectF x_ y_ of
-    (BoolF xa xb xc_, BoolF ya yb yc_) ->
-      let a' = b*xa + c*ya + d*xa*ya
-          b' = xb*(b + ya)
-          c' = yb*(c + xa)
-          d' = xb*yb
-      in partial2F a' b' c' d' xc_ yc_
+    Right y -> (BoolF falseFF trueFF x_, y)
 
 trueF :: BoolF
 trueF = finiteF trueFF
@@ -97,34 +72,65 @@ notF (BoolF a b x_) =
   in partialF (nota * (-b)) nota (notF x_)
 
 -- x_ * y_
--- Note: x_ * y_ = 0 + 0*x_ + 0*y_ + 1*x_*y_
 andF :: BoolF -> BoolF -> BoolF
-andF = wait2F falseFF falseFF trueFF
+andF x_ y_ =
+  case selectF x_ y_ of
+    (BoolF xa xb xc_, BoolF ya yb yc_) ->
+      let a = xa * ya
+          xayb = xa * yb
+          yaxb = ya * xb
+          b = xayb + yaxb + xb * yb
+          c_ = xayb *. yc_ + yaxb *. xc_ + xc_ * yc_
+      in partialF a b c_
 
 -- x_ + y_
--- Note: x_ + y_ = 0 + 1*x_ + 1*y_ + 0*x_*y_
 orF :: BoolF -> BoolF -> BoolF
-orF = wait2F trueFF trueFF falseFF
+orF x_ y_ =
+  case selectF x_ y_ of
+    (BoolF xa xb xc_, BoolF ya yb yc_) ->
+      let a = xa + ya
+          b = xb + yb
+          c_ = xb *. xc_ + yb *. yc_
+      in partialF a b c_
 
 iteF :: BoolF -> BoolF -> BoolF -> BoolF
 iteF p a b = (p `andF` a) `orF` (notF p `andF` b)
 
+-- For nicer syntax, we give an instance of Num for BoolF
+-- based on boolean arithmetic.
+instance Num BoolF where
+  fromInteger 0 = falseF
+  fromInteger 1 = trueF
+  (+) = orF
+  (*) = andF
+  negate = notF
+  abs = error "BoolF.abs"
+  signum = error "BoolF.signum"
 
----- | Representation of an integer formula which may contain infinite parts or _|_
----- We represent the formula in one of two ways:
-----  IFinite - the entire formula is finite and contains no _|_.
-----  IPartial p a x_ - the formula is partially finite.
-----    Where:
-----      * Logically this is equivalent to: if p then a else x_
-----      * 'p' and 'a' are finite
-----      * 'x_' has not yet finished evaluating to weak head normal form: it
-----        might be _|_.
---data IntegerF =
---   IFinite IntegerFF
--- | IPartial BoolFF IntegerFF IntegerF
---
---integerF :: Integer -> IntegerF
---integerF x = IFinite (integerFF x)
+-- | Logical AND of a finite formula and a partial formula.
+(*.) :: BoolFF -> BoolF -> BoolF
+(*.) x (BoolF a b c_) = BoolF (x*a) (x*b) c_
+
+
+-- | Representation of an integer formula which may contain infinite parts or _|_
+-- We represent the formula as follows:
+--  IntegerF p a x_
+--    Where:
+--      * Logically this is equivalent to: if p then a else x_
+--      * 'p' and 'a' are finite
+--      * 'x_' has not yet finished evaluating to weak head normal form: it
+--        might be _|_.
+data IntegerF = IntegerF BoolFF IntegerFF IntegerF
+
+ifiniteF :: IntegerFF -> IntegerF
+ifiniteF x = IntegerF trueFF x (error "finiteF._|_")
+
+integerF :: Integer -> IntegerF
+integerF x = ifiniteF (integerFF x)
+
+--iaddF :: IntegerF -> IntegerF -> IntegerF
+--iaddF x_ y_ =
+--  case iselectF x_ y_ of
 --
 --iaddF :: IntegerF -> IntegerF -> IntegerF
 --iaddF (IFinite x) (IFinite y) = IFinite (x+y)
