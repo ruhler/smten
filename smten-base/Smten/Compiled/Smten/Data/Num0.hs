@@ -12,7 +12,7 @@ import qualified Prelude as P
 import GHC.Prim
 import Smten.Compiled.Smten.Smten.Base
 import Smten.Runtime.SymbolicOf
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 
 int_add :: Int -> Int -> Int
 int_add (I# a) (I# b) = {-# SCC "PRIM_INT_ADD" #-} I# (a +# b)

@@ -13,7 +13,7 @@ import Prelude as P
 import Data.Functor
 
 import Smten.Runtime.FreeID
-import Smten.Runtime.Types hiding (Integer)
+import Smten.Runtime.Formula hiding (Integer)
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
 
@@ -21,7 +21,7 @@ import Smten.Compiled.Smten.Data.Bit0 as S
 import qualified Smten.Compiled.Smten.Data.Maybe as S
 import Smten.Compiled.GHC.TypeLits
 import qualified Smten.Compiled.Smten.Smten.Integer as S
-import qualified Smten.Runtime.Types as S
+import qualified Smten.Runtime.Formula as S
 
 newtype Symbolic a = Symbolic {
     runS :: Fresh (S.Bool, a)

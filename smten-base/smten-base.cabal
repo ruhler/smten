@@ -62,12 +62,12 @@ library
 
     Smten.Runtime.AnyMap
     Smten.Runtime.Bit
+    Smten.Runtime.Formula
     Smten.Runtime.FreeID
     Smten.Runtime.Model
     Smten.Runtime.SmtenHS
     Smten.Runtime.StableNameEq
     Smten.Runtime.SymbolicOf
-    Smten.Runtime.Types
 
     Smten.Compiled.Smten.Prelude
     Smten.Compiled.Smten.Control.Monad

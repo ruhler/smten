@@ -11,7 +11,7 @@ import System.IO.Unsafe
 
 import qualified Smten.Runtime.Bit as P
 import qualified Smten.Runtime.AnyMap as A
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 import Smten.Runtime.FreeID
 
 data Any = BoolA Bool

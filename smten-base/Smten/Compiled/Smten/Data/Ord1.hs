@@ -10,7 +10,7 @@ import qualified Prelude as P
 import GHC.Prim
 import Smten.Compiled.Smten.Smten.Base
 import Smten.Runtime.SymbolicOf
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 
 int_leq :: Int -> Int -> Bool
 int_leq (I# a) (I# b) = {-# SCC "PRIM_INT_LEQ" #-} if (a <=# b) then True else False

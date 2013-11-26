@@ -11,7 +11,7 @@ import qualified Prelude as P
 import qualified GHC.Types as P
 import qualified GHC.Prim as P
 
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 

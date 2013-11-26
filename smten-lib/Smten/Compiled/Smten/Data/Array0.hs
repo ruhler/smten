@@ -14,7 +14,7 @@ import Data.List
 
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 import Smten.Compiled.Smten.Smten.Base
 
 data PrimArray a = PrimArray (Array P.Int a)

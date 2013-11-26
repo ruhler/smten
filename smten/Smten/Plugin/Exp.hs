@@ -259,7 +259,7 @@ mkDataCase vnm argty mdef ms = do
           def <- case mdef of
                    Nothing -> return []
                    Just b -> do
-                     tt <- S.VarE <$> usequalified "Smten.Runtime.Types" "True"
+                     tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "True"
                      e <- S.tup2E tt <$> expCG b
                      return [e]
 

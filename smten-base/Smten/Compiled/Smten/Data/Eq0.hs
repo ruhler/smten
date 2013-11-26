@@ -7,7 +7,7 @@ import qualified Prelude as P
 import Smten.Compiled.Smten.Smten.Base
 import Smten.Compiled.Smten.Data.Bool0
 import Smten.Runtime.SymbolicOf
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 import GHC.Prim
 
 int_eq :: Int -> Int -> Bool

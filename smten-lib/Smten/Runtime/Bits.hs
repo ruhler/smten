@@ -10,7 +10,7 @@ module Smten.Runtime.Bits(addBits) where
 import Data.Functor
 import qualified Data.HashTable.IO as H
 
-import qualified Smten.Runtime.Types as S
+import qualified Smten.Runtime.Formula as S
 import Smten.Runtime.SolverAST
 
 data Formula exp = Exp { expr :: exp }

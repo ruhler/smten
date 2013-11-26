@@ -8,7 +8,7 @@ module Smten.Compiled.Smten.Smten.Integer (
 
 import qualified Prelude as P
 
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 

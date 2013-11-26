@@ -4,7 +4,7 @@ module Smten.Runtime.Solver (
     solverFromAST,
     ) where
 
-import qualified Smten.Runtime.Types as S
+import qualified Smten.Runtime.Formula as S
 import Smten.Runtime.Bit
 import Smten.Runtime.Model
 import Smten.Runtime.Result

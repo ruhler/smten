@@ -14,7 +14,7 @@ import Smten.Runtime.FreeID
 import Smten.Runtime.Model
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
-import qualified Smten.Runtime.Types as S
+import qualified Smten.Runtime.Formula as S
 import qualified Smten.Compiled.Smten.Smten.Base as S
 
 data DebugLL = DebugLL {

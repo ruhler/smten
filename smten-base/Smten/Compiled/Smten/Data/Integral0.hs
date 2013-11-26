@@ -6,7 +6,7 @@ module Smten.Compiled.Smten.Data.Integral0 (
 
 import qualified Prelude as P
 
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 import Smten.Runtime.SymbolicOf
 import Smten.Compiled.Smten.Smten.Int
 import Smten.Compiled.Smten.Smten.Integer ()

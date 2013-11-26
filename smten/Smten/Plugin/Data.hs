@@ -30,7 +30,7 @@ dataCG t constrs = do
 -- }
 mkDataD :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 mkDataD nm tyvars constrs = do
-  boolnm <- usequalified "Smten.Runtime.Types" "Bool"
+  boolnm <- usequalified "Smten.Runtime.Formula" "Bool"
   let boolty = S.ConAppT boolnm []
       mkcon :: DataCon -> CG [S.RecField]
       mkcon d = do
@@ -143,7 +143,7 @@ realizeD nm k cs = do
 mkNullD :: TyCon -> Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 mkNullD t nm ts cs = do
   unused <- usequalified "Smten.Runtime.SmtenHS" "unusedfield"
-  false <- usequalified "Smten.Runtime.Types" "False"
+  false <- usequalified "Smten.Runtime.Formula" "False"
   nm' <- qtynameCG nm
   let mkcon :: DataCon -> CG [S.Field]
       mkcon d = do
@@ -173,7 +173,7 @@ mkConD tynm d = do
   ty <- typeCG $ dataConUserType d
   null <- S.VarE <$> nullnmCG tynm
   gdnm <- guardnmCG dnm
-  tt <- S.VarE <$> usequalified "Smten.Runtime.Types" "True"
+  tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "True"
   let gdupd = S.Field gdnm tt
       numargs = length $ dataConOrigArgTys d
       vars = ["x" ++ show i | i <- [1..numargs]]

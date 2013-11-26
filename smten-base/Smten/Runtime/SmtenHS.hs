@@ -13,7 +13,7 @@ import Prelude hiding (Bool(..), Integer)
 
 import Smten.Runtime.Model
 import Smten.Runtime.StableNameEq
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 
 class SmtenHS0 a where
     ite0 :: Bool -> a -> a -> a

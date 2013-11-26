@@ -14,7 +14,7 @@ import Data.Char
 import Numeric
 
 import Smten.Runtime.Yices2.FFI
-import qualified Smten.Runtime.Types as S
+import qualified Smten.Runtime.Formula as S
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 

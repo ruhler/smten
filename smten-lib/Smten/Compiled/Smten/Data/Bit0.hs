@@ -13,7 +13,7 @@ import qualified Prelude as P
 import qualified Smten.Runtime.Bit as P
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
-import Smten.Runtime.Types
+import Smten.Runtime.Formula
 import Smten.Compiled.Smten.Smten.Base
 import Smten.Compiled.GHC.TypeLits
 
