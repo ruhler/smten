@@ -64,6 +64,7 @@ library
     Smten.Runtime.Bit
     Smten.Runtime.FreeID
     Smten.Runtime.SmtenHS
+    Smten.Runtime.StableNameEq
     Smten.Runtime.SymbolicOf
     Smten.Runtime.Types
 

@@ -36,6 +36,10 @@ instance SmtenHS1 Symbolic where
       ~(pb, vb) <- runS b
       return (ite p pa pb, ite p va vb)
 
+    realize1 m x = Symbolic $ do
+        (p, v) <- runS x
+        return (realize m p, realize m v)
+
 return_symbolic :: a -> Symbolic a
 return_symbolic x = Symbolic $ return (S.True, x)
 

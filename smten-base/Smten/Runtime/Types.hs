@@ -6,7 +6,6 @@
 
 module Smten.Runtime.Types (
     Type(..), Any(..),
-    stableNameEq,
     Model, model, m_vars, m_cached, lookupBool, lookupInteger, lookupBit,
     Bool(..), __True, __False, andF, notF, iteF, partial,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
@@ -18,12 +17,11 @@ module Smten.Runtime.Types (
 import Prelude hiding (Bool(..), Integer(..))
 import qualified Prelude as P
 import qualified Smten.Runtime.Bit as P
+import Smten.Runtime.StableNameEq
 
 import Data.Bits
 import GHC.TypeLits
-
 import System.IO.Unsafe
-import System.Mem.StableName
 
 import qualified Smten.Runtime.AnyMap as A
 import Smten.Runtime.FreeID
@@ -260,12 +258,6 @@ sign_extend_Bit by x = Bit_SignExtend by x
 extract_Bit :: P.Integer -> P.Integer -> P.Integer -> Bit m -> Bit n
 extract_Bit _ hi lo (Bit a) = Bit (P.bv_extract hi lo a)
 extract_Bit wx hi lo x = Bit_Extract wx hi lo x
-
-stableNameEq :: a -> a -> P.Bool
-stableNameEq x y = unsafeDupablePerformIO $ do
-    xnm <- makeStableName x
-    ynm <- makeStableName y
-    return (xnm == ynm)
 
 class SymEq a where
     -- Return 'True' if the two (symbolic) objects are structurally equal.
