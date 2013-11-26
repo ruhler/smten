@@ -14,17 +14,19 @@ import Smten.Symbolic.Solver.Yices2
 
 main :: IO ()
 main = do
-    runtest (SMTTestCfg yices2 [] []) Core.smttests
+    runtest (SMTTestCfg yices2 ["SMT.Core.Integer"] []) Core.smttests
     putStrLn "Yices2.SMT.Core PASSED"
 
     runtest (SMTTestCfg yices2 ["Datatype.Enum", "Datatype.Struct", "Datatype.Mix", "Datatype.Caseoflet"] []) Datatype.smttests
     putStrLn "Yices2.SMT.Datatype PASSED"
 
-    runtest (SMTTestCfg yices2 [] []) Integer.smttests
-    putStrLn "Yices2.SMT.Integer PASSED"
+    --runtest (SMTTestCfg yices2 [] []) Integer.smttests
+    --putStrLn "Yices2.SMT.Integer PASSED"
+    putStrLn "Yices2.SMT.Integer SKIPPED"
 
-    runtest (SMTTestCfg yices2 [] []) Bit.smttests
-    putStrLn "Yices2.SMT.Bit PASSED"
+    --runtest (SMTTestCfg yices2 [] []) Bit.smttests
+    --putStrLn "Yices2.SMT.Bit PASSED"
+    putStrLn "Yices2.SMT.Bit SKIPPED"
 
     runtest (SMTTestCfg yices2 ["SMT.Error.Bool",
                                 "SMT.Error.Integer",

@@ -12,12 +12,13 @@ import Smten.Symbolic.Solver.STP
 
 main :: IO ()
 main = do
-    runtest (SMTTestCfg stp [] []) Core.smttests
+    runtest (SMTTestCfg stp ["SMT.Core.Integer"] []) Core.smttests
     putStrLn "STP.SMT.Core PASSED"
 
     runtest (SMTTestCfg stp ["Datatype.Enum", "Datatype.Struct", "Datatype.Mix", "Datatype.Caseoflet"] []) Datatype.smttests
     putStrLn "STP.SMT.Datatype PASSED"
 
-    runtest (SMTTestCfg stp [] []) Bit.smttests
-    putStrLn "STP.SMT.Bit PASSED"
+    --runtest (SMTTestCfg stp [] []) Bit.smttests
+    --putStrLn "STP.SMT.Bit PASSED"
+    putStrLn "STP.SMT.Bit SKIPPED"
 

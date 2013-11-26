@@ -39,10 +39,6 @@ data Bool where
    Bool_EqBit :: P.Integer -> Bit n -> Bit n -> Bool
    Bool_LeqBit :: P.Integer -> Bit n -> Bit n -> Bool
    Bool_Var :: FreeID -> Bool
-   Bool_Partial :: Bool -> Bool -> Bool
-    -- ^ Bool_Partial: This is logically equivalent to OR, but with the
-    -- special property that the left argument is promised to be totally
-    -- finite, while the right argument may be very large, infinite or _|_
 
 __True :: Bool
 __True = True
@@ -56,7 +52,6 @@ __False = False
 --  snd - a potentially infinite boolean
 -- Such that the original bool is the logical OR of the two results.
 partial :: Bool -> (Bool, Maybe Bool)
-partial (Bool_Partial a b) = (a, Just b)
 partial x = (x, Nothing)
 
 instance Show Bool where
@@ -104,11 +99,13 @@ data Integer =
 eq_Integer :: Integer -> Integer -> Bool
 eq_Integer (Integer a) (Integer b) = if a == b then True else False
 eq_Integer a b | a `symeq` b = True
-eq_Integer a b = Bool_EqInteger a b
+eq_Integer a b = error "TODO: eq_Integer on symbolic args"
+--eq_Integer a b = Bool_EqInteger a b
 
 leq_Integer :: Integer -> Integer -> Bool
 leq_Integer (Integer a) (Integer b) = if a <= b then True else False
-leq_Integer a b = Bool_LeqInteger a b
+leq_Integer a b = error "TODO: leq_Integer on symbolic args"
+--leq_Integer a b = Bool_LeqInteger a b
 
 add_Integer :: Integer -> Integer -> Integer
 add_Integer (Integer a) (Integer b) = Integer (a + b)
@@ -160,11 +157,13 @@ instance Show (Bit n) where
 eq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
 eq_Bit _ (Bit a) (Bit b) = if a == b then True else False
 eq_Bit _ a b | a `symeq` b = True
-eq_Bit w a b = Bool_EqBit w a b
+eq_Bit w a b = error "TODO: eq_Bit with symbolic args"
+--eq_Bit w a b = Bool_EqBit w a b
 
 leq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
 leq_Bit _ (Bit a) (Bit b) = if a <= b then True else False
-leq_Bit w a b = Bool_LeqBit w a b
+leq_Bit w a b = error "TODO: leq_Bit with symbolic args"
+--leq_Bit w a b = Bool_LeqBit w a b
 
 add_Bit :: Bit n -> Bit n -> Bit n
 add_Bit (Bit a) (Bit b) = Bit (a + b)
