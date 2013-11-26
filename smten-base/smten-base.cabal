@@ -63,6 +63,7 @@ library
     Smten.Runtime.AnyMap
     Smten.Runtime.Bit
     Smten.Runtime.FreeID
+    Smten.Runtime.Model
     Smten.Runtime.SmtenHS
     Smten.Runtime.StableNameEq
     Smten.Runtime.SymbolicOf

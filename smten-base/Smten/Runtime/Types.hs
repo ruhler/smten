@@ -5,8 +5,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Runtime.Types (
-    Type(..), Any(..),
-    Model, model, m_vars, m_cached, lookupBool, lookupInteger, lookupBit,
+    Type(..),
     Bool(..), __True, __False, andF, notF, iteF, partial,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
     Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,
@@ -21,62 +20,14 @@ import Smten.Runtime.StableNameEq
 
 import Data.Bits
 import GHC.TypeLits
-import System.IO.Unsafe
 
-import qualified Smten.Runtime.AnyMap as A
 import Smten.Runtime.FreeID
 
+-- | The types of Formula
 data Type = BoolT | IntegerT | BitT P.Integer
     deriving (Show)
 
-data Any = BoolA Bool
-         | IntegerA Integer
-         | BitA P.Bit
-
-data Model = Model {
-    m_vars :: [(FreeID, Any)],
-    m_cache :: A.AnyMap
-}
-
-model :: [(FreeID, Any)] -> IO Model
-model vars = do
-   cache <- A.new
-   return (Model vars cache)
-
--- lookup the value of an object under the given model.
--- The lookup is memoized.
-m_cached :: Model -> (Model -> a -> b) -> a -> b
-m_cached m f x = unsafeDupablePerformIO $ do
-    let mc = m_cache m
-    xfnd <- A.lookup mc x
-    case xfnd of
-       Just v -> return v
-       Nothing -> do
-         let v = f m x
-         A.insert mc x v
-         return v
-
-lookupBool :: Model -> FreeID -> Bool
-lookupBool m nm =
-  case lookup nm (m_vars m) of
-    Just (BoolA x) -> x
-    Just _ -> error "lookupBool: type mismatch"
-    Nothing -> False    -- any value will do for the default.
-
-lookupInteger :: Model -> FreeID -> Integer
-lookupInteger m nm =
-  case lookup nm (m_vars m) of
-    Just (IntegerA x) -> x
-    Just _ -> error "lookupInteger: type mismatch"
-    Nothing -> Integer 0
-
-lookupBit :: Model -> P.Integer -> FreeID -> Bit n
-lookupBit m w nm =
-  case lookup nm (m_vars m) of
-    Just (BitA x) -> Bit x
-    Just _ -> error "lookupBit: type mismatch"
-    Nothing -> Bit (P.bv_make w 0)
-
+-- | Boolean formulas
 data Bool where
    True :: Bool
    False :: Bool

@@ -11,6 +11,7 @@ import qualified Smten.Runtime.Assert as A
 import Smten.Runtime.Bit
 import Smten.Runtime.Debug
 import Smten.Runtime.FreeID
+import Smten.Runtime.Model
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 import qualified Smten.Runtime.Types as S
@@ -23,13 +24,13 @@ data DebugLL = DebugLL {
 dbgPutStrLn :: DebugLL -> String -> IO ()
 dbgPutStrLn dbg s = hPutStrLn (dbg_handle dbg) s
 
-dbgModelVar :: DebugLL -> (FreeID, S.Any) -> IO ()
-dbgModelVar dbg (n, S.BoolA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
-dbgModelVar dbg (n, S.IntegerA (S.Integer x)) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
-dbgModelVar dbg (n, S.BitA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
+dbgModelVar :: DebugLL -> (FreeID, Any) -> IO ()
+dbgModelVar dbg (n, BoolA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
+dbgModelVar dbg (n, IntegerA (S.Integer x)) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
+dbgModelVar dbg (n, BitA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
 
-dbgModel :: DebugLL -> S.Model -> IO ()
-dbgModel dbg m = mapM_ (dbgModelVar dbg) (S.m_vars m)
+dbgModel :: DebugLL -> Model -> IO ()
+dbgModel dbg m = mapM_ (dbgModelVar dbg) (m_vars m)
 
 
 -- mark a debug object for sharing.

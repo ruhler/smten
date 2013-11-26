@@ -11,6 +11,7 @@ module Smten.Runtime.SmtenHS (
 import qualified Prelude as P
 import Prelude hiding (Bool(..), Integer)
 
+import Smten.Runtime.Model
 import Smten.Runtime.StableNameEq
 import Smten.Runtime.Types
 
