@@ -65,9 +65,9 @@ free_Bit w = Symbolic $ do
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
-  -- TODO: Do incremental queries based on increments for p
   let (p, x) = runFresh $ runS q
-  res <- solve s p
+      (pfinite, mpbig) = partial p
+  res <- solve s pfinite
   case res of
     P.Just m -> do
        case {-# SCC "DoubleCheck" #-} realize m p of
@@ -75,5 +75,7 @@ run_symbolic s q = do
           x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied?"
                  ++ " Got: " ++ show x
        return (S.__Just ({-# SCC "Realize" #-} realize m x))
-    P.Nothing -> return S.__Nothing
+    P.Nothing -> case mpbig of
+                    P.Nothing -> return S.__Nothing
+                    P.Just pbig -> run_symbolic s (Symbolic $ return (pbig, x))
 

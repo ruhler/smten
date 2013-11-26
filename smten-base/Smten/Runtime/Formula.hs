@@ -3,7 +3,7 @@
 -- infinite results.
 module Smten.Runtime.Formula (
     BoolF(..), trueF, falseF, andF, orF, notF, iteF, varF,
-    --IntegerF(..), integerF, iaddF, isubFF, iiteF, ivarF, ieqF, ileqF,
+    IntegerF(..), integerF, iaddF, iiteF, ivarF, ieqF,
   )
   where
 
@@ -123,28 +123,50 @@ instance Num BoolF where
 data IntegerF = IntegerF BoolFF IntegerFF IntegerF
 
 ifiniteF :: IntegerFF -> IntegerF
-ifiniteF x = IntegerF trueFF x (error "finiteF._|_")
+ifiniteF x = IntegerF trueFF x (error "ifiniteF._|_")
+
+ipartialF :: BoolFF -> IntegerFF -> IntegerF -> IntegerF
+ipartialF = IntegerF
+
+-- Select between two formulas.
+-- selectF x_ y_
+--   x_, y_ may be infinite.
+-- The select call waits for at least one of x_ or y_ to reach weak head
+-- normal form, then returns WHNF representations for both x_ and y_.
+iselectF :: IntegerF -> IntegerF -> (IntegerF, IntegerF)
+iselectF x_ y_ = 
+  case select x_ y_ of
+    Both x y -> (x, y)
+    Left x -> (x, IntegerF falseFF (integerFF 0) y_)
+    Right y -> (IntegerF falseFF (integerFF 0) x_, y)
 
 integerF :: Integer -> IntegerF
 integerF x = ifiniteF (integerFF x)
 
---iaddF :: IntegerF -> IntegerF -> IntegerF
---iaddF x_ y_ =
---  case iselectF x_ y_ of
---
---iaddF :: IntegerF -> IntegerF -> IntegerF
---iaddF (IFinite x) (IFinite y) = IFinite (x+y)
---iaddF x@(IFinite xf) (IPartial p a b_) = IPartial p (xf + a) (iaddF x b_)
---iaddF (IPartial p a b_) y@(IFinite yf) = IPartial p (a + yf) (iaddF b_ yf)
---iaddF (IPartial xp xa xb_) (IPartial yp ya yb_) =
---  let rest = case select xb_ yb_ of
---                Both (IFinite xb) (IFinite yb) -> IFinite (iiteFF xp (xa + yb) (iiteFF yp (xb+ya) (xb+yb)))
---                Left (IFinite xb) -> IPartial yp (xb + ya) (iaddF (IFinite $ iiteFF xp xa xb) yb_)
---                Right (IFinite yb) -> IPartial xp (xa + yb) (iaddF xb_ (IFinite $ iiteFF yp ya yb))
---  in IPartial (xp `andFF` yp) (xa + ya) rest
---
---isubFF
---
+ivarF :: FreeID -> IntegerF
+ivarF v = ifiniteF (ivarFF v)
+
+iaddF :: IntegerF -> IntegerF -> IntegerF
+iaddF x_ y_ =
+  case iselectF x_ y_ of
+    (IntegerF xp xa xb_, IntegerF yp ya yb_) ->
+        let p = xp * yp
+            a = xa + ya
+            b = iiteF (finiteF xp) (xa +. yb_) (xb +. y_)
+        in ipartialF p a b
+
+(+.) :: IntegerFF -> IntegerF -> IntegerF
+(+.) x (IntegerF a b c_) = IntegerF a (x + b) (x +. c_)
+
+iiteF :: BoolF -> IntegerF -> IntegerF
+iiteF (BoolF pa pb pc_) x_ y_ =
+  case iselectF x_ y_ of
+    (IntegerF xp xa xb_, IntegerF yp ya yb_) ->
+       let p = 
+           a = 
+           b_ = 
+       in ipartial p a b_
+
 --iiteF :: BoolF -> IntegerF -> IntegerF
 --iiteF (Finite p) a_ b_ =
 --  case select a_ b_ of
@@ -153,9 +175,6 @@ integerF x = ifiniteF (integerFF x)
 --    Right (IFinite b) -> IPartial (notFF p) b a_
 --iiteF (Partial a b x_) t_ f_ =
 --  case select t_ f_ of
---
---ivarF :: FreeID -> IntegerF
---ivarF v = IFinite (ivarFF v)
 --
 --ieqF :: IntegerF -> IntegerF -> BoolF
 --ieqF (IFinite x) (IFinite y) = finiteF (ieqFF x y)

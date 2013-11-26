@@ -11,7 +11,13 @@ Release to Public::
 
 Runtime::
 * handle error and infinity correctly. See doc/infinity2.txt for discussion.
- ** How to even get started?
+ ** Filter out (possibly reachable) errors on left of Partial
+    So that Assert doesn't run into them if there is something else.
+ ** Track mzero explicitly?
+    - to take advantage of the high-level knowledge we have that the value is
+      unreachable (we don't need an SMT solver to tell us that)
+      That is, there is a difference between Unreachable _|_ and general _|_,
+      and it would be nice if we tracked that mzero is the Unreachable kind.
 
 
 Cleanup::

@@ -8,7 +8,7 @@ module Smten.Runtime.Types (
     Type(..), Any(..),
     stableNameEq,
     Model, model, m_vars, m_cached, lookupBool, lookupInteger, lookupBit,
-    Bool(..), __True, __False, andF, notF, iteF,
+    Bool(..), __True, __False, andF, notF, iteF, partial,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
     Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,
     or_Bit, and_Bit, shl_Bit, lshr_Bit, not_Bit, concat_Bit,
@@ -90,12 +90,25 @@ data Bool where
    Bool_EqBit :: P.Integer -> Bit n -> Bit n -> Bool
    Bool_LeqBit :: P.Integer -> Bit n -> Bit n -> Bool
    Bool_Var :: FreeID -> Bool
+   Bool_Partial :: Bool -> Bool -> Bool
+    -- ^ Bool_Partial: This is logically equivalent to OR, but with the
+    -- special property that the left argument is promised to be totally
+    -- finite, while the right argument may be very large, infinite or _|_
 
 __True :: Bool
 __True = True
 
 __False :: Bool
 __False = False
+
+
+-- Given a Bool, split it into two parts:
+--  fst - a finite boolean
+--  snd - a potentially infinite boolean
+-- Such that the original bool is the logical OR of the two results.
+partial :: Bool -> (Bool, Maybe Bool)
+partial (Bool_Partial a b) = (a, Just b)
+partial x = (x, Nothing)
 
 instance Show Bool where
     show True = "True"
