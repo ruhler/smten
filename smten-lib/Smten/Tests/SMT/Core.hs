@@ -12,6 +12,8 @@ smttests :: SMTTest ()
 smttests = do
    symtesteq "SMT.Core.Trivial" (Just ()) (return ())
    symtesteq "SMT.Core.Fail" Nothing $ (mzero :: Symbolic ())
+   symtesteq "SMT.Core.MPlusLeft" (Just True) $ mplus (return True) mzero
+   symtesteq "SMT.Core.MPlusRight" (Just True) $ mplus mzero (return True)
 
    symtesteq "SMT.Core.FreeBool" (Just True) $ do
       p <- free_Bool
@@ -110,11 +112,10 @@ smttests = do
        return q
 
    -- Test that primitives are reapplied after substitution.
---   symtesteq "SMT.Core.Substitute" (Just True) $ do
---       a <- free_Bool
---       assert (not a)
---       return (not a)
-   liftIO $ putStrLn "SMT.Core.Substitute: SKIPPED" 
+   symtesteq "SMT.Core.Substitute" (Just True) $ do
+       a <- free_Bool
+       assert (not a)
+       return (not a)
 
    -- Test conversion of symbolic Symbolic to concrete Symbolic.
    symtesteq "SMT.Core.Symsym" (Just (False, False)) $ do

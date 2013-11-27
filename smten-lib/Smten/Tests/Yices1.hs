@@ -16,7 +16,7 @@ main = do
     runtest (SMTTestCfg yices1 ["SMT.Core.Integer"] []) Core.smttests
     putStrLn "Yices1.SMT.Core PASSED"
 
-    runtest (SMTTestCfg yices1 ["Datatype.Enum", "Datatype.Struct", "Datatype.Mix", "Datatype.Caseoflet"] []) Datatype.smttests
+    runtest (SMTTestCfg yices1 [] []) Datatype.smttests
     putStrLn "Yices1.SMT.Datatype PASSED"
 
     --runtest (SMTTestCfg yices1 [] []) Integer.smttests

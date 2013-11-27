@@ -24,9 +24,16 @@ Runtime::
     - SPECIALIZE pragmas for
         ** symapp of int,
         ** use, unary, binary of Runtime.Assert
+    - Don't call sat solver for assert False
+    - Don't call sat solver for assert True
+    - if p then True else a ===> p || a
+    - a & b & b & b   ====>  a & b
 
 
 Cleanup::
+* If Select.select is always going to wait until a result or _|_, there's no
+  need for concurrency, right? Why not implement it much more simply?
+* (let {} in x  ====>  x)    in haskell output syntax 
 * Make Runtime.Formula a directory, with Type and Finite and Partial beneath it.
 * Does smten-base.cabal really need to expose all modules?
 * Support symbolic IO?

@@ -82,6 +82,7 @@ instance SmtenHS0 BoolFF where
         FalseFF -> x
         IteFF p a b -> iteFF (realize m p) (realize m a) (realize m b)
         AndFF a b -> andFF (realize m a) (realize m b)
+        OrFF a b -> orFF (realize m a) (realize m b)
         NotFF p -> notFF (realize m p)
         VarFF n -> boolFF (lookupBool m n)
         IEqFF a b -> ieqFF (realize m a) (realize m b)
@@ -99,7 +100,11 @@ instance SmtenHS0 IntegerFF where
               
 instance SmtenHS0 BoolF where
     ite0 = iteF
-    realize0 m (BoolF a b x_) = BoolF (realize m a) (realize m b) (realize m x_)
+    realize0 m (BoolF a b x_) =
+      case (realize m a, realize m b) of
+        (TrueFF, _) -> trueF
+        (FalseFF, FalseFF) -> falseF
+        (FalseFF, TrueFF) -> realize m x_
 
 instance SmtenHS0 IntegerF where
    ite0 = Integer_Ite

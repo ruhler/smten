@@ -5,6 +5,7 @@ import Prelude hiding(Either(..))
 import qualified Prelude as P
 import Control.Concurrent
 import Control.Exception
+import Data.Functor
 import System.IO.Unsafe
 
 data SelectResult a b = Both a b | Left a | Right b
@@ -53,10 +54,12 @@ selectIO x y = do
      Message s1 Done -> do
         -- The first answer has a result.
         -- Check if the other result is also ready, then return.
-        -- TODO: do we want to wait a little longer for the other?
-        --   Either with 'threadDelay' or more calls to yield?
-        yield
-        mr2 <- tryTakeMVar mvar
+        -- TODO: currently we wait until the other result is either ready, or
+        -- throws an error. This is for debugging purposes - it gets rid of
+        -- non-determinacy. In practice we may wish (need?) to set this to
+        -- some finite timeout so we don't wait forever for expressions which
+        -- are just large.
+        mr2 <- Just <$> takeMVar mvar
         case (s1, mr2) of
           (_, Just (Message _ Done)) -> return (Both x y)
           (R, Just (Message _ (Err {}))) -> return (Right y)

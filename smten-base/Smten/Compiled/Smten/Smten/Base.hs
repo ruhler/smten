@@ -50,8 +50,6 @@ error :: (SmtenHS0 a) => List__ Char -> a
 error msg = {-# SCC "PRIM_ERROR" #-} P.error (toHSString msg)
 
 instance SmtenHS1 P.IO where
-    realize1 = P.error "TODO: P.IO.realize1"
-    ite1 = P.error "TODO: P.IO.ite1"
 
 toHSString :: List__ Char -> P.String
 toHSString x = P.map toHSChar (fromList__ x)
