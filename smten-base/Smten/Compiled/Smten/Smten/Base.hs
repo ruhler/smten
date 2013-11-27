@@ -49,7 +49,13 @@ fromList__ x
 error :: (SmtenHS0 a) => List__ Char -> a
 error msg = {-# SCC "PRIM_ERROR" #-} P.error (toHSString msg)
 
+-- TODO: Implement these methods properly.
+-- I have not yet done so, because I haven't yet had the desire to write smten
+-- code which requires them, and I fear boxing IO could have bad performance
+-- consequences.
 instance SmtenHS1 P.IO where
+  ite1 = P.error "TODO: P.IO.ite1"
+  realize1 = P.error "TODO: P.IO.realize1"
 
 toHSString :: List__ Char -> P.String
 toHSString x = P.map toHSChar (fromList__ x)
