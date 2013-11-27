@@ -56,7 +56,7 @@ mplus_symbolic a b = Symbolic $ do
 
 free_Integer :: Symbolic IntegerF
 free_Integer = Symbolic $ do
-    v <- Integer_Var <$> fresh
+    v <- var_IntegerF <$> fresh
     return (trueF, v)
 
 free_Bit :: SingI Nat n -> Symbolic (BitF n)

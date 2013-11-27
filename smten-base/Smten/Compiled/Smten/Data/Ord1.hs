@@ -21,5 +21,5 @@ int_leq a b = {-# SCC "PRIM_INT_LEQ" #-} (symapp2 P.$ \av bv ->
      else __False) a b
   
 integer_leq :: Integer -> Integer -> Bool
-integer_leq = {-# SCC "PRIM_INTEGER_LEQ" #-} leq_Integer
+integer_leq = {-# SCC "PRIM_INTEGER_LEQ" #-} leq_IntegerF
 

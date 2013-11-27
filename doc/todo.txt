@@ -11,8 +11,7 @@ Release to Public::
 
 Runtime::
 * handle error and infinity correctly. See doc/infinity2.txt for discussion.
- ** Add support for partial integer formulas
-     Then get all the integer test cases to work again.
+ ** Add support for symapp of symbolic integers
  ** Add support for partial bit formulas
      Then get all the bit test cases to work again.
  ** Many possible optimizations removed to get decent implementation
@@ -30,7 +29,8 @@ Runtime::
         is unreachable (we don't need an SMT solver to tell us that) That is,
         there is a difference between Unreachable _|_ and general _|_, and it
         would be nice if we tracked that mzero is the Unreachable kind.
-
+    - Track mzero explicitly for IntegerF rather than introducing spurious 0
+      values.
 
 Cleanup::
 * (let {} in x  ====>  x)    in haskell output syntax 

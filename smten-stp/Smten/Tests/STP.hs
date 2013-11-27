@@ -12,7 +12,7 @@ import Smten.Symbolic.Solver.STP
 
 main :: IO ()
 main = do
-    runtest (SMTTestCfg stp ["SMT.Core.Integer"] []) Core.smttests
+    runtest (SMTTestCfg stp [] []) Core.smttests
     putStrLn "STP.SMT.Core PASSED"
 
     runtest (SMTTestCfg stp [] []) Datatype.smttests

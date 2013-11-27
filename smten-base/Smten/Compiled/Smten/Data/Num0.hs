@@ -39,10 +39,10 @@ int_fromInteger :: Integer -> Int
 int_fromInteger = {-# SCC "PRIM_INT_FROMINTEGER" #-}  symapp P.fromInteger
 
 integer_add :: Integer -> Integer -> Integer
-integer_add = {-# SCC "PRIM_INTEGER_ADD" #-} add_Integer
+integer_add = {-# SCC "PRIM_INTEGER_ADD" #-} add_IntegerF
 
 integer_sub :: Integer -> Integer -> Integer
-integer_sub = {-# SCC "PRIM_INTEGER_SUB" #-} sub_Integer
+integer_sub = {-# SCC "PRIM_INTEGER_SUB" #-} sub_IntegerF
 
 integer_mul :: Integer -> Integer -> Integer
 integer_mul = {-# SCC "PRIM_INTEGER_MUL" #-} symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) P.* bv

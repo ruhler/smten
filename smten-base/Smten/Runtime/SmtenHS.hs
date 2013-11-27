@@ -107,14 +107,12 @@ instance SmtenHS0 BoolF where
         (FalseFF, TrueFF) -> realize m x_
 
 instance SmtenHS0 IntegerF where
-   ite0 = Integer_Ite
-   realize0 m x = 
-      case x of
-         IntegerF {} -> x
-         Integer_Add a b -> add_Integer (realize m a) (realize m b)
-         Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
-         Integer_Ite p a b -> iterealize p a b m
-         Integer_Var n -> IntegerF (lookupInteger m n)
+    ite0 = ite_IntegerF
+    realize0 m (IntegerF p a b_) = 
+       case realize m p of
+         TrueFF -> ifiniteF (realize m a)
+         FalseFF -> realize m b_
+      
    
 instance SmtenHS0 (BitF n) where
     realize0 m x = 

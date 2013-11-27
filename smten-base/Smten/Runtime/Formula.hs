@@ -7,7 +7,8 @@ module Smten.Runtime.Formula (
     BoolF(..), trueF, falseF, boolF, andF, notF, iteF, varF, finiteF,
     isTrueF, isFalseF, (*.),
 
-    IntegerF(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
+    IntegerF(..), ifiniteF, integerF, var_IntegerF, ite_IntegerF,
+    eq_IntegerF, leq_IntegerF, add_IntegerF, sub_IntegerF,
 
     BitF(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,
     or_Bit, and_Bit, shl_Bit, lshr_Bit, not_Bit, concat_Bit,
@@ -137,28 +138,94 @@ isFalseF :: BoolF -> Bool
 isFalseF (BoolF FalseFF FalseFF _) = True
 isFalseF _ = False
 
-data IntegerF =
-    IntegerF Integer
-  | Integer_Add IntegerF IntegerF
-  | Integer_Sub IntegerF IntegerF
-  | Integer_Ite BoolF IntegerF IntegerF
-  | Integer_Var FreeID
 
-eq_Integer :: IntegerF -> IntegerF -> BoolF
-eq_Integer (IntegerF a) (IntegerF b) = boolF (a == b)
-eq_Integer a b = error "TODO: eq_Integer on symbolic args"
+-- | Representation of an integer formula which may contain
+--   infinite parts or _|_
+-- We represent the formula as follows:
+--  IntegerF p a b_
+--    Where:
+--     * Logically this is equivalent to:  if p then a else b_
+--     * 'p' and 'f' are finite
+--     * 'b_' has not yet finished evaluating to weak head normal form: it
+--       might be _|_.
+data IntegerF = IntegerF BoolFF IntegerFF IntegerF
 
-leq_Integer :: IntegerF -> IntegerF -> BoolF
-leq_Integer (IntegerF a) (IntegerF b) = boolF (a <= b)
-leq_Integer a b = error "TODO: leq_Integer on symbolic args"
+-- Select between two integer formulas.
+-- iselectF x_ y_
+--   x_, y_ may be infinite.
+-- The select call waits for at least one of x_ or y_ to reach weak head
+-- normal form, then returns WHNF representations for both x_ and y_.
+iselectF :: IntegerF -> IntegerF -> (IntegerF, IntegerF)
+iselectF x_ y_ = 
+  case S.select x_ y_ of
+    S.Both x y -> (x, y)
+    S.Left x -> (x, IntegerF falseFF (integerFF 0) y_)
+    S.Right y -> (IntegerF falseFF (integerFF 0) x_, y)
 
-add_Integer :: IntegerF -> IntegerF -> IntegerF
-add_Integer (IntegerF a) (IntegerF b) = IntegerF (a + b)
-add_Integer a b = Integer_Add a b
+ifiniteF :: IntegerFF -> IntegerF
+ifiniteF x = IntegerF trueFF x (error "ifiniteF._|_")
 
-sub_Integer :: IntegerF -> IntegerF -> IntegerF
-sub_Integer (IntegerF a) (IntegerF b) = IntegerF (a - b)
-sub_Integer a b = Integer_Sub a b
+integerF :: Integer -> IntegerF
+integerF x = ifiniteF (integerFF x)
+
+var_IntegerF :: FreeID -> IntegerF
+var_IntegerF x = ifiniteF (ivarFF x)
+
+-- Integer unary predicate
+iupF :: (IntegerFF -> BoolFF) -> IntegerF -> BoolF
+iupF f (IntegerF p a b_) = partialF (p `andFF` f a) (notFF p) (iupF f b_)
+
+-- Integer binary predicate with no arguments finite
+ibpF :: (IntegerFF -> IntegerFF -> BoolFF) -> IntegerF -> IntegerF -> BoolF
+ibpF f x_ y_ = 
+  case iselectF x_ y_ of
+    (IntegerF xp xa xb_, IntegerF yp ya yb_) ->
+      let p = xp * yp
+          a = p * (f xa ya)
+          b = notFF p
+          c_ = iteF (finiteF xp) (iupF (f xa) yb_)
+                    (iteF (finiteF yp) (iupF (f ya) xb_) (ibpF f xb_ yb_))
+      in partialF a b c_
+
+eq_IntegerF :: IntegerF -> IntegerF -> BoolF
+eq_IntegerF = ibpF ieqFF
+
+leq_IntegerF :: IntegerF -> IntegerF -> BoolF
+leq_IntegerF = ibpF ileqFF
+
+-- Integer unary operator with no arguments finite
+iuoF :: (IntegerFF -> IntegerFF) -> IntegerF -> IntegerF
+iuoF f (IntegerF p a b_) = IntegerF p (f a) (iuoF f b_)
+
+-- Integer binary operator with no arguments finite.
+iboF :: (IntegerFF -> IntegerFF -> IntegerFF) -> IntegerF -> IntegerF -> IntegerF
+iboF f x_ y_ =
+  case iselectF x_ y_ of
+    (IntegerF xp xa xb_, IntegerF yp ya yb_) ->
+      let p = xp * yp
+          a = f xa ya
+          b_ = ite_IntegerF (finiteF xp) (iuoF (f xa) yb_)
+                     (ite_IntegerF (finiteF yp) (iuoF (f ya) xb_) (iboF f xb_ yb_))
+      in IntegerF p a b_
+
+
+add_IntegerF :: IntegerF -> IntegerF -> IntegerF
+add_IntegerF = iboF iaddFF
+
+sub_IntegerF :: IntegerF -> IntegerF -> IntegerF
+sub_IntegerF = iboF isubFF
+
+ite_IntegerF :: BoolF -> IntegerF -> IntegerF -> IntegerF
+ite_IntegerF p a b
+  | isTrueF p = a
+  | isFalseF p = b
+ite_IntegerF (BoolF pa pb pc_) x_ y_ = 
+  case iselectF x_ y_ of
+    (IntegerF xp xa xb_, IntegerF yp ya yb_) ->
+       let p = iteFF pa xp (notFF pb * yp)
+           a = iiteFF pa xa ya
+           b_ = ite_IntegerF (finiteF pa) xb_ (ite_IntegerF (finiteF pb) (ite_IntegerF pc_ x_ y_) yb_)
+       in IntegerF p a b_
 
 data BitF (n :: Nat) where
   BitF :: Bit -> BitF n

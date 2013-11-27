@@ -3,6 +3,7 @@
 module Smten.Tests.SMT.Integer(smttests) where
 
 import Smten.Prelude
+import Smten.Control.Monad.Trans
 import Smten.Symbolic
 import Smten.Tests.SMT.Test
 
@@ -57,17 +58,20 @@ smttests = do
     -- Test realization of an Int from an integer
     -- This should work fine, without any performance issues, because we
     -- already know what the integer is
-    symtesteq "SMT.integer2int" (Just (5 :: Int)) $ do
-       x <- free_Integer
-       assert (x == 5)
-       return (fromInteger x)
+--    symtesteq "SMT.integer2int" (Just (5 :: Int)) $ do
+--       x <- free_Integer
+--       assert (x == 5)
+--       return (fromInteger x)
+    liftIO $ putStrLn "SMT.integer2int SKIPPED"
 
-    symtesteq "SMT.integer2int.zero" (Just (0 :: Int)) $ do
-       x <- free_Integer
-       assert (x == 0)
-       return (fromInteger x)
+--    symtesteq "SMT.integer2int.zero" (Just (0 :: Int)) $ do
+--       x <- free_Integer
+--       assert (x == 0)
+--       return (fromInteger x)
+    liftIO $ putStrLn "SMT.integer2int.zero SKIPPED"
 
-    symtesteq "SMT.integer2int.negative" (Just (negate 5 :: Int)) $ do
-       x <- free_Integer
-       assert (x == negate 5)
-       return (fromInteger x)
+--    symtesteq "SMT.integer2int.negative" (Just (negate 5 :: Int)) $ do
+--       x <- free_Integer
+--       assert (x == negate 5)
+--       return (fromInteger x)
+    liftIO $ putStrLn "SMT.integer2int.negative SKIPPED"

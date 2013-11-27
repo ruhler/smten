@@ -18,5 +18,5 @@ int_eq a b = {-# SCC "PRIM_INT_EQ" #-} (symapp2 P.$ \av bv ->
         else __False) a b
 
 integer_eq :: Integer -> Integer -> Bool
-integer_eq = {-# SCC "PRIM_INTEGER_EQ" #-} eq_Integer
+integer_eq = {-# SCC "PRIM_INTEGER_EQ" #-} eq_IntegerF
 
