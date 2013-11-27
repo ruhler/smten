@@ -27,8 +27,7 @@ main = do
     --putStrLn "Yices1.SMT.Bit PASSED"
     putStrLn "Yices1.SMT.Bit SKIPPED"
 
-    runtest (SMTTestCfg yices1 ["SMT.Error.Bool",
-                                "SMT.Error.Integer",
+    runtest (SMTTestCfg yices1 ["SMT.Error.Integer",
                                 "SMT.Error.Bit"] []) Error.smttests
     putStrLn "Yices1.SMT.Error PASSED"
 

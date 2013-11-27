@@ -28,8 +28,7 @@ main = do
     --putStrLn "Z3.SMT.Bit PASSED"
     putStrLn "Z3.SMT.Bit SKIPPED"
 
-    runtest (SMTTestCfg z3 ["SMT.Error.Bool",
-                            "SMT.Error.Integer",
+    runtest (SMTTestCfg z3 ["SMT.Error.Integer",
                             "SMT.Error.Bit"] []) Error.smttests
     putStrLn "Z3.SMT.Error PASSED"
 
