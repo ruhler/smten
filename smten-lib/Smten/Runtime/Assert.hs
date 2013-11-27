@@ -14,11 +14,12 @@ import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
-import qualified Smten.Runtime.Formula as S
+import Smten.Runtime.FiniteFormula
+import Smten.Runtime.FormulaType
 import Smten.Runtime.SolverAST as ST
 
 type Cache exp = H.BasicHashTable (StableName Any) exp
-type Vars = H.BasicHashTable FreeID S.Type
+type Vars = H.BasicHashTable FreeID Type
 
 data AR ctx exp = AR {
   ar_ctx :: ctx,
@@ -46,7 +47,7 @@ class Supported a where
     -- The value of first argument is ignored.
     cache :: a -> AM ctx exp (Cache exp)
 
-assert :: (SolverAST ctx exp) => ctx -> S.Bool -> IO [(FreeID, S.Type)]
+assert :: (SolverAST ctx exp) => ctx -> BoolFF -> IO [(FreeID, Type)]
 assert ctx p = {-# SCC "Assert" #-} do
     boolc <- H.new
     bitc <- H.new
@@ -56,9 +57,6 @@ assert ctx p = {-# SCC "Assert" #-} do
     ST.assert ctx e
     H.toList vars
 
-{-# SPECIALIZE use :: (SolverAST ctx exp) => S.Bool -> AM ctx exp exp #-}
-{-# SPECIALIZE use :: (SolverAST ctx exp) => S.Integer -> AM ctx exp exp #-}
-{-# SPECIALIZE use :: (SolverAST ctx exp) => S.Bit n -> AM ctx exp exp #-}
 use :: (SolverAST ctx exp, Supported a) => a -> AM ctx exp exp
 use x = do
     nm <- liftIO $ makeStableName $! (unsafeCoerce x)
@@ -72,43 +70,36 @@ use x = do
             liftIO $ H.insert c nm v
             return v
 
-{-# SPECIALIZE unary :: (SolverAST ctx exp) => (exp -> IO exp) -> S.Bool -> AM ctx exp exp #-}
-{-# SPECIALIZE unary :: (SolverAST ctx exp) => (exp -> IO exp) -> S.Integer -> AM ctx exp exp #-}
-{-# SPECIALIZE unary :: (SolverAST ctx exp) => (exp -> IO exp) -> S.Bit n -> AM ctx exp exp #-}
 unary :: (SolverAST ctx exp, Supported a) => (exp -> IO exp) -> a -> AM ctx exp exp
 unary f a = do
     a' <- use a
     liftIO $ f a'
 
-{-# SPECIALIZE binary :: (SolverAST ctx exp) => (exp -> exp -> IO exp) -> S.Bool -> S.Bool -> AM ctx exp exp #-}
-{-# SPECIALIZE binary :: (SolverAST ctx exp) => (exp -> exp -> IO exp) -> S.Integer -> S.Integer -> AM ctx exp exp #-}
-{-# SPECIALIZE binary :: (SolverAST ctx exp) => (exp -> exp -> IO exp) -> S.Bit n -> S.Bit n -> AM ctx exp exp #-}
 binary :: (SolverAST ctx exp, Supported a) => (exp -> exp -> IO exp) -> a -> a -> AM ctx exp exp
 binary f a b = do
     a' <- use a
     b' <- use b
     liftIO $ f a' b'
 
-instance Supported S.Bool where
-    define ctx S.True = liftIO $ bool ctx True
-    define ctx S.False = liftIO $ bool ctx False
-    define ctx (S.Bool_Var id) = uservar ctx id S.BoolT
-    define ctx (S.Bool_EqInteger a b) = binary (eq_integer ctx) a b
-    define ctx (S.Bool_LeqInteger a b) = binary (leq_integer ctx) a b
-    define ctx (S.Bool_EqBit w a b) = withbitwidth w $ binary (eq_bit ctx) a b
-    define ctx (S.Bool_LeqBit w a b) = withbitwidth w $ binary (leq_bit ctx) a b
-    define ctx (S.Bool_Ite p a b) = do
+instance Supported BoolFF where
+    define ctx TrueFF = liftIO $ bool ctx True
+    define ctx FalseFF = liftIO $ bool ctx False
+    define ctx (VarFF id) = uservar ctx id BoolT
+    define ctx (IEqFF a b) = binary (eq_integer ctx) a b
+    define ctx (ILeqFF a b) = binary (leq_integer ctx) a b
+    define ctx (IteFF p a b) = do
         p' <- use p
         a' <- use a
         b' <- use b
         liftIO $ ite_bool ctx p' a' b'
 
-    define ctx (S.Bool_And a b) = binary (and_bool ctx) a b
-    define ctx (S.Bool_Not a) = unary (not_bool ctx) a
+    define ctx (AndFF a b) = binary (and_bool ctx) a b
+    define ctx (OrFF a b) = binary (or_bool ctx) a b
+    define ctx (NotFF a) = unary (not_bool ctx) a
 
     cache _ = asks ar_boolcache
 
-uservar :: (SolverAST ctx exp) => ctx -> FreeID -> S.Type -> AM ctx exp exp
+uservar :: (SolverAST ctx exp) => ctx -> FreeID -> Type -> AM ctx exp exp
 uservar ctx id ty = do
   vars <- asks ar_vars
   liftIO $ do
@@ -120,48 +111,48 @@ uservar ctx id ty = do
         Just _ -> return ()
     var ctx (freenm id)
        
-instance Supported S.Integer where
-    define ctx (S.Integer i) = liftIO $ integer ctx i
-    define ctx (S.Integer_Add a b) = binary (add_integer ctx) a b
-    define ctx (S.Integer_Sub a b) = binary (sub_integer ctx) a b
-    define ctx (S.Integer_Ite p a b) = do
+instance Supported IntegerFF where
+    define ctx (IntegerFF i) = liftIO $ integer ctx i
+    define ctx (IAddFF a b) = binary (add_integer ctx) a b
+    define ctx (ISubFF a b) = binary (sub_integer ctx) a b
+    define ctx (IIteFF p a b) = do
         p' <- use p
         a' <- use a
         b' <- use b
         liftIO $ ite_integer ctx p' a' b'
-    define ctx (S.Integer_Var id) = uservar ctx id S.IntegerT
+    define ctx (IVarFF id) = uservar ctx id IntegerT
 
     cache _ = asks ar_intcache
 
-instance Supported (S.Bit n) where
-    define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
-    define ctx (S.Bit_Add a b) = binary (add_bit ctx) a b
-    define ctx (S.Bit_Sub a b) = binary (sub_bit ctx) a b
-    define ctx (S.Bit_Mul a b) = binary (mul_bit ctx) a b
-    define ctx (S.Bit_Or a b) = binary (or_bit ctx) a b
-    define ctx (S.Bit_And a b) = binary (and_bit ctx) a b
-    define ctx (S.Bit_Shl a b) = do
-        w <- asks ar_bitwidth
-        binary (shl_bit ctx w) a b
-    define ctx (S.Bit_Lshr a b) = do
-        w <- asks ar_bitwidth
-        binary (lshr_bit ctx w) a b
-    define ctx (S.Bit_Concat wa a b) = do
-        w <- asks ar_bitwidth
-        a' <- withbitwidth wa $ use a
-        b' <- withbitwidth (w - wa) $ use b
-        liftIO $ concat_bit ctx a' b'
-    define ctx (S.Bit_Not a) = unary (not_bit ctx) a
-    define ctx (S.Bit_Extract wa hi lo a) = withbitwidth wa $ unary (extract_bit ctx hi lo) a
-    define ctx (S.Bit_SignExtend by a) = do
-        to <- asks ar_bitwidth
-        let fr = to - by
-        withbitwidth fr $ unary (sign_extend_bit ctx fr to) a
-    define ctx (S.Bit_Ite p a b) = do
-        p' <- use p
-        a' <- use a
-        b' <- use b
-        liftIO $ ite_bit ctx p' a' b'
-    define ctx (S.Bit_Var w id) = uservar ctx id (S.BitT w)
-
-    cache _ = asks ar_bitcache
+--instance Supported (S.Bit n) where
+--    define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
+--    define ctx (S.Bit_Add a b) = binary (add_bit ctx) a b
+--    define ctx (S.Bit_Sub a b) = binary (sub_bit ctx) a b
+--    define ctx (S.Bit_Mul a b) = binary (mul_bit ctx) a b
+--    define ctx (S.Bit_Or a b) = binary (or_bit ctx) a b
+--    define ctx (S.Bit_And a b) = binary (and_bit ctx) a b
+--    define ctx (S.Bit_Shl a b) = do
+--        w <- asks ar_bitwidth
+--        binary (shl_bit ctx w) a b
+--    define ctx (S.Bit_Lshr a b) = do
+--        w <- asks ar_bitwidth
+--        binary (lshr_bit ctx w) a b
+--    define ctx (S.Bit_Concat wa a b) = do
+--        w <- asks ar_bitwidth
+--        a' <- withbitwidth wa $ use a
+--        b' <- withbitwidth (w - wa) $ use b
+--        liftIO $ concat_bit ctx a' b'
+--    define ctx (S.Bit_Not a) = unary (not_bit ctx) a
+--    define ctx (S.Bit_Extract wa hi lo a) = withbitwidth wa $ unary (extract_bit ctx hi lo) a
+--    define ctx (S.Bit_SignExtend by a) = do
+--        to <- asks ar_bitwidth
+--        let fr = to - by
+--        withbitwidth fr $ unary (sign_extend_bit ctx fr to) a
+--    define ctx (S.Bit_Ite p a b) = do
+--        p' <- use p
+--        a' <- use a
+--        b' <- use b
+--        liftIO $ ite_bit ctx p' a' b'
+--    define ctx (S.Bit_Var w id) = uservar ctx id (S.BitT w)
+--
+--    cache _ = asks ar_bitcache

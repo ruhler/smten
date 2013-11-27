@@ -14,7 +14,6 @@ import Smten.Runtime.FreeID
 import Smten.Runtime.Model
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
-import qualified Smten.Runtime.Formula as S
 import qualified Smten.Compiled.Smten.Smten.Base as S
 
 data DebugLL = DebugLL {
@@ -26,7 +25,7 @@ dbgPutStrLn dbg s = hPutStrLn (dbg_handle dbg) s
 
 dbgModelVar :: DebugLL -> (FreeID, Any) -> IO ()
 dbgModelVar dbg (n, BoolA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
-dbgModelVar dbg (n, IntegerA (S.Integer x)) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
+dbgModelVar dbg (n, IntegerA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
 dbgModelVar dbg (n, BitA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
 
 dbgModel :: DebugLL -> Model -> IO ()

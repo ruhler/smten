@@ -17,7 +17,7 @@ import Foreign.C.String
 import Foreign.C.Types
 
 import Smten.Runtime.Yices1.FFI
-import qualified Smten.Runtime.Formula as S
+import Smten.Runtime.FormulaType
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
@@ -77,9 +77,9 @@ lshr_bit_from y fr w a b
 instance SolverAST Yices1 YExpr where
   declare y ty nm = do
       let tynm = case ty of
-                    S.BoolT -> "bool"
-                    S.IntegerT -> "int"
-                    S.BitT w -> "(bitvector " ++ show w ++ ")"
+                    BoolT -> "bool"
+                    IntegerT -> "int"
+                    BitT w -> "(bitvector " ++ show w ++ ")"
           cmd = "(define " ++ nm ++ " :: " ++ tynm ++ ")"
       worked <- withCString cmd $ \str -> do
             withy1 y $ \yctx -> c_yices_parse_command yctx str

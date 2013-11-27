@@ -1,12 +1,11 @@
 
 -- | Representation of a finite SMT Formula
 module Smten.Runtime.FiniteFormula (
-  FreeID,
-  BoolFF(..), trueFF, falseFF, andFF, orFF, notFF, iteFF, varFF,
+  BoolFF(..), trueFF, falseFF, boolFF, andFF, orFF, notFF, iteFF, varFF,
   IntegerFF(..), integerFF, iaddFF, isubFF, iiteFF, ivarFF, ieqFF, ileqFF,
   ) where
 
-type FreeID = String
+import Smten.Runtime.FreeID
 
 -- | A boolean finite formula which contains no _|_.
 data BoolFF =
@@ -26,6 +25,10 @@ trueFF = TrueFF
 
 falseFF :: BoolFF
 falseFF = FalseFF
+
+boolFF :: Bool -> BoolFF
+boolFF True = trueFF
+boolFF False = falseFF
 
 varFF :: FreeID -> BoolFF
 varFF = VarFF

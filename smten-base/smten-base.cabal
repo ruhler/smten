@@ -62,9 +62,12 @@ library
 
     Smten.Runtime.AnyMap
     Smten.Runtime.Bit
+    Smten.Runtime.FiniteFormula
     Smten.Runtime.Formula
+    Smten.Runtime.FormulaType
     Smten.Runtime.FreeID
     Smten.Runtime.Model
+    Smten.Runtime.Select
     Smten.Runtime.SmtenHS
     Smten.Runtime.StableNameEq
     Smten.Runtime.SymbolicOf

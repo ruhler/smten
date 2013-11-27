@@ -9,7 +9,7 @@ module Smten.Compiled.Smten.Symbolic.Solver.Smten (smten) where
 import Data.IORef
 import Data.Functor
 
-import Smten.Runtime.Formula (Type(..))
+import Smten.Runtime.FormulaType
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver

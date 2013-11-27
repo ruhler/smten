@@ -10,7 +10,7 @@ module Smten.Runtime.Bits(addBits) where
 import Data.Functor
 import qualified Data.HashTable.IO as H
 
-import qualified Smten.Runtime.Formula as S
+import Smten.Runtime.FormulaType
 import Smten.Runtime.SolverAST
 
 data Formula exp = Exp { expr :: exp }
@@ -39,8 +39,8 @@ bitnms :: Integer -> String -> [String]
 bitnms w x = [bitnm x i | i <- [0..w-1]]
 
 instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
-  declare (Bits s m) (S.BitT w) nm = do
-     mapM (declare s S.BoolT) (bitnms w nm)
+  declare (Bits s m) (BitT w) nm = do
+     mapM (declare s BoolT) (bitnms w nm)
      bitv <- BitF <$> mapM (var s) (bitnms w nm)
      H.insert m nm bitv
   declare (Bits s _) t nm = declare s t nm

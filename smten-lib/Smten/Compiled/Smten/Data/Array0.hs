@@ -18,7 +18,7 @@ import Smten.Runtime.Formula
 import Smten.Compiled.Smten.Smten.Base
 
 data PrimArray a = PrimArray (Array P.Int a)
-                 | PrimArray_Ite Bool (PrimArray a) (PrimArray a)
+                 | PrimArray_Ite BoolF (PrimArray a) (PrimArray a)
 
 instance SmtenHS1 PrimArray where
     realize1 m x = 

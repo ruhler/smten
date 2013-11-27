@@ -6,10 +6,9 @@ module Smten.Compiled.Smten.Data.Integral0 (
 
 import qualified Prelude as P
 
-import Smten.Runtime.Formula
 import Smten.Runtime.SymbolicOf
 import Smten.Compiled.Smten.Smten.Int
-import Smten.Compiled.Smten.Smten.Integer ()
+import Smten.Compiled.Smten.Smten.Integer
 
 int_toInteger :: Int -> Integer
 int_toInteger = {-# SCC "PRIM_INT_TOINTEGER" #-} symapp (\x -> tosym (P.toInteger (x :: P.Int)))

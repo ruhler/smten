@@ -14,7 +14,7 @@ import Data.Char
 import Numeric
 
 import Smten.Runtime.Yices2.FFI
-import qualified Smten.Runtime.Formula as S
+import Smten.Runtime.FormulaType
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
@@ -41,17 +41,17 @@ bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
 
 
 instance SolverAST Yices2 YTerm where
-  declare y S.BoolT nm = do
+  declare y BoolT nm = do
     ty <- c_yices_bool_type
     term <- c_yices_new_uninterpreted_term ty
     withCString nm $ c_yices_set_term_name term
 
-  declare y S.IntegerT nm = do
+  declare y IntegerT nm = do
     ty <- c_yices_int_type
     term <- c_yices_new_uninterpreted_term ty
     withCString nm $ c_yices_set_term_name term
 
-  declare y (S.BitT w) nm = do
+  declare y (BitT w) nm = do
     ty <- c_yices_bv_type (fromInteger w)
     term <- c_yices_new_uninterpreted_term ty
     withCString nm $ c_yices_set_term_name term

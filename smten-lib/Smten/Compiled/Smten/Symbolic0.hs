@@ -13,18 +13,15 @@ import Prelude as P
 import Data.Functor
 
 import Smten.Runtime.FreeID
-import Smten.Runtime.Formula hiding (Integer)
+import Smten.Runtime.Formula
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
 
-import Smten.Compiled.Smten.Data.Bit0 as S
 import qualified Smten.Compiled.Smten.Data.Maybe as S
 import Smten.Compiled.GHC.TypeLits
-import qualified Smten.Compiled.Smten.Smten.Integer as S
-import qualified Smten.Runtime.Formula as S
 
 newtype Symbolic a = Symbolic {
-    runS :: Fresh (S.Bool, a)
+    runS :: Fresh (BoolF, a)
 }
 
 instance Functor Symbolic where
@@ -41,7 +38,7 @@ instance SmtenHS1 Symbolic where
         return (realize m p, realize m v)
 
 return_symbolic :: a -> Symbolic a
-return_symbolic x = Symbolic $ return (S.True, x)
+return_symbolic x = Symbolic $ return (trueF, x)
 
 bind_symbolic :: (SmtenHS0 a, SmtenHS0 b) => Symbolic a -> (a -> Symbolic b) -> Symbolic b
 bind_symbolic x f = Symbolic $ do
@@ -50,36 +47,36 @@ bind_symbolic x f = Symbolic $ do
    return (px `andF` pf, vf)
 
 mzero_symbolic :: (SmtenHS0 a) => Symbolic a
-mzero_symbolic = Symbolic $ return (S.False, error "mzero")
+mzero_symbolic = Symbolic $ return (falseF, error "mzero")
 
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
 mplus_symbolic a b = Symbolic $ do
-    p <- S.Bool_Var <$> fresh
+    p <- varF <$> fresh
     runS $ ite1 p a b
 
-free_Integer :: Symbolic (S.Integer)
+free_Integer :: Symbolic IntegerF
 free_Integer = Symbolic $ do
-    v <- S.Integer_Var <$> fresh
-    return (S.True, v)
+    v <- Integer_Var <$> fresh
+    return (trueF, v)
 
-free_Bit :: SingI Nat n -> Symbolic (S.Bit n)
+free_Bit :: SingI Nat n -> Symbolic (BitF n)
 free_Bit w = Symbolic $ do
-    v <- S.Bit_Var (__deNewTyDGSingI w) <$> fresh
-    return (S.True, v)
+    v <- Bit_Var (__deNewTyDGSingI w) <$> fresh
+    return (trueF, v)
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
-  let (p, x) = runFresh $ runS q
-      (pfinite, mpbig) = partial p
-  res <- solve s pfinite
-  case res of
-    P.Just m -> do
-       case {-# SCC "DoubleCheck" #-} realize m p of
-          S.True -> return ()
-          x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied?"
-                 ++ " Got: " ++ show x
-       return (S.__Just ({-# SCC "Realize" #-} realize m x))
-    P.Nothing -> case mpbig of
-                    P.Nothing -> return S.__Nothing
-                    P.Just pbig -> run_symbolic s (Symbolic $ return (pbig, x))
+  case (runFresh $ runS q) of
+     (BoolF a b x_, x) -> do
+       -- Try to find a solution in 'a', a finite part of the formula.
+       ares <- solve s a
+       case ares of
+         Just m -> return (S.__Just ({-# SCC "Realize" #-} realize m x))
+         Nothing -> do
+            -- There was no solution found in 'a'.
+            -- Check if we have to evaluate b*x_
+            bres <- solve s b
+            case bres of
+               Nothing -> return S.__Nothing
+               Just _ -> run_symbolic s (Symbolic $ return (b *. x_, x))
 

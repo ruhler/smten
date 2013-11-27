@@ -4,19 +4,13 @@ module Smten.Runtime.Model (
     Model, model, m_vars, m_cached, lookupBool, lookupInteger, lookupBit,
   ) where
 
-import Prelude hiding (Bool(..), Integer(..))
-import qualified Prelude as P
-
 import System.IO.Unsafe
 
-import qualified Smten.Runtime.Bit as P
 import qualified Smten.Runtime.AnyMap as A
-import Smten.Runtime.Formula
+import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
 
-data Any = BoolA Bool
-         | IntegerA Integer
-         | BitA P.Bit
+data Any = BoolA Bool | IntegerA Integer | BitA Bit
 
 data Model = Model {
     m_vars :: [(FreeID, Any)],
@@ -57,14 +51,14 @@ lookupInteger m nm =
   case lookup nm (m_vars m) of
     Just (IntegerA x) -> x
     Just _ -> error "lookupInteger: type mismatch"
-    Nothing -> Integer 0
+    Nothing -> 0        -- any value will do for the default.
 
 -- | Look up the bit vector value for the given free variable in the model.
 -- The given variable is assumed to have bit type for the given width.
-lookupBit :: Model -> P.Integer -> FreeID -> Bit n
+lookupBit :: Model -> Integer -> FreeID -> Bit
 lookupBit m w nm =
   case lookup nm (m_vars m) of
-    Just (BitA x) -> Bit x
+    Just (BitA x) -> x
     Just _ -> error "lookupBit: type mismatch"
-    Nothing -> Bit (P.bv_make w 0)
+    Nothing -> bv_make w 0 -- any value will do for the default
 

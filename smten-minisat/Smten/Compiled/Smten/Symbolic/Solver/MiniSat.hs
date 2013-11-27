@@ -9,7 +9,7 @@ module Smten.Compiled.Smten.Symbolic.Solver.MiniSat (minisat) where
 
 import qualified Data.HashTable.IO as H
 
-import qualified Smten.Runtime.Formula as S
+import Smten.Runtime.FormulaType
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 import Smten.Runtime.MiniSatFFI
@@ -63,12 +63,12 @@ minisat = solverFromAST $ do
   addBits withints
 
 instance SolverAST MiniSat Literal where
-  declare s S.BoolT nm = do 
+  declare s BoolT nm = do 
     v <- c_minisat_mkvar (s_ctx s)
     H.insert (s_vars s) nm v
 
-  declare y S.IntegerT nm = nointegers
-  declare y (S.BitT w) nm = nobits
+  declare y IntegerT nm = nointegers
+  declare y (BitT w) nm = nobits
   
   getBoolValue s nm = do
     r <- H.lookup (s_vars s) nm

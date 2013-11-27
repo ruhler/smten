@@ -20,7 +20,7 @@ import Smten.Runtime.SymbolicOf
 
 import Smten.Compiled.Smten.Smten.Char
 import Smten.Compiled.Smten.Smten.Int
-import Smten.Compiled.Smten.Smten.Integer ()
+import Smten.Compiled.Smten.Smten.Integer
 import Smten.Compiled.Smten.Smten.List
 import Smten.Compiled.Smten.Smten.Tuple
 import Smten.Compiled.Smten.Smten.Unit
@@ -43,8 +43,8 @@ instance SymbolicOf [P.Char] (List__ Char) where
                     
 fromList__ :: List__ a -> [a]
 fromList__ x
-  | True <- gdNil__ x = []
-  | True <- gdCons__ x = flCons__1 x : fromList__ (flCons__2 x)
+  | isTrueF (gdNil__ x) = []
+  | isTrueF (gdCons__ x) = flCons__1 x : fromList__ (flCons__2 x)
 
 error :: (SmtenHS0 a) => List__ Char -> a
 error msg = {-# SCC "PRIM_ERROR" #-} P.error (toHSString msg)

@@ -17,7 +17,7 @@ import Smten.Runtime.SymbolicOf
 
 data Char =
     C# P.Char#
-  | Char_Ite Bool Char Char
+  | Char_Ite BoolF Char Char
 
 instance SymbolicOf P.Char Char where
     tosym (P.C# x) = C# x

@@ -24,13 +24,13 @@ dataCG t constrs = do
     return $ concat [dataD, nulls, cons, shsD]
   
 -- data Foo a b ... = Foo {
---    gd_A :: Bool, flA1 :: A1, flA2 :: A2, flA3 :: A3, ...
---    gd_B :: Bool, flB1 :: B1, flB2 :: B2, flB3 :: B3, ...
+--    gd_A :: BoolF, flA1 :: A1, flA2 :: A2, flA3 :: A3, ...
+--    gd_B :: BoolF, flB1 :: B1, flB2 :: B2, flB3 :: B3, ...
 --    ...
 -- }
 mkDataD :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 mkDataD nm tyvars constrs = do
-  boolnm <- usequalified "Smten.Runtime.Formula" "Bool"
+  boolnm <- usequalified "Smten.Runtime.Formula" "BoolF"
   let boolty = S.ConAppT boolnm []
       mkcon :: DataCon -> CG [S.RecField]
       mkcon d = do
@@ -137,13 +137,13 @@ realizeD nm k cs = do
 
 -- __NullFoo :: Foo a b ...
 -- __NullFoo = Foo {
---    gd* = False,
+--    gd* = falseF,
 --    fl* = unusedfield "*"
 -- }
 mkNullD :: TyCon -> Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 mkNullD t nm ts cs = do
   unused <- usequalified "Smten.Runtime.SmtenHS" "unusedfield"
-  false <- usequalified "Smten.Runtime.Formula" "False"
+  false <- usequalified "Smten.Runtime.Formula" "falseF"
   nm' <- qtynameCG nm
   let mkcon :: DataCon -> CG [S.Field]
       mkcon d = do
@@ -165,7 +165,7 @@ mkNullD t nm ts cs = do
 
 -- Generate constructor functions for each constructor.
 -- __FooA :: A1 -> A2 -> ... Foo a b ...
--- __FooA = \a b ... -> __NullFoo { gdA = True, flA1 = a, flA2 = b, ... }
+-- __FooA = \a b ... -> __NullFoo { gdA = trueF, flA1 = a, flA2 = b, ... }
 mkConD :: Name -> DataCon -> CG S.Dec
 mkConD tynm d = do
   let dnm = dataConName d
@@ -173,7 +173,7 @@ mkConD tynm d = do
   ty <- typeCG $ dataConUserType d
   null <- S.VarE <$> nullnmCG tynm
   gdnm <- guardnmCG dnm
-  tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "True"
+  tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "trueF"
   let gdupd = S.Field gdnm tt
       numargs = length $ dataConOrigArgTys d
       vars = ["x" ++ show i | i <- [1..numargs]]

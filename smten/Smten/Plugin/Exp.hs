@@ -238,7 +238,7 @@ mkSmtenPrimCase vnm argty mdef ms = do
 --                    ...
 --                in bodyA),
 --        (gdB v, let ... in bodyB),
---        (True, default)]
+--        (trueF, default)]
 mkDataCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkDataCase vnm argty mdef ms = do
   case splitTyConApp_maybe argty of
@@ -259,7 +259,7 @@ mkDataCase vnm argty mdef ms = do
           def <- case mdef of
                    Nothing -> return []
                    Just b -> do
-                     tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "True"
+                     tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "trueF"
                      e <- S.tup2E tt <$> expCG b
                      return [e]
 

@@ -4,11 +4,14 @@ module Smten.Runtime.Solver (
     solverFromAST,
     ) where
 
-import qualified Smten.Runtime.Formula as S
+import Data.Functor
+
 import Smten.Runtime.Bit
 import Smten.Runtime.Model
 import Smten.Runtime.Result
 import Smten.Runtime.FreeID
+import Smten.Runtime.FiniteFormula
+import Smten.Runtime.FormulaType
 import Smten.Runtime.SmtenHS
 import qualified Smten.Runtime.SolverAST as AST
 import qualified Smten.Runtime.Assert as A
@@ -22,7 +25,7 @@ newtype Solver = Solver {
     --          Nothing if the query is unsatisfiable
     --   The model contains values for all user-level variables that appear in
     --   the formula.
-    solve :: S.Bool -> IO (Maybe Model)
+    solve :: BoolFF -> IO (Maybe Model)
 }
 
 -- TODO: why do we need this?
@@ -47,14 +50,10 @@ solverFromAST mksolver = Solver $ \formula -> do
             return Nothing
 
 
-getValue :: (AST.SolverAST ctx exp) => ctx -> (FreeID, S.Type) -> IO Any
-getValue s (f, S.BoolT) = do
-   b <- AST.getBoolValue s (freenm f)
-   return (BoolA $ if b then S.True else S.False)
-getValue s (f, S.IntegerT) = do
-   b <- AST.getIntegerValue s (freenm f)
-   return (IntegerA $ S.Integer b)
-getValue s (f, S.BitT w) = do
+getValue :: (AST.SolverAST ctx exp) => ctx -> (FreeID, Type) -> IO Any
+getValue s (f, BoolT) = BoolA <$> AST.getBoolValue s (freenm f)
+getValue s (f, IntegerT) = IntegerA <$> AST.getIntegerValue s (freenm f)
+getValue s (f, BitT w) = do
    b <- AST.getBitVectorValue s w (freenm f)
    return (BitA $ bv_make w b)
 

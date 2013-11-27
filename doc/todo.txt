@@ -18,9 +18,16 @@ Runtime::
       unreachable (we don't need an SMT solver to tell us that)
       That is, there is a difference between Unreachable _|_ and general _|_,
       and it would be nice if we tracked that mzero is the Unreachable kind.
+ ** Many possible optimizations removed to get decent implementation
+    - SmtenHS.merge - filter out obviously false fields?
+    - Model.cache - split into multiple caches based on type?
+    - SPECIALIZE pragmas for
+        ** symapp of int,
+        ** use, unary, binary of Runtime.Assert
 
 
 Cleanup::
+* Make Runtime.Formula a directory, with Type and Finite and Partial beneath it.
 * Does smten-base.cabal really need to expose all modules?
 * Support symbolic IO?
     Or is it okay because it can't ever appear in an assertion?

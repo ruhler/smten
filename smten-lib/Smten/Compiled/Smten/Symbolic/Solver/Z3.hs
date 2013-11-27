@@ -17,7 +17,7 @@ import Data.Maybe
 import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.Z3.FFI
-import qualified Smten.Runtime.Formula as S
+import Smten.Runtime.FormulaType
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
@@ -50,9 +50,9 @@ baprim f z a b = withz3c z $ \ctx -> withArray [a, b] $ \arr -> f ctx 2 arr
 instance SolverAST Z3 Z3Expr where
   declare z ty nm = withz3c z $ \ctx -> do
       sort <- case ty of
-                    S.BoolT -> c_Z3_mk_bool_sort ctx
-                    S.IntegerT -> c_Z3_mk_int_sort ctx
-                    S.BitT w -> c_Z3_mk_bv_sort ctx (fromInteger w)
+                    BoolT -> c_Z3_mk_bool_sort ctx
+                    IntegerT -> c_Z3_mk_int_sort ctx
+                    BitT w -> c_Z3_mk_bv_sort ctx (fromInteger w)
       snm <- withCString nm $ c_Z3_mk_string_symbol ctx
       decl <- c_Z3_mk_func_decl ctx snm 0 nullPtr sort
       H.insert (z3_vars z) nm decl
