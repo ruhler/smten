@@ -11,6 +11,10 @@ Release to Public::
 
 Runtime::
 * handle error and infinity correctly. See doc/infinity2.txt for discussion.
+ ** Add support for partial integer formulas
+     Then get all the integer test cases to work again.
+ ** Add support for partial bit formulas
+     Then get all the bit test cases to work again.
  ** Many possible optimizations removed to get decent implementation
     - SmtenHS.merge - filter out obviously false fields?
     - Model.cache - split into multiple caches based on type?
@@ -30,7 +34,6 @@ Runtime::
 
 Cleanup::
 * (let {} in x  ====>  x)    in haskell output syntax 
-* Make Runtime.Formula a directory, with Type and Finite and Partial beneath it.
 * Does smten-base.cabal really need to expose all modules?
 * Support symbolic IO?
     Q: Or is it okay because it can't ever appear in an assertion?

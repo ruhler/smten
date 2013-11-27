@@ -10,7 +10,7 @@ module Smten.Runtime.SmtenHS (
 
 import Smten.Runtime.Model
 import Smten.Runtime.StableNameEq
-import Smten.Runtime.FiniteFormula
+import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula
 
 class SmtenHS0 a where

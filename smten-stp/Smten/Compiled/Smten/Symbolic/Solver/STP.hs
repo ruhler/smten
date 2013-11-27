@@ -16,7 +16,7 @@ import Data.Functor((<$>))
 import Data.IORef
 
 import Smten.Runtime.STPFFI
-import Smten.Runtime.FormulaType
+import Smten.Runtime.Formula.Type
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver

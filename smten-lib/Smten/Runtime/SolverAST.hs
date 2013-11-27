@@ -7,7 +7,7 @@ module Smten.Runtime.SolverAST (
     eq_bool, xor_bool, and_bools, or_bools,
     ) where
 
-import Smten.Runtime.FormulaType
+import Smten.Runtime.Formula.Type
 import Smten.Runtime.Result
 
 class SolverAST ctx exp | ctx -> exp where

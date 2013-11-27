@@ -17,7 +17,7 @@ import Foreign.C.String
 import Foreign.C.Types
 
 import Smten.Runtime.Yices1.FFI
-import Smten.Runtime.FormulaType
+import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 

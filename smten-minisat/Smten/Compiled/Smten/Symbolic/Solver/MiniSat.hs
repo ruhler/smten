@@ -9,7 +9,7 @@ module Smten.Compiled.Smten.Symbolic.Solver.MiniSat (minisat) where
 
 import qualified Data.HashTable.IO as H
 
-import Smten.Runtime.FormulaType
+import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 import Smten.Runtime.MiniSatFFI

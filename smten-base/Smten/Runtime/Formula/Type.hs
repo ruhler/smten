@@ -1,5 +1,5 @@
 
-module Smten.Runtime.FormulaType (
+module Smten.Runtime.Formula.Type (
    Type(..),
  ) where
 

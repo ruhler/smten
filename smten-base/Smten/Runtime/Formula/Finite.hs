@@ -1,6 +1,6 @@
 
 -- | Representation of a finite SMT Formula
-module Smten.Runtime.FiniteFormula (
+module Smten.Runtime.Formula.Finite (
   BoolFF(..), trueFF, falseFF, boolFF, andFF, orFF, notFF, iteFF, varFF,
   IntegerFF(..), integerFF, iaddFF, isubFF, iiteFF, ivarFF, ieqFF, ileqFF,
   ) where

@@ -2,6 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures, DataKinds #-}
 
+-- | Representation of SMT formulas which may contain _|_ in subterms.
 module Smten.Runtime.Formula (
     BoolF(..), trueF, falseF, boolF, andF, notF, iteF, varF, finiteF,
     isTrueF, isFalseF, (*.),
@@ -18,7 +19,7 @@ import GHC.TypeLits
 
 import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
-import Smten.Runtime.FiniteFormula
+import Smten.Runtime.Formula.Finite
 import qualified Smten.Runtime.Select as S
 
 

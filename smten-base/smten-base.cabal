@@ -62,9 +62,9 @@ library
 
     Smten.Runtime.AnyMap
     Smten.Runtime.Bit
-    Smten.Runtime.FiniteFormula
     Smten.Runtime.Formula
-    Smten.Runtime.FormulaType
+    Smten.Runtime.Formula.Finite
+    Smten.Runtime.Formula.Type
     Smten.Runtime.FreeID
     Smten.Runtime.Model
     Smten.Runtime.Select

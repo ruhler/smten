@@ -10,8 +10,8 @@ import Smten.Runtime.Bit
 import Smten.Runtime.Model
 import Smten.Runtime.Result
 import Smten.Runtime.FreeID
-import Smten.Runtime.FiniteFormula
-import Smten.Runtime.FormulaType
+import Smten.Runtime.Formula.Finite
+import Smten.Runtime.Formula.Type
 import Smten.Runtime.SmtenHS
 import qualified Smten.Runtime.SolverAST as AST
 import qualified Smten.Runtime.Assert as A

@@ -14,8 +14,8 @@ import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
-import Smten.Runtime.FiniteFormula
-import Smten.Runtime.FormulaType
+import Smten.Runtime.Formula.Finite
+import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST as ST
 
 type Cache exp = H.BasicHashTable (StableName Any) exp

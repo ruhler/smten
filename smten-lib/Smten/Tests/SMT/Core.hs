@@ -3,7 +3,6 @@
 module Smten.Tests.SMT.Core (smttests, tests) where
 
 import Smten.Prelude
-import Smten.Control.Monad.Trans
 import Smten.Symbolic
 import Smten.Symbolic.Solver.Smten
 import Smten.Tests.SMT.Test
