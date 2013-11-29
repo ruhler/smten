@@ -120,17 +120,17 @@ instance SmtenHS0 (BitF n) where
     realize0 m x = 
       case x of
         BitF {} -> x
-        Bit_Add a b -> add_Bit (realize m a) (realize m b)
-        Bit_Sub a b -> sub_Bit (realize m a) (realize m b)
-        Bit_Mul a b -> mul_Bit (realize m a) (realize m b)
-        Bit_Or a b -> or_Bit (realize m a) (realize m b)
-        Bit_And a b -> and_Bit (realize m a) (realize m b)
-        Bit_Shl a b -> shl_Bit (realize m a) (realize m b)
-        Bit_Lshr a b -> lshr_Bit (realize m a) (realize m b)
-        Bit_Concat w a b -> concat_Bit w (realize m a) (realize m b)
-        Bit_Not a -> not_Bit (realize m a)
-        Bit_SignExtend by x -> sign_extend_Bit by (realize m x)
-        Bit_Extract wx hi lo x -> extract_Bit wx hi lo (realize m x)
+        Bit_Add a b -> bit_addF (realize m a) (realize m b)
+        Bit_Sub a b -> bit_subF (realize m a) (realize m b)
+        Bit_Mul a b -> bit_mulF(realize m a) (realize m b)
+        Bit_Or a b -> bit_orF (realize m a) (realize m b)
+        Bit_And a b -> bit_andF (realize m a) (realize m b)
+        Bit_Shl a b -> bit_shlF (realize m a) (realize m b)
+        Bit_Lshr a b -> bit_lshrF (realize m a) (realize m b)
+        Bit_Concat w a b -> bit_concatF w (realize m a) (realize m b)
+        Bit_Not a -> bit_notF (realize m a)
+        Bit_SignExtend by x -> bit_sign_extendF by (realize m x)
+        Bit_Extract wx hi lo x -> bit_extractF wx hi lo (realize m x)
         Bit_Ite p a b -> iterealize p a b m
         Bit_Var w n -> BitF (lookupBit m w n)
     ite0 = Bit_Ite

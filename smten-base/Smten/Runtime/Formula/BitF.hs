@@ -3,9 +3,9 @@
 {-# LANGUAGE KindSignatures, DataKinds #-}
 
 module Smten.Runtime.Formula.BitF (
-    BitF(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,
-    or_Bit, and_Bit, shl_Bit, lshr_Bit, not_Bit, concat_Bit,
-    sign_extend_Bit, extract_Bit,
+    BitF(..), bit_eqF, bit_leqF, bit_addF, bit_subF, bit_mulF,
+    bit_orF, bit_andF, bit_shlF, bit_lshrF, bit_notF, bit_concatF,
+    bit_sign_extendF, bit_extractF,
   ) where
 
 import Data.Bits
@@ -54,55 +54,55 @@ instance Show (BitF n) where
   show (Bit_Var _ x) = freenm x
     
 
-eq_Bit :: Integer -> BitF n -> BitF n -> BoolF
-eq_Bit _ (BitF a) (BitF b) = boolF (a == b)
-eq_Bit w a b = error "TODO: eq_Bit with symbolic args"
+bit_eqF :: Integer -> BitF n -> BitF n -> BoolF
+bit_eqF _ (BitF a) (BitF b) = boolF (a == b)
+bit_eqF w a b = error "TODO: bit_eqF with symbolic args"
 
-leq_Bit :: Integer -> BitF n -> BitF n -> BoolF
-leq_Bit _ (BitF a) (BitF b) = boolF (a <= b)
-leq_Bit w a b = error "TODO: leq_Bit with symbolic args"
+bit_leqF :: Integer -> BitF n -> BitF n -> BoolF
+bit_leqF _ (BitF a) (BitF b) = boolF (a <= b)
+bit_leqF w a b = error "TODO: bit_leqF with symbolic args"
 
-add_Bit :: BitF n -> BitF n -> BitF n
-add_Bit (BitF a) (BitF b) = BitF (a + b)
-add_Bit a b = Bit_Add a b
+bit_addF :: BitF n -> BitF n -> BitF n
+bit_addF (BitF a) (BitF b) = BitF (a + b)
+bit_addF a b = Bit_Add a b
 
-sub_Bit :: BitF n -> BitF n -> BitF n
-sub_Bit (BitF a) (BitF b) = BitF (a - b)
-sub_Bit a b = Bit_Sub a b
+bit_subF :: BitF n -> BitF n -> BitF n
+bit_subF (BitF a) (BitF b) = BitF (a - b)
+bit_subF a b = Bit_Sub a b
 
-mul_Bit :: BitF n -> BitF n -> BitF n
-mul_Bit (BitF a) (BitF b) = BitF (a * b)
-mul_Bit a b = Bit_Mul a b
+bit_mulF :: BitF n -> BitF n -> BitF n
+bit_mulF (BitF a) (BitF b) = BitF (a * b)
+bit_mulF a b = Bit_Mul a b
 
-or_Bit :: BitF n -> BitF n -> BitF n
-or_Bit (BitF a) (BitF b) = BitF (a .|. b)
-or_Bit a b = Bit_Or a b
+bit_orF :: BitF n -> BitF n -> BitF n
+bit_orF (BitF a) (BitF b) = BitF (a .|. b)
+bit_orF a b = Bit_Or a b
 
-and_Bit :: BitF n -> BitF n -> BitF n
-and_Bit (BitF a) (BitF b) = BitF (a .&. b)
-and_Bit a b = Bit_And a b
+bit_andF :: BitF n -> BitF n -> BitF n
+bit_andF (BitF a) (BitF b) = BitF (a .&. b)
+bit_andF a b = Bit_And a b
 
-shl_Bit :: BitF n -> BitF n -> BitF n
-shl_Bit (BitF a) (BitF b) = BitF (a `bv_shl` b)
-shl_Bit a b = Bit_Shl a b
+bit_shlF :: BitF n -> BitF n -> BitF n
+bit_shlF (BitF a) (BitF b) = BitF (a `bv_shl` b)
+bit_shlF a b = Bit_Shl a b
 
-lshr_Bit :: BitF n -> BitF n -> BitF n
-lshr_Bit (BitF a) (BitF b) = BitF (a `bv_lshr` b)
-lshr_Bit a b = Bit_Lshr a b
+bit_lshrF :: BitF n -> BitF n -> BitF n
+bit_lshrF (BitF a) (BitF b) = BitF (a `bv_lshr` b)
+bit_lshrF a b = Bit_Lshr a b
 
-concat_Bit :: Integer -> BitF a -> BitF b -> BitF n
-concat_Bit _ (BitF a) (BitF b) = BitF (a `bv_concat` b)
-concat_Bit w a b = Bit_Concat w a b
+bit_concatF :: Integer -> BitF a -> BitF b -> BitF n
+bit_concatF _ (BitF a) (BitF b) = BitF (a `bv_concat` b)
+bit_concatF w a b = Bit_Concat w a b
 
-not_Bit :: BitF n -> BitF n
-not_Bit (BitF a) = BitF (complement a)
-not_Bit a = Bit_Not a
+bit_notF :: BitF n -> BitF n
+bit_notF (BitF a) = BitF (complement a)
+bit_notF a = Bit_Not a
 
-sign_extend_Bit :: Integer -> BitF m -> BitF n
-sign_extend_Bit by (BitF a) = BitF (bv_sign_extend by a)
-sign_extend_Bit by x = Bit_SignExtend by x
+bit_sign_extendF :: Integer -> BitF m -> BitF n
+bit_sign_extendF by (BitF a) = BitF (bv_sign_extend by a)
+bit_sign_extendF by x = Bit_SignExtend by x
 
-extract_Bit :: Integer -> Integer -> Integer -> BitF m -> BitF n
-extract_Bit _ hi lo (BitF a) = BitF (bv_extract hi lo a)
-extract_Bit wx hi lo x = Bit_Extract wx hi lo x
+bit_extractF :: Integer -> Integer -> Integer -> BitF m -> BitF n
+bit_extractF _ hi lo (BitF a) = BitF (bv_extract hi lo a)
+bit_extractF wx hi lo x = Bit_Extract wx hi lo x
 
