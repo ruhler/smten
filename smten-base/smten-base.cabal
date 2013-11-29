@@ -63,6 +63,10 @@ library
     Smten.Runtime.AnyMap
     Smten.Runtime.Bit
     Smten.Runtime.Formula
+    Smten.Runtime.Formula.BitF
+    Smten.Runtime.Formula.BoolF
+    Smten.Runtime.Formula.IntegerF
+    Smten.Runtime.Formula.PartialF
     Smten.Runtime.Formula.Finite
     Smten.Runtime.Formula.Type
     Smten.Runtime.FreeID

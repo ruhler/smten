@@ -60,8 +60,8 @@ instance SymbolicOf P.Integer IntegerF where
     tosym = integerF
 
     symapp f x =
-      case x of
-        IntegerF TrueFF (IntegerFF i) _ -> f i
+      case parts_IntegerF x of
+        (TrueFF, IntegerFF i, _) -> f i
         _ -> P.error "TODO: symapp symbolic IntegerF"
 
 

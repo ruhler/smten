@@ -1,6 +1,7 @@
 
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PatternGuards #-}
 
 module Smten.Runtime.SmtenHS (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
@@ -108,10 +109,11 @@ instance SmtenHS0 BoolF where
 
 instance SmtenHS0 IntegerF where
     ite0 = ite_IntegerF
-    realize0 m (IntegerF p a b_) = 
-       case realize m p of
-         TrueFF -> ifiniteF (realize m a)
-         FalseFF -> realize m b_
+    realize0 m x
+      | (p, a, b_) <- parts_IntegerF x = 
+           case realize m p of
+             TrueFF -> finite_IntegerF (realize m a)
+             FalseFF -> realize m b_
       
    
 instance SmtenHS0 (BitF n) where
