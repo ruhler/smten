@@ -18,6 +18,10 @@ import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST as ST
 
+-- TODO: Don't use 'Any' for the cache, because we know the types of the
+-- caches statically: BoolFF, IntegerFF, and BitFF.
+-- This is left over from when the Bit type constructor had a phantom type
+-- denoting its width.
 type Cache exp = H.BasicHashTable (StableName Any) exp
 type Vars = H.BasicHashTable FreeID Type
 
@@ -27,18 +31,11 @@ data AR ctx exp = AR {
   ar_intcache :: Cache exp,
   ar_bitcache :: Cache exp,
 
-  -- If we are currently defining the expression for a bit-vector object, this
-  -- holds the width of that object.
-  ar_bitwidth :: Integer,
-
   -- Track the user-visible SMT variables used in the assertion.
   ar_vars :: Vars
 }
 
 type AM ctx exp = ReaderT (AR ctx exp) IO
-
-withbitwidth :: Integer -> AM ctx exp a -> AM ctx exp a
-withbitwidth i = local (\r -> r { ar_bitwidth = i })
 
 class Supported a where
     define :: (SolverAST ctx exp) => ctx -> a -> AM ctx exp exp
@@ -53,7 +50,7 @@ assert ctx p = {-# SCC "Assert" #-} do
     bitc <- H.new
     intc <- H.new
     vars <- H.new
-    e <- runReaderT (define ctx p) (AR ctx boolc bitc intc (error "ar_bitwidth not set!") vars)
+    e <- runReaderT (define ctx p) (AR ctx boolc bitc intc vars)
     ST.assert ctx e
     H.toList vars
 
@@ -84,18 +81,19 @@ binary f a b = do
 instance Supported BoolFF where
     define ctx TrueFF = liftIO $ bool ctx True
     define ctx FalseFF = liftIO $ bool ctx False
-    define ctx (VarFF id) = uservar ctx id BoolT
-    define ctx (IEqFF a b) = binary (eq_integer ctx) a b
-    define ctx (ILeqFF a b) = binary (leq_integer ctx) a b
     define ctx (IteFF p a b) = do
         p' <- use p
         a' <- use a
         b' <- use b
         liftIO $ ite_bool ctx p' a' b'
-
     define ctx (AndFF a b) = binary (and_bool ctx) a b
     define ctx (OrFF a b) = binary (or_bool ctx) a b
     define ctx (NotFF a) = unary (not_bool ctx) a
+    define ctx (VarFF id) = uservar ctx id BoolT
+    define ctx (IEqFF a b) = binary (eq_integer ctx) a b
+    define ctx (ILeqFF a b) = binary (leq_integer ctx) a b
+    define ctx (BitEqFF a b) = binary (eq_bit ctx) a b
+    define ctx (BitLeqFF a b) = binary (leq_bit ctx) a b
 
     cache _ = asks ar_boolcache
 
@@ -124,35 +122,24 @@ instance Supported IntegerFF where
 
     cache _ = asks ar_intcache
 
---instance Supported (S.Bit n) where
---    define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
---    define ctx (S.Bit_Add a b) = binary (add_bit ctx) a b
---    define ctx (S.Bit_Sub a b) = binary (sub_bit ctx) a b
---    define ctx (S.Bit_Mul a b) = binary (mul_bit ctx) a b
---    define ctx (S.Bit_Or a b) = binary (or_bit ctx) a b
---    define ctx (S.Bit_And a b) = binary (and_bit ctx) a b
---    define ctx (S.Bit_Shl a b) = do
---        w <- asks ar_bitwidth
---        binary (shl_bit ctx w) a b
---    define ctx (S.Bit_Lshr a b) = do
---        w <- asks ar_bitwidth
---        binary (lshr_bit ctx w) a b
---    define ctx (S.Bit_Concat wa a b) = do
---        w <- asks ar_bitwidth
---        a' <- withbitwidth wa $ use a
---        b' <- withbitwidth (w - wa) $ use b
---        liftIO $ concat_bit ctx a' b'
---    define ctx (S.Bit_Not a) = unary (not_bit ctx) a
---    define ctx (S.Bit_Extract wa hi lo a) = withbitwidth wa $ unary (extract_bit ctx hi lo) a
---    define ctx (S.Bit_SignExtend by a) = do
---        to <- asks ar_bitwidth
---        let fr = to - by
---        withbitwidth fr $ unary (sign_extend_bit ctx fr to) a
---    define ctx (S.Bit_Ite p a b) = do
---        p' <- use p
---        a' <- use a
---        b' <- use b
---        liftIO $ ite_bit ctx p' a' b'
---    define ctx (S.Bit_Var w id) = uservar ctx id (S.BitT w)
---
---    cache _ = asks ar_bitcache
+instance Supported BitFF where
+    define ctx (BitFF x) = liftIO $ bit ctx (bv_width x) (bv_value x)
+    define ctx (Add_BitFF a b) = binary (add_bit ctx) a b
+    define ctx (Sub_BitFF a b) = binary (sub_bit ctx) a b
+    define ctx (Mul_BitFF a b) = binary (mul_bit ctx) a b
+    define ctx (Or_BitFF a b) = binary (or_bit ctx) a b
+    define ctx (And_BitFF a b) = binary (and_bit ctx) a b
+    define ctx (Shl_BitFF w a b) = binary (shl_bit ctx w) a b
+    define ctx (Lshr_BitFF w a b) = binary (lshr_bit ctx w) a b
+    define ctx (Concat_BitFF a b) = binary (concat_bit ctx) a b
+    define ctx (Not_BitFF a) = unary (not_bit ctx) a
+    define ctx (SignExtend_BitFF fr to a) = unary (sign_extend_bit ctx fr to) a
+    define ctx (Extract_BitFF hi lo a) = unary (extract_bit ctx hi lo) a
+    define ctx (Ite_BitFF p a b) = do
+        p' <- use p
+        a' <- use a
+        b' <- use b
+        liftIO $ ite_bit ctx p' a' b'
+    define ctx (Var_BitFF w id) = uservar ctx id (BitT w)
+
+    cache _ = asks ar_bitcache

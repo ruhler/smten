@@ -33,6 +33,8 @@ Runtime::
       values.
 
 Cleanup::
+* In Runtime.Assert, don't use AnyMap for caches
+  And remove AnyMap if that means we don't have any other users of it.
 * (let {} in x  ====>  x)    in haskell output syntax 
 * Does smten-base.cabal really need to expose all modules?
 * Support symbolic IO?
