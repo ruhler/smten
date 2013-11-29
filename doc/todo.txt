@@ -27,13 +27,11 @@ Runtime::
         is unreachable (we don't need an SMT solver to tell us that) That is,
         there is a difference between Unreachable _|_ and general _|_, and it
         would be nice if we tracked that mzero is the Unreachable kind.
-    - Track mzero explicitly for IntegerF rather than introducing spurious 0
-      values.
+    - Track mzero explicitly for IntegerF rather than introducing spurious
+      dummy values.
 
 Cleanup::
 * Naming conventions are all over the place for formulas. Fix it please.
-* In Runtime.Assert, don't use AnyMap for caches
-  And remove AnyMap if that means we don't have any other users of it.
 * (let {} in x  ====>  x)    in haskell output syntax 
 * Does smten-base.cabal really need to expose all modules?
 * Support symbolic IO?

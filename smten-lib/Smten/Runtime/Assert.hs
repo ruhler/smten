@@ -4,9 +4,6 @@
 
 module Smten.Runtime.Assert (Smten.Runtime.Assert.assert) where
 
-import GHC.Base
-import Unsafe.Coerce
-
 import Control.Monad.Reader
 import System.Mem.StableName
 
@@ -18,18 +15,14 @@ import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST as ST
 
--- TODO: Don't use 'Any' for the cache, because we know the types of the
--- caches statically: BoolFF, IntegerFF, and BitFF.
--- This is left over from when the Bit type constructor had a phantom type
--- denoting its width.
-type Cache exp = H.BasicHashTable (StableName Any) exp
+type Cache a exp = H.BasicHashTable (StableName a) exp
 type Vars = H.BasicHashTable FreeID Type
 
 data AR ctx exp = AR {
   ar_ctx :: ctx,
-  ar_boolcache :: Cache exp,
-  ar_intcache :: Cache exp,
-  ar_bitcache :: Cache exp,
+  ar_boolcache :: Cache BoolFF exp,
+  ar_intcache :: Cache IntegerFF exp,
+  ar_bitcache :: Cache BitFF exp,
 
   -- Track the user-visible SMT variables used in the assertion.
   ar_vars :: Vars
@@ -41,8 +34,7 @@ class Supported a where
     define :: (SolverAST ctx exp) => ctx -> a -> AM ctx exp exp
 
     -- Retrieve the cache associated with objects of this data type.
-    -- The value of first argument is ignored.
-    cache :: a -> AM ctx exp (Cache exp)
+    cache :: AM ctx exp (Cache a exp)
 
 assert :: (SolverAST ctx exp) => ctx -> BoolFF -> IO [(FreeID, Type)]
 assert ctx p = {-# SCC "Assert" #-} do
@@ -56,8 +48,8 @@ assert ctx p = {-# SCC "Assert" #-} do
 
 use :: (SolverAST ctx exp, Supported a) => a -> AM ctx exp exp
 use x = do
-    nm <- liftIO $ makeStableName $! (unsafeCoerce x)
-    c <- cache x
+    nm <- liftIO $ makeStableName $! x
+    c <- cache
     found <- liftIO $ H.lookup c nm
     case found of
         Just v -> return v
@@ -95,7 +87,7 @@ instance Supported BoolFF where
     define ctx (BitEqFF a b) = binary (eq_bit ctx) a b
     define ctx (BitLeqFF a b) = binary (leq_bit ctx) a b
 
-    cache _ = asks ar_boolcache
+    cache = asks ar_boolcache
 
 uservar :: (SolverAST ctx exp) => ctx -> FreeID -> Type -> AM ctx exp exp
 uservar ctx id ty = do
@@ -120,7 +112,7 @@ instance Supported IntegerFF where
         liftIO $ ite_integer ctx p' a' b'
     define ctx (IVarFF id) = uservar ctx id IntegerT
 
-    cache _ = asks ar_intcache
+    cache = asks ar_intcache
 
 instance Supported BitFF where
     define ctx (BitFF x) = liftIO $ bit ctx (bv_width x) (bv_value x)
@@ -142,4 +134,4 @@ instance Supported BitFF where
         liftIO $ ite_bit ctx p' a' b'
     define ctx (Var_BitFF w id) = uservar ctx id (BitT w)
 
-    cache _ = asks ar_bitcache
+    cache = asks ar_bitcache
