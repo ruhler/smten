@@ -23,10 +23,9 @@ main = do
     runtest (SMTTestCfg z3 [] []) Integer.smttests
     putStrLn "Z3.SMT.Integer PASSED"
 
-    --runtest (SMTTestCfg z3 [] []) Bit.smttests
-    --putStrLn "Z3.SMT.Bit PASSED"
-    putStrLn "Z3.SMT.Bit SKIPPED"
+    runtest (SMTTestCfg z3 [] []) Bit.smttests
+    putStrLn "Z3.SMT.Bit PASSED"
 
-    runtest (SMTTestCfg z3 ["SMT.Error.Bit"] []) Error.smttests
+    runtest (SMTTestCfg z3 [] []) Error.smttests
     putStrLn "Z3.SMT.Error PASSED"
 

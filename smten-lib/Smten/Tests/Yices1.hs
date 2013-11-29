@@ -13,6 +13,8 @@ import Smten.Symbolic.Solver.Yices1
 
 main :: IO ()
 main = do
+    putStrLn "Yices1 Tests Running..."
+
     runtest (SMTTestCfg yices1 [] []) Core.smttests
     putStrLn "Yices1.SMT.Core PASSED"
 
@@ -22,10 +24,9 @@ main = do
     runtest (SMTTestCfg yices1 [] []) Integer.smttests
     putStrLn "Yices1.SMT.Integer PASSED"
 
-    --runtest (SMTTestCfg yices1 ["SMT.Bit.Large"] []) Bit.smttests
-    --putStrLn "Yices1.SMT.Bit PASSED"
-    putStrLn "Yices1.SMT.Bit SKIPPED"
+    runtest (SMTTestCfg yices1 ["SMT.Bit.Large"] []) Bit.smttests
+    putStrLn "Yices1.SMT.Bit PASSED"
 
-    runtest (SMTTestCfg yices1 ["SMT.Error.Bit"] []) Error.smttests
+    runtest (SMTTestCfg yices1 [] []) Error.smttests
     putStrLn "Yices1.SMT.Error PASSED"
 

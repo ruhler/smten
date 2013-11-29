@@ -18,7 +18,6 @@ main = do
     runtest (SMTTestCfg stp [] []) Datatype.smttests
     putStrLn "STP.SMT.Datatype PASSED"
 
-    --runtest (SMTTestCfg stp [] []) Bit.smttests
-    --putStrLn "STP.SMT.Bit PASSED"
-    putStrLn "STP.SMT.Bit SKIPPED"
+    runtest (SMTTestCfg stp [] []) Bit.smttests
+    putStrLn "STP.SMT.Bit PASSED"
 

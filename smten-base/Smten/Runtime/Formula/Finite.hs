@@ -5,7 +5,7 @@ module Smten.Runtime.Formula.Finite (
   IntegerFF(..), integerFF, iaddFF, isubFF, iiteFF, ivarFF, ieqFF, ileqFF,
   BitFF(..), bitFF, bit_varFF, bit_eqFF, bit_leqFF, bit_addFF, bit_subFF,
   bit_mulFF, bit_orFF, bit_andFF, bit_shlFF, bit_lshrFF, bit_concatFF,
-  bit_notFF, bit_sign_extendFF, bit_extractFF,
+  bit_notFF, bit_sign_extendFF, bit_extractFF, bit_iteFF,
   ) where
 
 import Data.Bits
@@ -208,3 +208,7 @@ bit_extractFF :: Integer -> Integer -> BitFF -> BitFF
 bit_extractFF hi lo (BitFF a) = BitFF (bv_extract hi lo a)
 bit_extractFF hi lo x = Extract_BitFF hi lo x
 
+bit_iteFF :: BoolFF -> BitFF -> BitFF -> BitFF
+bit_iteFF TrueFF a _ = a
+bit_iteFF FalseFF _ b = b
+bit_iteFF p a b = Ite_BitFF p a b

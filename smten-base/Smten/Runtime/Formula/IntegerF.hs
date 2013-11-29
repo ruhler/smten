@@ -14,6 +14,9 @@ import Smten.Runtime.Formula.PartialF
 -- issues with overlapping instances of SmtenHS0 for IntegerF
 newtype IntegerF = IntegerF (PartialF IntegerFF)
 
+instance IsFinite IntegerFF where
+    finite_iteFF = iiteFF
+
 integerF :: Integer -> IntegerF
 integerF x = IntegerF $ pfiniteF (integerFF x)
 

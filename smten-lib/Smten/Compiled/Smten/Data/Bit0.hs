@@ -11,9 +11,9 @@ module Smten.Compiled.Smten.Data.Bit0 (
 
 import qualified Prelude as P
 import qualified Smten.Runtime.Bit as P
-import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 import Smten.Runtime.Formula
+import Smten.Runtime.Formula.Finite
 import Smten.Compiled.Smten.Data.Bool0
 import Smten.Compiled.Smten.Smten.Base
 import Smten.Compiled.GHC.TypeLits
@@ -21,25 +21,24 @@ import Smten.Compiled.GHC.TypeLits
 type Bit = BitF
 
 instance SymbolicOf P.Bit (BitF n) where
-    tosym = BitF
+    tosym = bitF
 
     symapp f x = 
-      case x of
-        BitF b -> f b
-        Bit_Ite p a b -> ite0 p (f $$ a) (f $$ b)
-        _ -> P.error "symapp on non-ite symbolic bit vector"
+      case parts_BitF x of
+        (TrueFF, BitFF b, _) -> f b
+        _ -> P.error "TODO: symapp symbolic BitF"
 
-bv_eq :: SingI Nat n -> BitF n -> BitF n -> Bool
-bv_eq x = {-# SCC "PRIM_BV_EQ" #-} bit_eqF (__deNewTyDGSingI x)
+bv_eq :: BitF n -> BitF n -> Bool
+bv_eq = {-# SCC "PRIM_BV_EQ" #-} bit_eqF
 
-bv_leq :: SingI Nat n -> BitF n -> BitF n -> Bool
-bv_leq x = {-# SCC "PRIM_BV_LEQ" #-} bit_leqF (__deNewTyDGSingI x)
+bv_leq :: BitF n -> BitF n -> Bool
+bv_leq = {-# SCC "PRIM_BV_LEQ" #-} bit_leqF
 
 bv_show :: BitF n -> List__ Char
 bv_show = {-# SCC "PRIM_BV_SHOW" #-} symapp P.$ \av -> fromHSString (P.show (av :: P.Bit))
 
 bv_fromInteger :: SingI Nat n -> Integer -> BitF n
-bv_fromInteger w = {-# SCC "PRIM_BV_FROMINTEGER" #-} symapp P.$ \v -> BitF (P.bv_make (__deNewTyDGSingI w) v)
+bv_fromInteger w = {-# SCC "PRIM_BV_FROMINTEGER" #-} symapp P.$ \v -> bitF (P.bv_make (__deNewTyDGSingI w) v)
 
 bv_add :: BitF n -> BitF n -> BitF n
 bv_add = {-# SCC "PRIM_BV_ADD" #-} bit_addF
@@ -56,23 +55,23 @@ bv_or = {-# SCC "PRIM_BV_OR" #-} bit_orF
 bv_and :: BitF n -> BitF n -> BitF n
 bv_and = {-# SCC "PRIM_BV_AND" #-} bit_andF
 
-bv_shl :: BitF n -> BitF n -> BitF n
-bv_shl = {-# SCC "PRIM_BV_SHL" #-} bit_shlF
+bv_shl :: SingI Nat n -> BitF n -> BitF n -> BitF n
+bv_shl w = {-# SCC "PRIM_BV_SHL" #-} bit_shlF (__deNewTyDGSingI w)
 
-bv_lshr :: BitF n -> BitF n -> BitF n
-bv_lshr = {-# SCC "PRIM_BV_LSHR" #-} bit_lshrF
+bv_lshr :: SingI Nat n -> BitF n -> BitF n -> BitF n
+bv_lshr w = {-# SCC "PRIM_BV_LSHR" #-} bit_lshrF (__deNewTyDGSingI w)
 
 bv_not :: BitF n -> BitF n
 bv_not = {-# SCC "PRIM_BV_NOT" #-} bit_notF
 
-bv_concat :: SingI Nat a -> Bit a -> Bit b -> BitF n
-bv_concat x = {-# SCC "PRIM_BV_CONCAT" #-} bit_concatF (__deNewTyDGSingI x)
+bv_concat :: Bit a -> Bit b -> BitF n
+bv_concat = {-# SCC "PRIM_BV_CONCAT" #-} bit_concatF
 
 bv_sign_extend :: SingI Nat m -> SingI Nat n -> Bit m -> BitF n
-bv_sign_extend mw nw = {-# SCC "PRIM_BV_SIGN_EXTEND" #-} bit_sign_extendF (__deNewTyDGSingI nw P.- __deNewTyDGSingI mw)
+bv_sign_extend mw nw = {-# SCC "PRIM_BV_SIGN_EXTEND" #-} bit_sign_extendF (__deNewTyDGSingI mw) (__deNewTyDGSingI nw)
 
-bv_extract :: SingI Nat m -> SingI Nat n -> Bit m -> Integer -> BitF n
-bv_extract mw nw x = {-# SCC "PRIM_BV_EXTRACT" #-} symapp (\lsb -> bit_extractF (__deNewTyDGSingI mw) (lsb P.+ (__deNewTyDGSingI nw) P.- 1) lsb x)
+bv_extract :: SingI Nat n -> Bit m -> Integer -> BitF n
+bv_extract nw x = {-# SCC "PRIM_BV_EXTRACT" #-} symapp (\lsb -> bit_extractF (lsb P.+ (__deNewTyDGSingI nw) P.- 1) lsb x)
 
 bv_width :: SingI Nat n -> BitF n -> Integer
 bv_width w _ = {-# SCC "PRIM_BV_WIDTH" #-} tosym (__deNewTyDGSingI w)

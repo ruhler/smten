@@ -88,6 +88,8 @@ instance SmtenHS0 BoolFF where
         VarFF n -> boolFF (lookupBool m n)
         IEqFF a b -> ieqFF (realize m a) (realize m b)
         ILeqFF a b -> ileqFF (realize m a) (realize m b)
+        BitEqFF a b -> bit_eqFF (realize m a) (realize m b)
+        BitLeqFF a b -> bit_leqFF (realize m a) (realize m b)
 
 instance SmtenHS0 IntegerFF where
     ite0 = error "IntegerFF.ite"
@@ -98,6 +100,25 @@ instance SmtenHS0 IntegerFF where
         ISubFF a b -> isubFF (realize m a) (realize m b)
         IIteFF p a b -> iiteFF (realize m p) (realize m a) (realize m b)
         IVarFF v -> integerFF (lookupInteger m v)
+
+instance SmtenHS0 BitFF where
+    ite0 = error "BitFF.ite"
+    realize0 m x = 
+      case x of
+        BitFF {} -> x
+        Add_BitFF a b -> bit_addFF (realize m a) (realize m b)
+        Sub_BitFF a b -> bit_subFF (realize m a) (realize m b)
+        Mul_BitFF a b -> bit_mulFF (realize m a) (realize m b)
+        Or_BitFF a b -> bit_orFF (realize m a) (realize m b)
+        And_BitFF a b -> bit_andFF (realize m a) (realize m b)
+        Shl_BitFF w a b -> bit_shlFF w (realize m a) (realize m b)
+        Lshr_BitFF w a b -> bit_lshrFF w (realize m a) (realize m b)
+        Concat_BitFF a b -> bit_concatFF (realize m a) (realize m b)
+        Not_BitFF a -> bit_notFF (realize m a)
+        SignExtend_BitFF fr to a -> bit_sign_extendFF fr to (realize m a)
+        Extract_BitFF hi lo a -> bit_extractFF hi lo (realize m a)
+        Ite_BitFF p a b -> bit_iteFF (realize m p) (realize m a) (realize m b)
+        Var_BitFF w v -> bitFF (lookupBit m w v)
               
 instance SmtenHS0 BoolF where
     ite0 = iteF
@@ -117,23 +138,12 @@ instance SmtenHS0 IntegerF where
       
    
 instance SmtenHS0 (BitF n) where
-    realize0 m x = 
-      case x of
-        BitF {} -> x
-        Bit_Add a b -> bit_addF (realize m a) (realize m b)
-        Bit_Sub a b -> bit_subF (realize m a) (realize m b)
-        Bit_Mul a b -> bit_mulF(realize m a) (realize m b)
-        Bit_Or a b -> bit_orF (realize m a) (realize m b)
-        Bit_And a b -> bit_andF (realize m a) (realize m b)
-        Bit_Shl a b -> bit_shlF (realize m a) (realize m b)
-        Bit_Lshr a b -> bit_lshrF (realize m a) (realize m b)
-        Bit_Concat w a b -> bit_concatF w (realize m a) (realize m b)
-        Bit_Not a -> bit_notF (realize m a)
-        Bit_SignExtend by x -> bit_sign_extendF by (realize m x)
-        Bit_Extract wx hi lo x -> bit_extractF wx hi lo (realize m x)
-        Bit_Ite p a b -> iterealize p a b m
-        Bit_Var w n -> BitF (lookupBit m w n)
-    ite0 = Bit_Ite
+    ite0 = ite_BitF
+    realize0 m x
+      | (p, a, b_) <- parts_BitF x =
+          case realize m p of
+            TrueFF -> finite_BitF (realize m a)
+            FalseFF -> realize m b_
 
 instance SmtenHS2 (->) where
     realize2 m f = \x -> realize m (f (realize m x))

@@ -12,8 +12,6 @@ Release to Public::
 Runtime::
 * handle error and infinity correctly. See doc/infinity2.txt for discussion.
  ** Add support for symapp of symbolic integers
- ** Add support for partial bit formulas
-     Then get all the bit test cases to work again.
  ** Many possible optimizations removed to get decent implementation
     - SmtenHS.merge - filter out obviously false fields?
     - Model.cache - split into multiple caches based on type?
@@ -33,6 +31,7 @@ Runtime::
       values.
 
 Cleanup::
+* Naming conventions are all over the place for formulas. Fix it please.
 * In Runtime.Assert, don't use AnyMap for caches
   And remove AnyMap if that means we don't have any other users of it.
 * (let {} in x  ====>  x)    in haskell output syntax 
@@ -40,8 +39,6 @@ Cleanup::
 * Support symbolic IO?
     Q: Or is it okay because it can't ever appear in an assertion?
     A: It is not okay, because we might want to realize a symbolic IO.
-* Figure out a way so that Bool and Integer and Bit definitions are not so
-  tied up with each other?
 * Why is bv_extract primitive? Why not just shift right and truncate?
 
 Smten Executable::
@@ -86,9 +83,6 @@ Known Bugs::
 * generate code for  (case x of { __DEFAULT -> ...}) 
     when 'x' is not an algebraic data type
     (For example: try adding strict fields to Data.Map)
-* when error is encountered in a query, smten reports "SMT SOLVER LIED?"
-    when it should instead tell the user an error was encountered in the
-    query.
 * see problems with -O optimization above
 * symapp for variable bit-vector
     Implement it like we implement symapp for Integer

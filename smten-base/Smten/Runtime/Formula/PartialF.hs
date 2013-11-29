@@ -20,12 +20,7 @@ import qualified Smten.Runtime.Select as S
 data PartialF a = PartialF BoolFF a (PartialF a)
 
 class IsFinite a where
-    defaultFF :: a
     finite_iteFF :: BoolFF -> a -> a -> a
-
-instance IsFinite IntegerFF where
-    defaultFF = integerFF 0
-    finite_iteFF = iiteFF
 
 -- Select between two formulas.
 -- pselectF x_ y_
@@ -36,8 +31,11 @@ pselectF :: (IsFinite a) => PartialF a -> PartialF a -> (PartialF a, PartialF a)
 pselectF x_ y_ = 
   case S.select x_ y_ of
     S.Both x y -> (x, y)
-    S.Left x -> (x, PartialF falseFF defaultFF y_)
-    S.Right y -> (PartialF falseFF defaultFF x_, y)
+    -- Note: we use the finite value from the known result as a dummy value
+    -- for the finite part of the unknown result. This ensures we have a value
+    -- of the right type which is properly finite.
+    S.Left x@(PartialF _ d _) -> (x, PartialF falseFF d y_)
+    S.Right y@(PartialF _ d _) -> (PartialF falseFF d x_, y)
 
 pfiniteF :: a -> PartialF a
 pfiniteF x = PartialF trueFF x (error "ifiniteF._|_")

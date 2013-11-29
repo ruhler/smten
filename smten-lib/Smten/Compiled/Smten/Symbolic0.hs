@@ -61,7 +61,7 @@ free_Integer = Symbolic $ do
 
 free_Bit :: SingI Nat n -> Symbolic (BitF n)
 free_Bit w = Symbolic $ do
-    v <- Bit_Var (__deNewTyDGSingI w) <$> fresh
+    v <- var_BitF (__deNewTyDGSingI w) <$> fresh
     return (trueF, v)
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
