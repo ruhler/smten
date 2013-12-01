@@ -42,8 +42,34 @@ smttests = do
       p <- free_Bool
       assert ((if p then error "SMT.Error.IFair1 error hit" else 1) == (1 :: Integer))
 
-   symtesteq "SMT.Error.Bit" (Just ()) $ do
+   symtesteq "SMT.Error.BitNoFair" (Just ()) $ do
       p <- free_Bool
       assert p
-      assert ((if p then 1 else error "SMT.Error.Bit error hit") == (1 :: Bit 3))
+      assert ((if p then 1 else error "SMT.Error.BitNoFair error hit") == (1 :: Bit 3))
 
+   symtesteq "SMT.Error.BitFair1" (Just ()) $ do
+      p <- free_Bool
+      assert ((if p then 1 else error "SMT.Error.BitFair1 error hit") == (1 :: Bit 3))
+
+   symtesteq "SMT.Error.BitFair2" (Just ()) $ do
+      p <- free_Bool
+      assert ((if p then error "SMT.Error.BitFair2 error hit" else 1) == (1 :: Bit 3))
+
+   symtesteq "SMT.Error.SymNoFair" (Just ()) $ do
+      p <- free_Bool
+      assert p
+      if p
+        then return ()
+        else error "SMT.Error.SymNoFair error hit"
+
+   symtesteq "SMT.Error.SymFair1" (Just ()) $ do
+      p <- free_Bool
+      if p
+        then return ()
+        else error "SMT.Error.SymFair1 error hit"
+
+   symtesteq "SMT.Error.SymFair2" (Just ()) $ do
+      p <- free_Bool
+      if p
+        then error "SMT.Error.SymFair2 error hit"
+        else return ()

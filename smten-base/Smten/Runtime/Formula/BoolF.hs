@@ -7,6 +7,7 @@ module Smten.Runtime.Formula.BoolF (
 
 import Smten.Runtime.FreeID
 import Smten.Runtime.Formula.Finite
+import Smten.Runtime.StableNameEq
 import qualified Smten.Runtime.Select as S
 
 -- | Representation of a boolean formula which may contain infinite parts or _|_
@@ -75,9 +76,9 @@ notF (BoolF a b x_) =
 
 -- x_ * y_
 andF :: BoolF -> BoolF -> BoolF
-andF x_ y_ =
+andF x_@(BoolF xa xb xc_) y_ =
   case selectF x_ y_ of
-    (BoolF xa xb xc_, BoolF ya yb yc_) ->
+    (_, BoolF ya yb yc_) ->
       let a = xa * ya
           xayb = xa * yb
           yaxb = ya * xb
@@ -85,6 +86,7 @@ andF x_ y_ =
           c_ = xayb *. yc_ + yaxb *. xc_ + xc_ * yc_
       in partialF a b c_
 
+-- TODO: remove this once ite is implemented properly
 -- x_ + y_
 orF :: BoolF -> BoolF -> BoolF
 orF x_ y_ =
@@ -96,7 +98,17 @@ orF x_ y_ =
       in partialF a b c_
 
 iteF :: BoolF -> BoolF -> BoolF -> BoolF
-iteF p a b = (p `andF` a) `orF` (notF p `andF` b)
+iteF p@(BoolF pa pb pc_) x_ y_
+ | isTrueF p = x_
+ | isFalseF p = y_
+ | x_ `stableNameEq` y_ = x_
+ | otherwise = (p `andF` x_) `orF` (notF p `andF` y_)
+--    case selectF x_ y_ of
+--      (BoolF xa xb xc_, BoolF ya yb yc_) ->
+--        let a = iteFF pa xa (notFF pb * ya)
+--            b = pb * (xa + xb) + iteFF pa xb (ya + yb)
+--            c_ = xb*.(xc_*p) + (-pa)*.((-pc_)*y_) + iteF (finiteF pb) (xa*.pc_) (((-pa)*yb)*.yc_)
+--        in partialF a b c_
 
 -- For nicer syntax, we give an instance of Num for BoolF
 -- based on boolean arithmetic.

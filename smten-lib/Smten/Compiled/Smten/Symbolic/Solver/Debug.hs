@@ -59,6 +59,7 @@ instance SolverAST DebugLL Debug where
     var dbg n = return $ dbgVar n
 
     and_bool = op "&&"
+    or_bool = op "||"
     not_bool dbg x = return $ dbgApp (dbgText "!") (sh x)
     ite_bool dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
     ite_integer dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)

@@ -13,6 +13,7 @@ import qualified Smten.Tests.Prelude
 import qualified Smten.Tests.State
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Datatype
+import qualified Smten.Tests.SMT.Opt
 
 -- Import things so that they will be compiled by the plugin, even though we
 -- don't actually have tests to run for them.
@@ -39,5 +40,6 @@ main = do
   Smten.Tests.State.tests
   Smten.Tests.SMT.Core.tests
   Smten.Tests.SMT.Datatype.tests
+  Smten.Tests.SMT.Opt.tests
   putStrLn "ALL PASSED"
 

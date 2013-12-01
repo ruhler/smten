@@ -69,10 +69,11 @@ library
     Smten.Tests.State
     Smten.Tests.SMT.Test
     Smten.Tests.SMT.Bit
-    Smten.Tests.SMT.Core
+    Smten.Tests.SMT.Opt
     Smten.Tests.SMT.Datatype
     Smten.Tests.SMT.Error
     Smten.Tests.SMT.Integer
+    Smten.Tests.SMT.Core
     Smten.Tests.Test
     Smten.Tests.All
 
@@ -120,6 +121,7 @@ library
     Smten.Compiled.Smten.Tests.SMT.Datatype
     Smten.Compiled.Smten.Tests.SMT.Error
     Smten.Compiled.Smten.Tests.SMT.Integer
+    Smten.Compiled.Smten.Tests.SMT.Opt
     Smten.Compiled.Smten.Tests.Test
     Smten.Compiled.Smten.Tests.All
 
@@ -148,7 +150,7 @@ library
   c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
              Smten/Runtime/Yices1/y1.c
 
-Test-Suite test-smten-lib
+Test-Suite tests
     type: exitcode-stdio-1.0
     main-is: tests.hs
     build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
