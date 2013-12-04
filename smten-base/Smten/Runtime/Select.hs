@@ -1,5 +1,6 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Runtime.Select(
     SelectResult(..), select, approximate,

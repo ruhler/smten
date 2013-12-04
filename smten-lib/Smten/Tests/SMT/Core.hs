@@ -3,6 +3,7 @@
 module Smten.Tests.SMT.Core (smttests, tests) where
 
 import Smten.Prelude
+import Smten.Control.Monad
 import Smten.Symbolic
 import Smten.Symbolic.Solver.Smten
 import Smten.Tests.SMT.Test
@@ -127,6 +128,13 @@ smttests = do
            else do
                assert (not b)
        return (a, b)
+
+   -- Test an case we've had trouble with in the past
+   -- The bug was we accidentally said:
+   --   not (if p then a else b) = if p then b else a
+   symtesteq "SMT.Core.DistinctInts" (Just ()) $ do
+       [a, b, c] <- sequence $ replicate 3 (msum (map return [0, 1, 2 :: Int]))
+       assert (a /= b && a /= c && b /= c)
    
 tests :: IO ()
 tests = do

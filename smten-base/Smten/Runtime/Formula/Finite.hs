@@ -1,4 +1,6 @@
 
+{-# OPTIONS_GHC -fprof-auto-top #-}
+
 -- | Representation of a finite SMT Formula
 module Smten.Runtime.Formula.Finite (
   BoolFF(..), trueFF, falseFF, boolFF, andFF, orFF, notFF, iteFF, varFF,
@@ -53,7 +55,6 @@ andFF a b
 notFF :: BoolFF -> BoolFF
 notFF TrueFF = FalseFF
 notFF FalseFF = TrueFF
-notFF (IteFF p a b) = IteFF p b a
 notFF (NotFF x) = x
 notFF x = NotFF x
 
@@ -69,6 +70,7 @@ orFF a b
 iteFF :: BoolFF -> BoolFF -> BoolFF -> BoolFF
 iteFF TrueFF a _ = a
 iteFF FalseFF _ b = b
+iteFF (NotFF p) a b = iteFF p b a
 iteFF p a b | a == b = a
 iteFF p TrueFF b = orFF p b
 iteFF p a FalseFF = andFF p a

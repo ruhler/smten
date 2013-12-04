@@ -1,6 +1,7 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Compiled.Smten.Symbolic0 (
     Symbolic, Solver,
