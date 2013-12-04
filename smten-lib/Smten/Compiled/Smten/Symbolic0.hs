@@ -15,6 +15,7 @@ import Data.Functor
 import Smten.Runtime.FreeID
 import Smten.Runtime.Formula
 import Smten.Runtime.SmtenHS
+import Smten.Runtime.Select(approximate)
 import Smten.Runtime.Solver
 
 import qualified Smten.Compiled.Smten.Data.Maybe as S
@@ -51,8 +52,14 @@ mzero_symbolic = Symbolic $ return (falseF, error "mzero")
 
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
 mplus_symbolic a b = Symbolic $ do
-    p <- varF <$> fresh
-    runS $ ite1 p a b
+    ra <- runS a
+    rb <- runS b
+    case approximate False False (isFalseF $ fst ra) (isFalseF $ fst rb) of
+        (True, _) -> return rb
+        (_, True) -> return ra
+        _ -> do
+            p <- varF <$> fresh
+            runS $ ite1 p a b
 
 free_Integer :: Symbolic IntegerF
 free_Integer = Symbolic $ do

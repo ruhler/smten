@@ -45,11 +45,7 @@ partialF = BoolF
 -- The select call waits for at least one of x_ or y_ to reach weak head
 -- normal form, then returns WHNF representations for both x_ and y_.
 selectF :: BoolF -> BoolF -> (BoolF, BoolF)
-selectF x_ y_ = 
-  case S.select x_ y_ of
-    S.Both x y -> (x, y)
-    S.Left x -> (x, BoolF falseFF trueFF y_)
-    S.Right y -> (BoolF falseFF trueFF x_, y)
+selectF x_ y_ = S.approximate (BoolF falseFF trueFF x_) (BoolF falseFF trueFF y_) x_ y_
 
 trueF :: BoolF
 trueF = finiteF trueFF

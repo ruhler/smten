@@ -17,9 +17,18 @@ smttests = do
    -- We should not introduce any symbolic variables from the mplus,
    -- because we have no mzeros and no _|_.
    symtesteq "SMT.Opt.0" (Just ()) $ mplus (return ()) (return ())
+
+   -- SMT.Opt.1
+   -- This should generate a query with assert 'True'
+   -- We should not introduce any symbolic variables from redundant mzero.
+   symtesteq "SMT.Opt.1" (Just ()) $ do
+      p <- mplus (return True) mzero
+      case p of
+        True -> return ()
+        False -> return ()
    
 tests :: IO ()
 tests = do
-   runtest (SMTTestCfg smten [] ["SMT.Opt.0"]) smttests
+   runtest (SMTTestCfg smten [] ["SMT.Opt.0", "SMT.Opt.1"]) smttests
    putStrLn "SMT.Opt: Check debug output to see if properly optimized"
 

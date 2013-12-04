@@ -1,7 +1,9 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Smten.Runtime.Select(SelectResult(..), select) where
+module Smten.Runtime.Select(
+    SelectResult(..), select, approximate,
+    ) where
 
 import Prelude hiding(Either(..))
 import qualified Prelude as P
@@ -17,6 +19,15 @@ data SelectResult a b = Both a b | Left a | Right b
 -- The values returned have been evaluated to weak head normal form.
 select :: a -> b -> SelectResult a b
 select x y = unsafePerformIO (selectIO x y)
+
+-- | Run select on the given arguments, returning the approximation of any
+-- argument which did not finish.
+approximate :: a -> b -> a -> b -> (a, b)
+approximate da db a_ b_ = 
+   case select a_ b_ of
+     Left a -> (a, db)
+     Right b -> (da, b)
+     Both a b -> (a, b)
 
 -- TODO: This currently waits until both results either evaluate to weak head
 -- normal form or raise an error. In the future we may want (need?) to instead
