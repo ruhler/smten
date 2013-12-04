@@ -38,11 +38,11 @@ pselectF x_ y_ =
     S.Right y@(PartialF _ d _) -> (PartialF falseFF d x_, y)
 
 pfiniteF :: a -> PartialF a
-pfiniteF x = PartialF trueFF x (error "ifiniteF._|_")
+pfiniteF x = PartialF trueFF x (error "pfiniteF._|_")
 
 -- partial unary predicate
 unarypF :: (a -> BoolFF) -> PartialF a -> BoolF
-unarypF f (PartialF p a b_) = partialF (p `andFF` f a) (notFF p) (unarypF f b_)
+unarypF f (PartialF p a b_) = partialF (p * f a) (notFF p) (unarypF f b_)
 
 -- partial binary predicate
 binarypF :: (IsFinite a) => (a -> a -> BoolFF) -> PartialF a -> PartialF a -> BoolF

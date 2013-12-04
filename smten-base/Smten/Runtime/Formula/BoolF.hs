@@ -37,7 +37,10 @@ finiteF x = BoolF x falseFF (error "finiteF._|_")
 -- where a, b are finite, x_ is potentially _|_
 -- This is lazy in x_.
 partialF :: BoolFF -> BoolFF -> BoolF -> BoolF
-partialF = BoolF
+partialF TrueFF _ _ = trueF
+partialF FalseFF FalseFF _ = falseF
+partialF FalseFF TrueFF x_ = x_
+partialF a b x_ = BoolF a b x_
 
 -- Select between two formulas.
 -- selectF x_ y_
@@ -48,10 +51,10 @@ selectF :: BoolF -> BoolF -> (BoolF, BoolF)
 selectF x_ y_ = S.approximate (BoolF falseFF trueFF x_) (BoolF falseFF trueFF y_) x_ y_
 
 trueF :: BoolF
-trueF = finiteF trueFF
+trueF = BoolF TrueFF FalseFF (error "trueF._|_")
 
 falseF :: BoolF
-falseF = finiteF falseFF
+falseF = BoolF FalseFF FalseFF (error "falseF._|_")
 
 boolF :: Bool -> BoolF
 boolF True = trueF
@@ -65,10 +68,9 @@ varF = finiteF . varFF
 --            = (~a)(~(bx_))
 --            = (~a)(~b + (~x_))
 --            = (~a)(~b) + (~a)(~x_)
+--            = ~(a+b) + (~a)(~x_)
 notF :: BoolF -> BoolF
-notF (BoolF a b x_) =
-  let nota = (-a)
-  in partialF (nota * (-b)) nota (notF x_)
+notF (BoolF a b x_) = partialF (notFF (a + b)) (notFF a) (notF x_)
 
 -- x_ * y_
 andF :: BoolF -> BoolF -> BoolF
@@ -76,10 +78,12 @@ andF x_@(BoolF xa xb xc_) y_ =
   case selectF x_ y_ of
     (_, BoolF ya yb yc_) ->
       let a = xa * ya
-          xayb = xa * yb
-          yaxb = ya * xb
-          b = xayb + yaxb + xb * yb
-          c_ = xayb *. yc_ + yaxb *. xc_ + xc_ * yc_
+          b = (xa + xb) * (ya + yb)
+          c_ = case selectF xc_ yc_ of
+                 (BoolF xca xcb xcc_, BoolF yca ycb ycc_) ->
+                    let x_' = partialF (xa + xb*xca) (xb*xcb) xcc_
+                        y_' = partialF (ya + yb*yca) (yb*ycb) ycc_
+                    in andF x_' y_'
       in partialF a b c_
 
 -- TODO: remove this once ite is implemented properly
@@ -90,21 +94,34 @@ orF x_ y_ =
     (BoolF xa xb xc_, BoolF ya yb yc_) ->
       let a = xa + ya
           b = xb + yb
-          c_ = xb *. xc_ + yb *. yc_
+          c_ = orF (xb *. xc_) (yb *. yc_)
       in partialF a b c_
 
 iteF :: BoolF -> BoolF -> BoolF -> BoolF
+iteF (BoolF pa FalseFF _) x_ y_ = iteF_ pa x_ y_
 iteF p@(BoolF pa pb pc_) x_ y_
- | isTrueF p = x_
- | isFalseF p = y_
  | x_ `stableNameEq` y_ = x_
- | otherwise = (p `andF` x_) `orF` (notF p `andF` y_)
---    case selectF x_ y_ of
---      (BoolF xa xb xc_, BoolF ya yb yc_) ->
---        let a = iteFF pa xa (notFF pb * ya)
---            b = pb * (xa + xb) + iteFF pa xb (ya + yb)
---            c_ = xb*.(xc_*p) + (-pa)*.((-pc_)*y_) + iteF (finiteF pb) (xa*.pc_) (((-pa)*yb)*.yc_)
---        in partialF a b c_
+ | otherwise = 
+    case selectF x_ y_ of
+      (BoolF xa xb xc_, BoolF ya yb yc_) ->
+        let a = iteFF pa xa (notFF pb * ya)
+            b = iteFF pa xb (pb + ya + yb)
+            c_ = iteF_ pa xc_ (iteF_ pb (iteF pc_ x_ y_) yc_)
+        in partialF a b c_
+
+-- iteF with finite predicate
+iteF_ :: BoolFF -> BoolF -> BoolF -> BoolF
+iteF_ TrueFF x_ _ = x_
+iteF_ FalseFF _ y_ = y_
+iteF_ p x_ y_
+ | x_ `stableNameEq` y_ = x_
+ | otherwise = 
+    case selectF x_ y_ of
+      (BoolF xa xb xc_, BoolF ya yb yc_) ->
+        let a = iteFF p xa ya
+            b = iteFF p xb yb
+            c_ = iteF_ p xc_ yc_
+        in partialF a b c_
 
 -- For nicer syntax, we give an instance of Num for BoolF
 -- based on boolean arithmetic.
@@ -123,7 +140,7 @@ instance Num BoolF where
 
 -- | Return True if this object is equal to trueF
 isTrueF :: BoolF -> Bool
-isTrueF (BoolF TrueFF FalseFF _) = True
+isTrueF (BoolF TrueFF _ _) = True
 isTrueF _ = False
 
 -- | Return True if this object is equal to falseF

@@ -69,11 +69,12 @@ orFF a b
 iteFF :: BoolFF -> BoolFF -> BoolFF -> BoolFF
 iteFF TrueFF a _ = a
 iteFF FalseFF _ b = b
+iteFF p a b | a == b = a
 iteFF p TrueFF b = orFF p b
 iteFF p a FalseFF = andFF p a
-iteFF p a b 
- | a == b = a
- | otherwise = IteFF p a b
+iteFF p a TrueFF = orFF (notFF p) a
+iteFF p FalseFF b = andFF (notFF p) b
+iteFF p a b = IteFF p a b
 
 -- For nicer syntax, we give an instance of Num for BoolFF
 -- based on boolean arithmetic.
@@ -212,3 +213,4 @@ bit_iteFF :: BoolFF -> BitFF -> BitFF -> BitFF
 bit_iteFF TrueFF a _ = a
 bit_iteFF FalseFF _ b = b
 bit_iteFF p a b = Ite_BitFF p a b
+
