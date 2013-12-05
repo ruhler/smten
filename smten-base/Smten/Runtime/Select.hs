@@ -1,5 +1,4 @@
 
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Runtime.Select(
@@ -34,13 +33,26 @@ approximate da db a_ b_ =
 -- normal form or raise an error. In the future we may want (need?) to instead
 -- evaluate the arguments concurrently and only wait a finite amount of time
 -- after the first result to finish before giving up on the second result.
-selectIO :: forall a b . a -> b -> IO (SelectResult a b)
+selectIO :: a -> b -> IO (SelectResult a b)
 selectIO x_ y_ = do
-  mx <- try (evaluate x_) :: IO (P.Either SomeException a)
-  my <- try (evaluate y_) :: IO (P.Either SomeException b)
+  mx <- trysync (evaluate x_)
+  my <- trysync (evaluate y_)
   case (mx, my) of
     (P.Right x, P.Right y) -> return (Both x y)
     (P.Right x, P.Left ey) -> return (Left x)
     (P.Left ex, P.Right y) -> return (Right y)
     (P.Left ex, P.Left ey) -> throwIO ex
+
+-- Run try, catching only synchronous exceptions.
+-- We don't want to catch asynchronous exceptions, because then we can do user
+-- interrupts with Ctrl-C, which makes profiling and other things miserable.
+-- TODO: should we catch stack overflow?
+trysync :: IO a -> IO (P.Either SomeException a)
+trysync = tryJust notAsync
+
+notAsync :: SomeException -> Maybe SomeException
+notAsync e =
+  case (fromException e :: Maybe AsyncException) of
+     Just {} -> Nothing -- don't catch asynchronous exceptions
+     Nothing -> Just e  -- catch everything else
 
