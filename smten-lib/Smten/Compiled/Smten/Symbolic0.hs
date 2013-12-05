@@ -60,7 +60,7 @@ mplus_symbolic a b = Symbolic $ do
         (_, True) -> return ra
         _ -> do
             p <- varF <$> fresh
-            runS $ ite1 p a b
+            runS $ ite1 p (Symbolic $ return ra) (Symbolic $ return rb)
 
 free_Integer :: Symbolic IntegerF
 free_Integer = Symbolic $ do

@@ -79,6 +79,33 @@ sudoku::
  yices2, Enum, 10 boards: 1s
 
 sketch::
- miniTest2.sk blows up.
+ miniTest2.sk blows up. Appears to be the same blowup with nqueens 24.
 
+reimpl 3
+--------
+Changes from reimpl 2:
+ * Fixed exponential blowup bug in mplus
+
+shampi::
+ yices2, Bit: 39s
+    ~72% spent in fixN
+    ~13% in parser
+    ~5% in assert
+    ~0% in check
+  Poor performance of concrete evaluation dominates.
+
+nqueens::
+ yices2, Int, 24: 17s
+    ~100% in Assert
+
+sudoku::
+ yices2, Bit, 10 boards: 20s
+    ~100% yices2 check
+ yices2, Enum, 10 boards: 1s
+
+sketch::
+  * miniTest48, miniTest49, miniTest52 take a long time
+     ~60% in int <=, iteF, iteF_, select
+     ~40% in int ==, iteF, iteF_, select
+  * rest finish in 9s.
 

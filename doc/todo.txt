@@ -19,15 +19,10 @@ Runtime::
  ** Add support for symapp of symbolic integers
  ** don't catch keyboard interrupts in select
  ** Overall performance:
-    - shampi: - slow concrete evaluation dominates
-    - nqueens:ite1 and mplus for symbolic: ~35% combined
-                - from lazy pattern match of the tuple?
-                - from poor implementation of 'Fresh' monad?
-              select cost is huge: ~25% for all variants combined
-                - from non-dupable unsafe IO?
-    - sudoku: is plenty fast
-    - sketch: unbelievably slow. Infinite loop?
-                
+    - shampi: - Concrete evaluation dominates
+    - nqueens: - Assert dominates
+    - sudoku: - Check dominates
+    - sketch: - trouble with <= and == for Int type.
                 
  ** Many possible optimizations removed to get decent implementation
     - SmtenHS.merge - filter out obviously false fields?
