@@ -10,36 +10,25 @@ Release to Public::
 * SMT.Bit.Large fails for yices1 for some strange reason (github #7)
 
 Runtime::
-* handle error and infinity correctly. See doc/infinity2.txt for discussion.
+* handle error and infinity correctly.
  ** andF doesn't need to be lazy in first argument
         That is, _|_ andF falseF can be _|_
  ** iteF doesn't need to be lazy in the first argument
         That is, if _|_ then a else b can be _|_
  ** orF doesn't need to exist. No one calls it.
  ** Add support for symapp of symbolic integers
- ** The query: mplus (return True) (return False)
-    leads to an assertion: f0 || !f0
-    Where is that coming from? That's bad.
-       Expected Predicate:
-          if f0 then trueF else trueF
-      ==> iteF f0 trueF trueF
-      ==> (f0 && trueF) || (!f0 && trueF)
-      ==> f0 || !f0
-
-  Problems with this:
-    * iteF is going to && and ||, rather than staying Ite
-    * iteF p a b  should simplify to a if a == b,
-        either structurally, or pointer equality
-        The problem is
-         - can't do structurally, because we would have to look at _|_ part
-            Though we could approximate...
-         - can't do with pointer equality, because we do lazy pattern
-           matching. So we will have:
-              fst (trueF, ...)
-              fst (trueF, ...)
-           where the two tuples are different objects, so these will be
-           different thunks.
-
+ ** don't catch keyboard interrupts in select
+ ** Overall performance:
+    - shampi: - slow concrete evaluation dominates
+    - nqueens:ite1 and mplus for symbolic: ~35% combined
+                - from lazy pattern match of the tuple?
+                - from poor implementation of 'Fresh' monad?
+              select cost is huge: ~25% for all variants combined
+                - from non-dupable unsafe IO?
+    - sudoku: is plenty fast
+    - sketch: unbelievably slow. Infinite loop?
+                
+                
  ** Many possible optimizations removed to get decent implementation
     - SmtenHS.merge - filter out obviously false fields?
     - Model.cache - split into multiple caches based on type?
@@ -48,7 +37,6 @@ Runtime::
         ** use, unary, binary of Runtime.Assert
     - Don't call sat solver for assert False
     - Don't call sat solver for assert True
-    - if p then True else a ===> p || a
     - a & b & b & b   ====>  a & b
     - Track mzero explicitly?
         to take advantage of the high-level knowledge we have that the value

@@ -14,6 +14,7 @@ import Data.Bits
 
 import Smten.Runtime.FreeID
 import Smten.Runtime.Bit
+import Smten.Runtime.StableNameEq
 
 -- | A boolean finite formula which contains no _|_.
 data BoolFF =
@@ -28,7 +29,7 @@ data BoolFF =
  | ILeqFF IntegerFF IntegerFF
  | BitEqFF BitFF BitFF
  | BitLeqFF BitFF BitFF
-  deriving (Eq, Show)
+  deriving (Show)
 
 trueFF :: BoolFF
 trueFF = TrueFF
@@ -45,11 +46,11 @@ varFF = VarFF
 
 andFF :: BoolFF -> BoolFF -> BoolFF
 andFF TrueFF b = b
-andFF FalseFF _ = FalseFF
+andFF FalseFF _ = falseFF
 andFF a TrueFF = a
-andFF _ FalseFF = FalseFF
+andFF _ FalseFF = falseFF
 andFF a b
- | a == b = a
+ | a `stableNameEq` b = a
  | otherwise = AndFF a b
             
 notFF :: BoolFF -> BoolFF
@@ -64,18 +65,18 @@ orFF _ TrueFF = trueFF
 orFF FalseFF b = b
 orFF a FalseFF = a
 orFF a b
- | a == b = a
+ | a `stableNameEq` b = a
  | otherwise = OrFF a b
 
 iteFF :: BoolFF -> BoolFF -> BoolFF -> BoolFF
 iteFF TrueFF a _ = a
 iteFF FalseFF _ b = b
 iteFF (NotFF p) a b = iteFF p b a
-iteFF p a b | a == b = a
 iteFF p TrueFF b = orFF p b
 iteFF p a FalseFF = andFF p a
 iteFF p a TrueFF = orFF (notFF p) a
 iteFF p FalseFF b = andFF (notFF p) b
+iteFF p a b | a `stableNameEq` b = a
 iteFF p a b = IteFF p a b
 
 -- For nicer syntax, we give an instance of Num for BoolFF
@@ -96,7 +97,7 @@ data IntegerFF =
   | ISubFF IntegerFF IntegerFF
   | IIteFF BoolFF IntegerFF IntegerFF
   | IVarFF FreeID
-  deriving (Show, Eq)
+  deriving (Show)
 
 integerFF :: Integer -> IntegerFF
 integerFF = IntegerFF
@@ -104,7 +105,7 @@ integerFF = IntegerFF
 ieqFF :: IntegerFF -> IntegerFF -> BoolFF
 ieqFF (IntegerFF a) (IntegerFF b) = boolFF (a == b)
 ieqFF a b 
- | a == b = trueFF
+ | a `stableNameEq` b = trueFF
  | otherwise = IEqFF a b
 
 ileqFF :: IntegerFF -> IntegerFF -> BoolFF
@@ -151,7 +152,7 @@ data BitFF =
   | Extract_BitFF Integer Integer BitFF -- ^ Extract hi lo x
   | Ite_BitFF BoolFF BitFF BitFF 
   | Var_BitFF Integer FreeID          -- ^ Var width name
-     deriving (Show, Eq)
+     deriving (Show)
 
 bitFF :: Bit -> BitFF
 bitFF = BitFF

@@ -71,9 +71,11 @@ realize m x = m_cached m realize0 x
 -- Assumptions: It is always that case that at least one of the guards is True.
 --  Which also means: this must be given a non-empty list.
 merge :: (SmtenHS0 a) => [(BoolF, a)] -> a
-merge [] = error "merge on empty list"
-merge [(_, v)] = v
-merge ((p, v):vs) = ite p v (merge vs)
+merge xs = {-# SCC "Merge" #-}
+ case xs of
+    [] -> error "merge on empty list"
+    [(_, v)] -> v
+    ((p, v):vs) -> ite p v (merge vs)
 
 instance SmtenHS0 BoolFF where
     ite0 = error "BoolFF.ite"

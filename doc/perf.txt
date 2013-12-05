@@ -1,0 +1,84 @@
+Performance Log
+===============
+
+master aaa1fc9
+--------------
+shampi::
+ yices2, Bit: 11s
+
+nqueens::
+ yices2, Int, 24: 17s
+
+sudoku::
+ yices2, Bit, 10 boards: 20s
+ yices2, Enum, 10 boards: 5s
+
+sketch::
+ all current test cases: 6s
+
+reimpl 0
+--------
+shampi::
+ yices2, Bit: 221s
+    Assert time dominates.
+
+nqueens::
+ yices2, Int, 24: 76s
+    Assert time dominates
+
+sudoku::
+ yices2, Bit, 10 boards: 20s
+ yices2, Enum, 10 boards: 21s
+
+sketch::
+ miniTest95 blows up
+
+reimpl 1
+--------
+Changes from reimpl 0:
+ * mplus a mzero optimized to a
+ * if p then true else true optimized to true
+
+shampi::
+ yices2, Bit: tests/cfg/063.cfg.hmp blows up
+    100% of time in (==) optimizations for iteFF and orFF.
+
+nqueens::
+ yices2, Int, 20: 7s
+    ~35% ite1 and mplus for symbolic
+    ~25% from variants of select
+ yices2, Int, 24: takes a long time
+
+sudoku::
+ yices2, Bit, 10 boards: 20s
+ yices2, Enum, 10 boards: 1s (wow!)
+
+sketch::
+ miniTest2.sk blows up.
+
+reimpl 2
+--------
+Changes from reimpl 1:
+ * Use stableNameEq, not (==) for iteFF, andFF, and orFF optimizations.
+
+shampi::
+ yices2, Bit: 42s
+    ~72% spent in fixN
+    ~5% in assert
+    ~5% in lex
+  Poor performance of concrete evaluation dominates.
+
+nqueens::
+ yices2, Int, 22: 30s
+    ~40% ite1 and mplus for symbolic
+    ~30% from variants of select
+ yices2, Int, 24: a long time
+
+sudoku::
+ yices2, Bit, 10 boards: 20s
+ yices2, Enum, 10 boards: 1s
+
+sketch::
+ miniTest2.sk blows up.
+
+
