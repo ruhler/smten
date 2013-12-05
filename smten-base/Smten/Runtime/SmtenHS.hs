@@ -6,7 +6,7 @@
 module Smten.Runtime.SmtenHS (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
     ite, iterealize, realize,
-    merge, emptycase, unusedfield,
+    emptycase, unusedfield,
     ) where
 
 import Smten.Runtime.Model
@@ -65,17 +65,6 @@ iterealize p a b m = ite (realize m p) (realize m a) (realize m b)
     
 realize :: (SmtenHS0 a) => Model -> a -> a
 realize m x = m_cached m realize0 x
-
--- merge
--- Merge all the arguments into a single object.
--- Assumptions: It is always that case that at least one of the guards is True.
---  Which also means: this must be given a non-empty list.
-merge :: (SmtenHS0 a) => [(BoolF, a)] -> a
-merge xs = {-# SCC "Merge" #-}
- case xs of
-    [] -> error "merge on empty list"
-    [(_, v)] -> v
-    ((p, v):vs) -> ite p v (merge vs)
 
 instance SmtenHS0 BoolFF where
     ite0 = error "BoolFF.ite"

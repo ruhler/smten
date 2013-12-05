@@ -13,6 +13,11 @@ import Smten.Symbolic.Solver.Yices1
 
 main :: IO ()
 main = do
+    putStrLn "Yices1 tests..."
+    putStrLn "Yices1 tests..."
+    putStrLn "Yices1 tests..."
+    putStrLn "Yices1 tests..."
+
     runtest (SMTTestCfg yices1 [] []) Core.smttests
     putStrLn "Yices1.SMT.Core PASSED"
 

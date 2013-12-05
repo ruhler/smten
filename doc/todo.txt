@@ -25,7 +25,6 @@ Runtime::
     - sketch: - trouble with <= and == for Int type.
                 
  ** Many possible optimizations removed to get decent implementation
-    - SmtenHS.merge - filter out obviously false fields?
     - Model.cache - split into multiple caches based on type?
     - SPECIALIZE pragmas for
         ** symapp of int,

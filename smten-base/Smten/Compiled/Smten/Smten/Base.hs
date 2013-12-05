@@ -29,17 +29,13 @@ instance SymbolicOf [a] (List__ a) where
     tosym [] = __Nil__
     tosym (x:xs) = __Cons__ x (tosym xs)
 
-    symapp f x = merge [
-        (gdNil__ x, f []),
-        (gdCons__ x, symapp (\xsl -> f ((flCons__1 x) : xsl)) (flCons__2 x))]
+    symapp f x = ite (gdNil__ x) (f []) (symapp (\xsl -> f ((flCons__1 x) : xsl)) (flCons__2 x))
 
 instance SymbolicOf [P.Char] (List__ Char) where
     tosym [] = __Nil__
     tosym (x:xs) = __Cons__ (tosym x) (tosym xs)
 
-    symapp f x = merge [
-        (gdNil__ x, f []),
-        (gdCons__ x, symapp2 (\xv xsv -> f (xv : xsv)) (flCons__1 x) (flCons__2 x))]
+    symapp f x = ite (gdNil__ x) (f []) (symapp2 (\xv xsv -> f (xv : xsv)) (flCons__1 x) (flCons__2 x))
                     
 fromList__ :: List__ a -> [a]
 fromList__ x

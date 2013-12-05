@@ -138,6 +138,10 @@ mkEmptyCase x ty = do
   let terr = S.SigE err ty'
   return $ S.AppE (S.AppE (S.VarE seqnm) (S.VarE x)) terr
 
+mkIte :: S.Exp -> S.Exp -> S.Exp -> CG S.Exp
+mkIte p a b = do
+  itenm <- usequalified "Smten.Runtime.SmtenHS" "ite"
+  return $ foldl1 S.AppE [S.VarE itenm, p, a, b]
 
 -- mkBoolCase v mdef ms
 -- Generates code for a case expression with boolean arguments:
@@ -147,9 +151,7 @@ mkEmptyCase x ty = do
 mkBoolCase :: S.Name -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkBoolCase vnm mdef ms = do
   alts <- mapM altCG ms
-  let mkite tb fb = do
-        itenm <- usequalified "Smten.Runtime.SmtenHS" "ite"
-        return $ foldl1 S.AppE [S.VarE itenm, S.VarE vnm, tb, fb]
+  let mkite = mkIte (S.VarE vnm)
 
       getFalse :: S.Alt -> Maybe S.Exp
       getFalse (S.Alt (S.ConP n []) x)
@@ -233,17 +235,17 @@ mkSmtenPrimCase vnm argty mdef ms = do
   return (S.LetE [bind] ine)
 
 -- For regular algebraic data types.
--- merge [(gdA v, let x1 = flA1 v
---                    x2 = flA2 v
---                    ...
---                in bodyA),
---        (gdB v, let ... in bodyB),
---        (trueF, default)]
+-- ite (gdA v)  (let x1 = flA1 v
+--                   x2 = flA2 v
+--                   ...
+--               in bodyA) 
+--   (ite (gdB v) (let ... in bodyB)
+--       ...   default)
 mkDataCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkDataCase vnm argty mdef ms = do
   case splitTyConApp_maybe argty of
       Just (tycon, _) -> do
-          let mkalt :: CoreAlt -> CG S.Exp
+          let mkalt :: CoreAlt -> CG (S.Exp, S.Exp)
               mkalt (DataAlt k, xs, body) = do
                 gdnm <- qguardnmCG (dataConName k)
                 let first = S.AppE (S.VarE gdnm) (S.VarE vnm)
@@ -254,19 +256,22 @@ mkDataCase vnm argty mdef ms = do
                 binds <- mapM mkbind (zip [1..] xs)
                 body' <- expCG body
                 let second = S.LetE binds body'
-                return $ S.tup2E first second
+                return (first, second)
 
           def <- case mdef of
                    Nothing -> return []
                    Just b -> do
                      tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "trueF"
-                     e <- S.tup2E tt <$> expCG b
-                     return [e]
+                     e <- expCG b
+                     return [(tt, e)]
 
           alts <- mapM mkalt ms
           let choices = alts ++ def
-          merge <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "merge"
-          return $ S.AppE merge (S.ListE choices)
+              merge [(_, x)] = return x
+              merge ((p, a):xs) = do
+                 xs' <- merge xs
+                 mkIte p a xs'
+          merge choices
       _ -> do
           lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr argty)
           return (S.VarE "???")
