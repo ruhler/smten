@@ -42,13 +42,13 @@ instance SmtenHS1 Symbolic where
 return_symbolic :: a -> Symbolic a
 return_symbolic x = Symbolic $ return (trueF, x)
 
-bind_symbolic :: (SmtenHS0 a, SmtenHS0 b) => Symbolic a -> (a -> Symbolic b) -> Symbolic b
+bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
 bind_symbolic x f = Symbolic $ do
-   ~(px, vx) <- runS x
-   ~(pf, vf) <- runS (f vx)
+   (px, vx) <- runS x
+   (pf, vf) <- runS (f vx)
    return (px `andF` pf, vf)
 
-mzero_symbolic :: (SmtenHS0 a) => Symbolic a
+mzero_symbolic :: Symbolic a
 mzero_symbolic = Symbolic $ return (falseF, error "mzero")
 
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a

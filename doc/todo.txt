@@ -55,8 +55,8 @@ Smten Executable::
 * Add a flag for generating a cabal package?
 
 Concrete Performance::
-* Try alternate code generation with a single big constructor for each
-  datatype (possibly with a tag to specialize for concrete evaluation)
+* Special case pattern matching on concrete objects with a tag?
+    Except, this doesn't improve symbolic performance any, which is sad.
 * Enable -O on all smten files
  - Report FastString string-table reinitializeGlobal bug to ghc
  - ite0 doesn't support types of kind # (needed for Smten.Data.Char)
