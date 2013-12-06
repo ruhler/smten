@@ -235,43 +235,53 @@ mkSmtenPrimCase vnm argty mdef ms = do
   return (S.LetE [bind] ine)
 
 -- For regular algebraic data types.
--- ite (gdA v)  (let x1 = flA1 v
---                   x2 = flA2 v
---                   ...
---               in bodyA) 
---   (ite (gdB v) (let ... in bodyB)
---       ...   default)
+-- case v of
+--   Foo { gdA = gdA, flA1 = a1, flA2 = a2, ...,
+--         gdB = gdB, flB1 = b1, flB2 = b2, ...,
+--         ...
+--         } -> ite gda bodyA (ite gdB bodyB ( ... default)
+-- Note: this works only under the assumption that the variable names for the
+-- fields in different alternatives are all unique. I think that's a safe
+-- assumption given the uniqification of names ghc does before going into
+-- core.
 mkDataCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkDataCase vnm argty mdef ms = do
   case splitTyConApp_maybe argty of
       Just (tycon, _) -> do
-          let mkalt :: CoreAlt -> CG (S.Exp, S.Exp)
+          let -- mkalt returns: (gd, val, fields)
+              --   where gd is the guard for the alternative
+              --         val is the body of the alternative
+              --         fields are the fields required for the alternative 
+              mkalt :: CoreAlt -> CG (S.Exp, S.Exp, [S.PatField])
               mkalt (DataAlt k, xs, body) = do
-                gdnm <- qguardnmCG (dataConName k)
-                let first = S.AppE (S.VarE gdnm) (S.VarE vnm)
+                gdnm <- guardnmCG (dataConName k)
+                qgdnm <- qguardnmCG (dataConName k)
+                let gdfield = S.PatField qgdnm (S.VarP gdnm)
                     mkbind (i, x) = do
                       flnm <- qfieldnmCG i (dataConName k)
                       x' <- qnameCG $ varName x
-                      return $ S.Val x' Nothing (S.AppE (S.VarE flnm) (S.VarE vnm)) 
+                      return $ S.PatField flnm (S.VarP x')
                 binds <- mapM mkbind (zip [1..] xs)
                 body' <- expCG body
-                let second = S.LetE binds body'
-                return (first, second)
+                return (S.VarE gdnm, body', gdfield:binds)
 
           def <- case mdef of
                    Nothing -> return []
                    Just b -> do
                      tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "trueF"
                      e <- expCG b
-                     return [(tt, e)]
+                     return [(tt, e, [])]
 
           alts <- mapM mkalt ms
           let choices = alts ++ def
-              merge [(_, x)] = return x
-              merge ((p, a):xs) = do
+              merge [(_, x, _)] = return x
+              merge ((p, a, _):xs) = do
                  xs' <- merge xs
                  mkIte p a xs'
-          merge choices
+              fields = concat [fs | (_, _, fs) <- choices]
+          body <- merge choices
+          tynm <- qtynameCG $ tyConName tycon
+          return $ S.CaseE (S.VarE vnm) [S.Alt (S.RecP tynm fields) body]
       _ -> do
           lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr argty)
           return (S.VarE "???")

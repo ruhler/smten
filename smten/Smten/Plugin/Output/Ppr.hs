@@ -157,6 +157,9 @@ instance Ppr Exp where
 instance Ppr Field where
     ppr (Field n v) = ppr n <+> ppr "=" <+> ppr v
 
+instance Ppr PatField where
+    ppr (PatField n v) = ppr n <+> ppr "=" <+> ppr v
+
 instance Ppr [Alt] where
     ppr = vsep . map ppr
 
@@ -168,7 +171,10 @@ instance Ppr Pat where
     ppr (ConP nm xs)
       | Just _ <- deTupleNm nm = tupled (map ppr xs)
       | otherwise = parens (ppr nm <+> hsep (map ppr xs))
-    ppr (RecP nm) = ppr nm <+> braces empty
+    ppr (RecP nm fields) = parens (vsep [
+        ppr nm <+> ppr "{",
+        nest 2 (vsep $ punctuate comma (map ppr fields)),
+        ppr "}"])
     ppr (VarP nm) = ppr nm
     ppr (AsP nm p) = ppr nm <> ppr "@" <> ppr p
 

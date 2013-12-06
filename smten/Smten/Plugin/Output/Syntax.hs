@@ -3,7 +3,8 @@ module Smten.Plugin.Output.Syntax (
     Name, TyVar,
     Module(..), Pragma(..), Export(..), Import(..),
     Con(..), Type(..), Class, Dec(..), Val(..), Data(..),
-    Method(..), Field(..), Exp(..), Alt(..), Pat(..), Literal(..), RecField(..),
+    Method(..), Field(..), Exp(..),
+    Alt(..), Pat(..), PatField(..), Literal(..), RecField(..),
     arrowT,
     tup2P, wildP,
     conE, tup2E,
@@ -42,6 +43,7 @@ data Val = Val Name (Maybe Type) Exp
 data RecField = RecField Name Type
 
 data Field = Field Name Exp
+data PatField = PatField Name Pat
 
 data Con = Con Name [Type]
          | RecC Name [RecField]
@@ -73,7 +75,7 @@ data Alt = Alt Pat Exp
 
 data Pat = LitP Literal
          | ConP Name [Pat]
-         | RecP Name            -- Foo {}
+         | RecP Name [PatField]
          | VarP Name
          | AsP Name Pat
 

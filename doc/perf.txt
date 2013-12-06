@@ -109,3 +109,59 @@ sketch::
      ~40% in int ==, iteF, iteF_, select
   * rest finish in 9s.
 
+reimpl 4
+--------
+Changes from reimpl 3:
+ * inline merge as ite tree.
+
+shampi::
+ yices2, Bit: 20s
+    ~68% spent in fixN
+    ~13% in parser
+    ~8% in assert
+    ~0% in check
+  Poor performance of concrete evaluation dominates.
+
+nqueens::
+ yices2, Int, 24: 17s
+ yices2, Integer, 36: 26s
+ yices2, Bit, 128: 9s
+
+sudoku::
+ yices2, Bit, 10 boards: 20s
+ yices2, Enum, 10 boards: 1s
+
+sketch::
+  * miniTest48, miniTest49, miniTest52 take a long time
+     ~60% in int <=, iteF, iteF_, select
+     ~40% in int ==, iteF, iteF_, select
+  * rest finish in 9s.
+ 
+reimpl 5
+--------
+Changes from reimpl 4:
+ * in case expressions, use pattern matching to extract field values, not
+   selector functions.
+
+shampi::
+ yices2, Bit: 16s
+   ~62% spent in FixN
+   ~15% spent in ParseHampi
+   ~10% in Assert
+   ~8% in bind symbolic??
+   ~0% in Check
+
+nqueens::
+ yices2, Int, 24: 17s
+ yices2, Integer, 36: 26s
+ yices2, Bit, 128: 8s
+
+sudoku::
+ yices2, Bit, 10 boards: 20s
+ yices2, Enum, 100 boards: 7s
+ yices2, Integer, 2 boards: 17s
+
+sketch::
+  * miniTest48, miniTest49, miniTest52 take a long time
+  * rest finish in 9s.
+
