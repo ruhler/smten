@@ -1,3 +1,8 @@
+Priority::
+* fix symapp for integer
+* understand sketch performance bug
+* check on arch-extract performance master vs. reimpl
+
 Release to Public::
 * write up tutorials (github #3)
     T5-BitVectors
