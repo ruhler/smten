@@ -8,13 +8,22 @@ shampi::
 
 nqueens::
  yices2, Int, 24: 17s
+ yices2, Integer, 36: 28s
+ yices2, Bit, 128: 9s
 
 sudoku::
  yices2, Bit, 10 boards: 20s
  yices2, Enum, 10 boards: 5s
+ yices2, Enum, 100 boards: 67s
+ yices2, Integer, 2 boards: 17s
 
 sketch::
  all current test cases: 6s
+
+arch-extract::
+ STP FETDEC: 20s
+ STP FETEXE: 9m43s
+
 
 reimpl 0
 --------
@@ -164,4 +173,9 @@ sudoku::
 sketch::
   * miniTest48, miniTest49, miniTest52 take a long time
   * rest finish in 9s.
+
+arch-extract::
+ STP FETDEC: blows up in memory
+    ~80% in ite for Bit
+    including ~50% in iteF
 
