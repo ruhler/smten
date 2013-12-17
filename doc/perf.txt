@@ -165,6 +165,19 @@ nqueens::
  yices2, Integer, 36: 26s
  yices2, Bit, 128: 8s
 
+ # Max n under 30 seconds.
+ y1.int 30 31.083003s
+ y1.integer 58 31.980095s
+ y2.int 31 30.44166s
+ y2.integer 37 49.270544s
+ y2.bit 120 128.329716s
+ z3.int 30 31.017662s
+ z3.integer 37 47.647651s
+ z3.bit 108 48.91126s
+ stp.int 29 33.40287s
+ stp.bit 154 31.238189s
+
+
 sudoku::
  yices2, Bit, 10 boards: 20s
  yices2, Enum, 100 boards: 7s
