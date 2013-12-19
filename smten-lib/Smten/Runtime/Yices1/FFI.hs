@@ -11,6 +11,9 @@ import Foreign.C.Types
 
 import Smten.Runtime.Result
 
+data YType_
+type YType = Ptr YType_
+
 data YContext_
 type YContext = Ptr YContext_
 
@@ -65,6 +68,15 @@ foreign import ccall "y1_get_bitvector_value"
 
 foreign import ccall "y1_get_var_decl_from_name"
     c_yices_get_var_decl_from_name :: YContext -> CString -> IO YDecl
+
+foreign import ccall "y1_mk_type"
+    c_yices_mk_type :: YContext -> CString -> IO YType
+
+foreign import ccall "y1_mk_bitvector_type"
+    c_yices_mk_bitvector_type :: YContext -> CUInt -> IO YType
+
+foreign import ccall "y1_mk_var_decl"
+    c_yices_mk_var_decl :: YContext -> CString -> YType -> IO YDecl
 
 foreign import ccall "y1_mk_var_from_decl"
     c_yices_mk_var_from_decl :: YContext -> YDecl -> IO YExpr

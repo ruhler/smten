@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <dlfcn.h>
 
+typedef void* y1type;
 typedef void* y1ctx;
 typedef void* y1decl;
 typedef void* y1expr;
@@ -22,6 +23,9 @@ const char* (*y1_get_last_error_message_f)(void) = NULL;
 y1bool (*y1_get_value_f)(y1model, y1decl) = NULL;
 int (*y1_get_int_value_f)(y1model, y1decl, long*) = NULL;
 int (*y1_get_bitvector_value_f)(y1model, y1decl, unsigned, int v[]) = NULL;
+y1type (*y1_mk_type_f)(y1ctx, const char*);
+y1type (*y1_mk_bitvector_type_f)(y1ctx, unsigned);
+y1decl (*y1_mk_var_decl_f)(y1ctx, const char*, y1type);
 y1decl (*y1_get_var_decl_from_name_f)(y1ctx, const char*) = NULL;
 y1expr (*y1_mk_var_from_decl_f)(y1ctx, y1decl) = NULL;
 y1expr (*y1_mk_true_f)(y1ctx) = NULL;
@@ -73,6 +77,9 @@ int y1_load()
     y1_get_value_f = dlsym(y1h, "yices_get_value");
     y1_get_int_value_f = dlsym(y1h, "yices_get_int_value");
     y1_get_bitvector_value_f = dlsym(y1h, "yices_get_bitvector_value");
+    y1_mk_type_f = dlsym(y1h, "yices_mk_type");
+    y1_mk_bitvector_type_f = dlsym(y1h, "yices_mk_bitvector_type");
+    y1_mk_var_decl_f = dlsym(y1h, "yices_mk_var_decl");
     y1_get_var_decl_from_name_f = dlsym(y1h, "yices_get_var_decl_from_name");
     y1_mk_var_from_decl_f = dlsym(y1h, "yices_mk_var_from_decl");
     y1_mk_true_f = dlsym(y1h, "yices_mk_true");
@@ -116,6 +123,9 @@ int y1_get_bitvector_value(y1model a, y1decl b, unsigned c, int d[])
     return  y1_get_bitvector_value_f(a, b, c, d);
 }
 
+y1decl y1_mk_type(y1ctx a, const char* b) { return  y1_mk_type_f(a, b); }
+y1decl y1_mk_bitvector_type(y1ctx a, unsigned b) { return  y1_mk_bitvector_type_f(a, b); }
+y1decl y1_mk_var_decl(y1ctx a, const char* b, y1type c) { return  y1_mk_var_decl_f(a, b, c); }
 y1decl y1_get_var_decl_from_name(y1ctx a, const char* b) { return  y1_get_var_decl_from_name_f(a, b); }
 y1expr y1_mk_var_from_decl(y1ctx a, y1decl b) { return  y1_mk_var_from_decl_f(a, b); }
 y1expr y1_mk_true(y1ctx a) { return  y1_mk_true_f(a); }

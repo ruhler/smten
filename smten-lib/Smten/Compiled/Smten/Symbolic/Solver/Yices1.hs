@@ -72,19 +72,15 @@ lshr_bit_from y fr w a b
 
 instance SolverAST Yices1 YExpr where
   declare y ty nm = do
-      let tynm = case ty of
-                    BoolT -> "bool"
-                    IntegerT -> "int"
-                    BitT w -> "(bitvector " ++ show w ++ ")"
-          cmd = "(define " ++ nm ++ " :: " ++ tynm ++ ")"
-      worked <- withCString cmd $ \str -> do
-            withy1 y $ \yctx -> c_yices_parse_command yctx str
-      if worked 
-         then return ()
-         else do
-            cstr <- c_yices_get_last_error_message
-            msg <- peekCString cstr
-            fail $ show msg ++ "\n when running command: \n" ++ cmd
+      y1ty <- case ty of
+               BoolT -> withCString "bool" $ \tynm ->
+                            withy1 y $ \ctx -> c_yices_mk_type ctx tynm
+               IntegerT -> withCString "int" $ \tynm ->
+                            withy1 y $ \ctx -> c_yices_mk_type ctx tynm
+               BitT w -> withy1 y $ \ctx -> c_yices_mk_bitvector_type ctx (fromInteger w)
+      withCString nm $ \str -> do
+            withy1 y $ \yctx -> c_yices_mk_var_decl yctx str y1ty
+      return ()
 
   getBoolValue y nm = do
     model <- withy1 y c_yices_get_model 
