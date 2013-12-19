@@ -6,10 +6,6 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- | Backend for the Yices1 Solver
---
--- NOTE: This assumes all the symbols from the yices1 library starting with
--- yices_ have been renamed to yices1_. This is so yices1 and yices2 can
--- coexist.
 module Smten.Compiled.Smten.Symbolic.Solver.Yices1 (yices1) where
 
 import Foreign hiding (bit)
@@ -22,10 +18,10 @@ import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
 data Yices1 = Yices1 {
-    y1_ctx :: Ptr YContext
+    y1_ctx :: YContext
 }
 
-withy1 :: Yices1 -> (Ptr YContext -> IO a) -> IO a
+withy1 :: Yices1 -> (YContext -> IO a) -> IO a
 withy1 y f = f (y1_ctx y)
 
 bvInteger :: [CInt] -> Integer
@@ -38,15 +34,15 @@ bvBits w v =
       bitx p = if testBit v p then 1 else 0
   in map bitx [0..(fromInteger w - 1)]
 
-uprim :: (Ptr YContext -> YExpr -> IO YExpr) ->
+uprim :: (YContext -> YExpr -> IO YExpr) ->
          Yices1 -> YExpr -> IO YExpr
 uprim f y a = withy1 y $ \ctx -> f ctx a
 
-bprim :: (Ptr YContext -> YExpr -> YExpr -> IO YExpr) ->
+bprim :: (YContext -> YExpr -> YExpr -> IO YExpr) ->
          Yices1 -> YExpr -> YExpr -> IO YExpr
 bprim f y a b = withy1 y $ \ctx -> f ctx a b
 
-baprim :: (Ptr YContext -> Ptr YExpr -> CUInt -> IO YExpr) ->
+baprim :: (YContext -> Ptr YExpr -> CUInt -> IO YExpr) ->
           Yices1 -> YExpr -> YExpr -> IO YExpr
 baprim f y a b = withy1 y $ \ctx -> withArray [a, b] $ \arr -> f ctx arr 2
 
@@ -136,7 +132,7 @@ instance SolverAST Yices1 YExpr where
   bit y w v = withy1 y $ \ctx -> do
         let w' = fromInteger w
             v' = fromInteger v
-        if w <= 64 
+        if w <= 32
             then c_yices_mk_bv_constant ctx w' v'
             else do
               let bits = bvBits w v

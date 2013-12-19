@@ -1,9 +1,9 @@
-Priority::
-* understand sketch performance bug
+Major Performance::
+* understand poor arch-extract performance
+* Loss of sharing for Int and Char (sketch performance bug)
     symapp of int and char looses sharing, leads to exponential blowup.
     memoization solves the specific case, but hurts concrete performance
     fairly significantly.
-* understand poor arch-extract performance
 
 Release to Public::
 * write up tutorials (github #3)
@@ -23,7 +23,6 @@ Runtime::
  ** iteF doesn't need to be lazy in the first argument
         That is, if _|_ then a else b can be _|_
  ** orF doesn't need to exist. No one calls it.
- ** don't catch keyboard interrupts in select
  ** Overall performance:
     - shampi: - Concrete evaluation dominates
     - nqueens: - Assert dominates
@@ -93,7 +92,7 @@ Documentation
 * Make it so generated haddock documentation for smten-lib is nice
 
 Known Bugs::
-* nqueens -s yices1 -e Bit 55  seg faults (in evacuate)
+* nqueens -s yices1 -e Bit 55  seg faults
 * yices1 seg faults on arch-extract isCF for rules 2, 4
 * generate code for  (case x of { __DEFAULT -> ...}) 
     when 'x' is not an algebraic data type
