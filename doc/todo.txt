@@ -1,5 +1,8 @@
 Priority::
 * understand sketch performance bug
+    symapp of int and char looses sharing, leads to exponential blowup.
+    memoization solves the specific case, but hurts concrete performance
+    fairly significantly.
 * understand poor arch-extract performance
 
 Release to Public::

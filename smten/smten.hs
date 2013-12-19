@@ -26,6 +26,7 @@ usage = unlines [
     "  -v, -vn              Enable verbose operation",
     "  -O                   Enable optimiziation",
     "  -prof                Enable profiling",
+    "  -debug               Link with debug version of GHC runtime",
     "  -fprof-auto-top      Auto-add SCCs to top-level bindings",
     "  -idir1:dir2:...      Add dir1, dir2, etc. to import path",
     "  -hidir dir           Set directory for interface files",
@@ -73,6 +74,7 @@ getopts al =
     ("-O" : tl) -> s2 ["-O"] >> getopts tl
     (v@('-':'v':_) : tl) -> s1 [v] >> s2 [v] >> getopts tl
     ("-prof" : tl) -> s1 ["-prof"] >> s2 ["-prof"] >> getopts tl
+    ("-debug" : tl) -> s2 ["-debug"] >> getopts tl
     ("-fprof-auto-top" : tl) -> s1 ["-fprof-auto-top"] >> getopts tl
     ("-hidir" : f : tl) -> s1 ["-hidir", f] >> s2 ["-hidir", f] >> getopts tl
     ("-odir" : f : tl) -> s1 ["-odir", f] >> s2 ["-odir", f] >> getopts tl
