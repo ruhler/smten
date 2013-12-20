@@ -8,6 +8,9 @@
 -- | Backend for the Yices1 Solver
 module Smten.Compiled.Smten.Symbolic.Solver.Yices1 (yices1) where
 
+import Data.Functor
+import qualified Data.HashTable.IO as H
+
 import Foreign hiding (bit)
 import Foreign.C.String
 import Foreign.C.Types
@@ -17,12 +20,22 @@ import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
+type VarMap = H.BasicHashTable String YDecl
+
 data Yices1 = Yices1 {
-    y1_ctx :: YContext
+    y1_ctx :: YContext,
+    y1_vars :: VarMap
 }
 
 withy1 :: Yices1 -> (YContext -> IO a) -> IO a
 withy1 y f = f (y1_ctx y)
+
+getdecl :: Yices1 -> String -> IO YDecl
+getdecl y nm = do
+    r <- H.lookup (y1_vars y) nm
+    case r of
+        Just v -> return v
+        Nothing -> error $"Yices1: unknown var: " ++ nm
 
 bvInteger :: [CInt] -> Integer
 bvInteger [] = 0
@@ -78,14 +91,14 @@ instance SolverAST Yices1 YExpr where
                IntegerT -> withCString "int" $ \tynm ->
                             withy1 y $ \ctx -> c_yices_mk_type ctx tynm
                BitT w -> withy1 y $ \ctx -> c_yices_mk_bitvector_type ctx (fromInteger w)
-      withCString nm $ \str -> do
-            withy1 y $ \yctx -> c_yices_mk_var_decl yctx str y1ty
-      return ()
+      decl <- withCString nm $ \str ->
+                withy1 y $ \yctx ->
+                  c_yices_mk_var_decl yctx str y1ty
+      H.insert (y1_vars y) nm decl
 
   getBoolValue y nm = do
     model <- withy1 y c_yices_get_model 
-    decl <- withCString nm $ \str ->
-                withy1 y $ \yctx -> c_yices_get_var_decl_from_name yctx str
+    decl <- getdecl y nm
     br <- c_yices_get_value model decl
     case br of
       _ | br == yTrue -> return True
@@ -94,25 +107,21 @@ instance SolverAST Yices1 YExpr where
 
   getIntegerValue y nm = do
     model <- withy1 y c_yices_get_model 
-    decl <- withCString nm $ \str ->
-                withy1 y $ \yctx -> c_yices_get_var_decl_from_name yctx str
-    x <- alloca $ \ptr -> do
-        ir <- c_yices_get_int_value model decl ptr
-        if ir == 1
-            then peek ptr
-            else return 0
-    return (toInteger x)
+    decl <- getdecl y nm
+    alloca $ \ptr -> do
+      ir <- c_yices_get_int_value model decl ptr
+      if ir == 1
+          then toInteger <$> peek ptr
+          else return 0
 
   getBitVectorValue y w nm = do
     model <- withy1 y c_yices_get_model 
-    decl <- withCString nm $ \str ->
-                withy1 y $ \yctx -> c_yices_get_var_decl_from_name yctx str
-    bits <- allocaArray (fromInteger w) $ \ptr -> do
+    decl <- getdecl y nm
+    allocaArray (fromInteger w) $ \ptr -> do
         ir <- c_yices_get_bitvector_value model decl (fromInteger w) ptr
         if ir == 1
-            then peekArray (fromInteger w) ptr
-            else return []
-    return (bvInteger bits)
+            then bvInteger <$> peekArray (fromInteger w) ptr
+            else return 0
 
 
   check y = {-# SCC "Yices1Check" #-} do
@@ -136,7 +145,7 @@ instance SolverAST Yices1 YExpr where
               return r
 
   var y nm = withy1 y $ \ctx -> do
-     decl <- withCString nm $ c_yices_get_var_decl_from_name ctx
+     decl <- getdecl y nm
      c_yices_mk_var_from_decl ctx decl
 
   and_bool = baprim c_yices_mk_and
@@ -174,5 +183,6 @@ yices1 = solverFromAST $ do
     0 -> return ()
     _ -> error "yices1 backend: unable to load libyices.so"
   ptr <- c_yices_mk_context
-  return $ Yices1 ptr
+  vars <- H.new
+  return $ Yices1 ptr vars
 
