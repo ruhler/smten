@@ -1,5 +1,6 @@
 
 {-# LANGUAGE KindSignatures, DataKinds #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Runtime.Formula.BitF (
     BitF(..), bitF, bit_eqF, bit_leqF, bit_addF, bit_subF, bit_mulF,

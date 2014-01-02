@@ -126,6 +126,7 @@ ivarFF = IVarFF
 iiteFF :: BoolFF -> IntegerFF -> IntegerFF -> IntegerFF
 iiteFF TrueFF a _ = a
 iiteFF FalseFF _ b = b
+iiteFF p v@(IntegerFF a) (IntegerFF b) | a == b = v
 iiteFF p a b = IIteFF p a b
 
 instance Num IntegerFF where
@@ -215,5 +216,6 @@ bit_extractFF hi lo x = Extract_BitFF hi lo x
 bit_iteFF :: BoolFF -> BitFF -> BitFF -> BitFF
 bit_iteFF TrueFF a _ = a
 bit_iteFF FalseFF _ b = b
+bit_iteFF p v@(BitFF a) (BitFF b) | a == b = v
 bit_iteFF p a b = Ite_BitFF p a b
 

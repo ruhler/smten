@@ -1,0 +1,251 @@
+Fri Dec 20 13:24:43 EST 2013
+
+There is a performance bug in arch-extract. This documents my path towards
+discovery of the bug.
+
+Problem:
+ * On master branch, genrulerels in arch-extract simpilfied_four_stage
+   takes a few seconds
+ * On reimpl branch, genrulerels in arch-extract blows up, taking tons of
+   memory
+
+Looking at specific rule combinations:
+  isCF fetch decode:    blows up, all time is in ite0, iteF, andFF, orFF
+
+This behavior appears to show up for all the fetch vs XXX rules.
+As well as other combinations.
+
+Question: which ite0 are we talking about?
+Hypothesis: ite0 for Bit n.
+Experiment: add a cost center for Bit n ite0, see if it shows up on profile.
+Result:
+  30% ite_BitF, 60% iteF
+
+Question: does a simpler test case have the same problem?
+For example: example1 and example2?
+Result: Both example1 and example2 work fine.
+
+Question: Can I minimize the problem?
+
+Simplification which demonstrates problem:
+  assert (applys [r] s /= applys [r] s)
+    for any real rule.
+Goal: simplify the rule 'r' as much as possible.
+
+Results:
+* Simplest rule which blows up: enqueue a constant value to a FIFO1
+
+The essences of the case which blows up seems to be:
+  s1 = if p s then s else s { a = 0 }
+  s2 = if p s then s else s { a = 0 }
+  assert (s /= s)
+
+With p s some predicate on the state.
+
+We should be able to replicate this outside the context of arch-extract.
+Some things which may matter:
+ * how is the Eq operator implemented? Ideally we use auto-derived Eq
+ * how many fields does the state 's' have?
+
+Let me try to replicate this problem apart from arch-extract.
+
+I was unable to replicate the problem outside, but I have made progress with
+minimization:
+ * The problem in Eq is due to comparison of the core memory, not the processor.
+
+Hypothesis for minimal test case:
+ For symbolic predicate p, assert (if p then s else id s 
+                                /= if p then s else id s)
+
+Yup! That's it. And it looks like we do need both 'id' terms.
+Now... why does this blow up?
+
+Note: it blows up if I use == too.
+Note: simpler is to take 's' to be 'Array'.
+
+This is quite amazing, because the Array is very very small.
+It has 2 elements only. There must be some other issue.
+It doesn't matter what the element type is.
+If I make indices for s1 [0, 1] instead of (indices s1), then it no longer
+blows up. Same with s2.
+
+If I change index type to Int, then it no longer blows up.
+
+So, there is something wrong with ite for the Bit type, such that:
+  ite0 p 0 0        does not go to 0?
+  ite0 p 1 1        does not go to 1?
+But... no. It is somehow caught up in the context of the array.
+
+Anyway, the test case now is simple enough that I should be able to step
+through the code to understand what's going on.
+
+Wed Jan  1 16:01:45 EST 2014
+
+Even simpler: The comparison of just the indices for s1 and s2 blow up. We
+don't have to access any elements.
+
+Perhaps, then, the elements don't matter at all?
+ 
+Even simpler:
+
+type T = Bit 2
+
+main :: IO ()
+main = do
+  r <- run_symbolic stp $ do
+         p <- free_Bool
+         let s = (0 :: T, 1 :: T)
+             s1 = if p then s else id s
+             s2 = if p then s else id s
+         assert (range s1 == range s2)
+  putStrLn (show r)
+
+Let's experiment with the data types.
+
+Bit 2: blows up
+Integer: blows up
+Int: works fine
+
+I suspect a problem with the implementation of PartialF, and something to do
+with the implementations of 'range'.
+
+Here's what appears to be happening:
+
+For some reason, the condition (l > h) is symbolic, which means we can't
+determine which branch to take, so we take both, and one of them is infinite.
+
+The problem: (l > h) should be concrete, not symbolic.
+
+Now we should be ready to step through things...
+
+But, let me try just a little more to see if I can simplify.
+Yes, I can. Good. We need not involve any tuples.
+
+Let me step through now and understand what's going on.
+
+p = BoolF (VarFF 1) FalseFF _|_
+s = IntegerF (PartialF TrueFF (IntegerFF 1) _|_)
+s1 = IntegerF (PartialF TrueFF (IIteFF (VarFF 1) (IntFF 1) (IntFF 1)) _|_)
+s2 = IntegerF (PartialF TrueFF (IIteFF (VarFF 1) (IntFF 1) (IntFF 1)) _|_)
+
+3 = integerF (PartialF TrueFF (IntegerFF 3) _|_)
+
+let q1 = (s1 <= 3):
+ = binarypF ileqFF (PartialF TrueFF (IIteFF (VarFF 1) (IntFF 1) (IntFF 1)) _|_)
+                   (PartialF TrueFF (IntegerFF 3) _|_)
+ = BoolF (ILeqFF (IIteFF (VarFF 1) (IntFF 1) (IntFF 1)) (IntegerFF 3)) FalseFF _|_
+
+Now, to use 'q1', and its friend 'q2' in constructing our lists l1 and l2.
+And updating the test case to  be less silly:
+
+q1 = BoolF (ILeqFF (IIteFF (VarFF 1) (IntFF 0) (IntFF 1)) (IntegerFF 3)) FalseFF _|_
+q2 = BoolF (ILeqFF (IIteFF (VarFF 2) (IntFF 2) (IntFF 3)) (IntegerFF 3)) FalseFF _|_
+
+l1 = ite q1 Nil (0 `Cons` range (s1+1))
+   = List {
+       gdNil__ = ite0 q1 True False,
+       gdCons__ = ite0 q1 False True,
+       flCons__1 = ite0 q1 _|_ 0,
+       flCons__2 = ite0 q1 _|_ (range (s1+1))
+     }
+
+ite0 q1 True False,
+   = iteF_ (ILeqFF (IIteFF (VarFF 1) (IntFF 1) (IntFF 1)) (IntegerFF 3)) trueF falseF
+   = BoolF q1p FalseFF _|_
+
+l1 = List {
+       gdNil__ = BoolF q1p FalseFF _|_
+       gdCons__ = BoolF (NotFF q1p) FalseFF _|_
+       flCons__1 = IntegerF (PartialF (not q1p) (IIteFF q1p (IntFF 0) (IntFF 0) _|_)
+       flCons__2 = ite0 q1 _|_ (range (s1+1))
+     }
+
+ite0 q1 _|_ (range (s1+1)) = l1' =
+  List {
+    gdNil__ = ite0 q1 _|_ (BoolF q1p' FalseFF _|_),
+    gdCons__ = BoolF (NotFF q1p) _|_ (BoolF (NotFF q1p') FalseFF _|_),
+    flCons__1 = ...
+    flCons__2 = ...
+  }
+
+l1 = List {
+       gdNil__ = BoolF q1p FalseFF _|_
+       gdCons__ = BoolF (NotFF q1p) FalseFF _|_
+       flCons__1 = IntegerF (PartialF (not q1p) (IIteFF q1p (IntFF 0) (IntFF 0)) _|_)
+       flCons__2 = l1'
+     }
+
+Now, try l1 == l2.
+After some simplifications:
+  
+  ite (BoolF q1p FalseFF _|_)
+      (ite (BoolF q2p FalseFF _|_) True False)
+      (ite (BoolF q2p FalseFF _|_) False (
+          ite ((==) (IntegerF (PartialF (not q1p) (IIteFF q1p (IntFF 0) (IntFF 0)) _|_))
+                    (IntegerF (PartialF (not q2p) (IIteFF q2p (IntFF 0) (IntFF 0)) _|_)))
+              ((==) l1' l2')
+              False))
+  
+
+You know what this looks like? It looks like an infinitely large finite
+formula. And it just grows and grows and grows. I think that's the problem. I
+don't have a cutoff to stop the growth.
+
+And given that... I can probably make another test case which quite simply
+demonstrates the problem.
+
+Part of what's sad about this test case is, we know some of the branches are
+unreachable. If only we asked the SMT solver sooner, it could have told us.
+
+Unfortunately, it looks to me like this is a fundamental flaw in the design,
+not just a bug in the implementation. Well... technically I always knew this
+could happen, I was just assuming it wouldn't come up in normal programs.
+
+Yes. The following program replicates the issue:
+
+foo :: Integer -> Bool
+foo x = if x <= 3 then True else (x <= 5 && foo (x+1))
+
+main :: IO ()
+main = do
+  r <- run_symbolic yices2 $ do
+         x <- mplus (return 0) (return 1)
+         assert (foo x)
+  putStrLn (show r)
+
+Thu Jan  2 11:07:21 EST 2014
+
+Some thoughts on solutions:
+ 1. Optimize ite p x y ===> x
+     when x and y are concrete and equal. For both Bit and Integer.
+    Note, we don't want to do it in general, because we did that before and
+    the cost to check for equality is enormous in some cases. But this shallow
+    optimization should be reasonable, and should fix all the important cases,
+    where you go from can't do anything to can do stuff very well. The other
+    cases would just be can't do anything to can't do a little less than
+    anything.
+
+ 2. Ideally we can keep track of how big a finite formula is, and if it is too
+    big, split it up into a reasonable sized part and a 'future' part.
+    The best thing to do for size if we could would be space on the heap,
+    because that's what actually matters. I fear it will be hard to figure
+    that out though, because we have to keep track of pointers. Maybe keep a
+    set of stable names with each item, and wait until that set contains too
+    many elements?
+
+    Approximations we could do are: count the number of nodes. Shared nodes
+    will be double counted, which is really bad (we could be off by an
+    exponential amount of space).
+
+    Another: count the depth of expression. Again, we could be off by an
+    exponential amount of space.
+
+Thu Jan  2 11:30:44 EST 2014
+
+Doing (1) fixed the specific case for arch-extract that I had reduced to, but
+did not solve the overall arch-extract problem. This is slightly unexpected,
+because we shouldn't need an infinite formula given that the master branch
+works just fine on arch-extract. I'll have to start over again to try and
+minimize the problem.
+
+

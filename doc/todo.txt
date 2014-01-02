@@ -1,5 +1,7 @@
 Major Performance::
-* understand poor arch-extract performance
+* understand still-poor arch-extract performance
+* Finite formulas can grow infinitely (rsrch/perf3)
+    they should be bounded in size somehow to allow for incremental queries
 * Loss of sharing for Int and Char (sketch performance bug)
     symapp of int and char looses sharing, leads to exponential blowup.
     memoization solves the specific case, but hurts concrete performance
