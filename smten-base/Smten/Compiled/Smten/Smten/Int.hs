@@ -17,6 +17,7 @@ import Smten.Runtime.SymbolicOf
 data Int =
     I# P.Int#
   | Int_Ite BoolF Int Int
+  | Int_Unreachable
 
 instance SymbolicOf P.Int Int where
     tosym (P.I# x) = I# x
@@ -25,6 +26,7 @@ instance SymbolicOf P.Int Int where
       case x of
         I# i -> f (P.I# i)
         Int_Ite p a b -> ite0 p (f $$ a) (f $$ b)
+        Int_Unreachable -> unreachable
 
 instance SmtenHS0 Int where
     realize0 m x = 
@@ -32,6 +34,7 @@ instance SmtenHS0 Int where
         I# {} -> x
         Int_Ite p a b -> iterealize p a b m
     ite0 = Int_Ite
+    unreachable0 = Int_Unreachable
 
 instance P.Num Int where
     fromInteger = tosym P.. (P.fromInteger :: P.Integer -> P.Int)

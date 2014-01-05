@@ -6,7 +6,7 @@ module Smten.Runtime.Formula.BitF (
     BitF(..), bitF, bit_eqF, bit_leqF, bit_addF, bit_subF, bit_mulF,
     bit_orF, bit_andF, bit_shlF, bit_lshrF, bit_notF, bit_concatF,
     bit_sign_extendF, bit_extractF,
-    finite_BitF, parts_BitF, var_BitF, ite_BitF,
+    finite_BitF, parts_BitF, var_BitF, ite_BitF, unreachable_BitF,
   ) where
 
 import GHC.TypeLits
@@ -21,6 +21,7 @@ newtype BitF (n :: Nat) = BitF (PartialF BitFF)
 
 instance IsFinite BitFF where
     finite_iteFF = bit_iteFF
+    finite_unreachable = BitFF_Unreachable
 
 bitF :: Bit -> BitF n
 bitF x = BitF $ pfiniteF (bitFF x)
@@ -72,7 +73,11 @@ finite_BitF x = BitF (pfiniteF x)
 
 parts_BitF :: BitF n -> (BoolFF, BitFF, BitF n)
 parts_BitF (BitF (PartialF p a b_)) = (p, a, BitF b_)
+parts_BitF (BitF PartialF_Unreachable) = (BoolFF_Unreachable, BitFF_Unreachable, unreachable_BitF)
 
 ite_BitF :: BoolF -> BitF n -> BitF n -> BitF n
 ite_BitF p (BitF a) (BitF b) = BitF $ ite_PartialF p a b
+
+unreachable_BitF :: BitF n
+unreachable_BitF = BitF PartialF_Unreachable
 

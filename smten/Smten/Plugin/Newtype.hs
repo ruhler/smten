@@ -69,7 +69,8 @@ smtenHS nm tyvs constr = do
        cn = dataConName constr
    rel <- realizeD cn n
    ite <- iteD cn n
-   return [S.InstD ctx ty [rel, ite]]
+   unreach <- unreachableD cn n
+   return [S.InstD ctx ty [rel, ite, unreach]]
 
 -- iteN = \p a b = Foo (ite0 p (__deNewTyFoo a) (__deNewTyFoo b))
 iteD :: Name -> Int -> CG S.Method
@@ -100,3 +101,9 @@ realizeD nm k = do
       body = S.LamE "m" (S.LamE "x" foo)
   return $ S.Method ("realize" ++ show k) body
 
+-- unreachableN = Foo unreachable
+unreachableD :: Name -> Int -> CG S.Method
+unreachableD nm k = do
+  xx <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "unreachable"
+  c <- S.VarE <$> qnameCG nm
+  return $ S.Method ("unreachable" ++ show k) (S.AppE c xx)

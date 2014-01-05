@@ -26,6 +26,7 @@ instance SmtenHS1 PrimArray where
         PrimArray {} -> x
         PrimArray_Ite p a b -> iterealize p a b m
     ite1 = PrimArray_Ite
+    unreachable1 = P.error "PrimArray.unreachable"
 
 instance SymbolicOf (Array P.Int a) (PrimArray a) where
     tosym = PrimArray

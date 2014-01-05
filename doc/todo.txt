@@ -1,5 +1,5 @@
 Major Performance::
-* understand still-poor arch-extract performance
+* Understand arch-extract performance bug
 * Finite formulas can grow infinitely (rsrch/perf3)
     they should be bounded in size somehow to allow for incremental queries
 * Loss of sharing for Int and Char (sketch performance bug)
@@ -39,13 +39,6 @@ Runtime::
     - Don't call sat solver for assert False
     - Don't call sat solver for assert True
     - a & b & b & b   ====>  a & b
-    - Track mzero explicitly?
-        to take advantage of the high-level knowledge we have that the value
-        is unreachable (we don't need an SMT solver to tell us that) That is,
-        there is a difference between Unreachable _|_ and general _|_, and it
-        would be nice if we tracked that mzero is the Unreachable kind.
-    - Track mzero explicitly for IntegerF rather than introducing spurious
-      dummy values.
 
 Cleanup::
 * Naming conventions are all over the place for formulas. Fix it please.

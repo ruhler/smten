@@ -248,4 +248,167 @@ because we shouldn't need an infinite formula given that the master branch
 works just fine on arch-extract. I'll have to start over again to try and
 minimize the problem.
 
+Thu Jan  2 17:19:19 EST 2014
+
+It appears to be the same kind of problem: we are growing a finite formula
+infinitely. The question is, why are we doing that, when we know we shouldn't
+need to be doing it?
+
+The following blows up:
+  r <- run_symbolic (solver "perf_main") $ do
+         s <- freeInstance ctor_mkCore
+         let fetch = rulelist !! 0
+         assert (applys [fetch] s == applys [fetch] s)
+
+Which part of the state is it blowing up?
+
+Simplified to:
+   let s :: Array (Bit 2) ()
+       s = array (0, 3) [(0, ()), (1, ()), (2, ()), (3, ())]
+          
+   p <- free_Bool
+   let s1 = case p of
+              True -> Just s
+              False -> Nothing
+   assert (s1 == s1)
+
+If I increase it to (Bit 3), it works fine. If I reduce the bounds to (0, 2)
+it works fine. It looks like this has something to do with the upper bound of
+the range being at the very end of what the type supports?
+
+Maybe simpler:
+ p <- free_Bool
+ let n = 3 :: Bit 2
+     s = case p of
+            True -> Just (n, n)
+            False -> Nothing
+     s1 = case s of
+            Just x -> Just (range x)
+            Nothing -> Nothing
+     s2 = case s of
+            Just x -> Just (range x)
+            Nothing -> Nothing
+ assert (s1 == s2)
+
+I have to be careful, because it's very easy to get to the 'range is symbolic
+bug'. I know about that. But that's not the problem. The problem is this
+bounds thing. How can it matter that n is maxBound?
+
+Let me come back to it tomorrow. I'm close.
+Next steps:
+* move to 'perf4', 
+* change 'range' to 'myrange', have it take a single argument
+
+Fri Jan  3 17:42:09 EST 2014
+
+Hypothesis: the way we do data types, we end up with x as concrete or _|_,
+which is treated as a symbolic Bit, not concrete.
+
+And in fact, the strange issue with which value I choose seems to have gone
+away. It now hangs for Int, Integer, and Bit n.
+
+Perhaps we are in a good enough position now to step through and see what
+happens.
+
+Assume the Int type for now. Then try Integer to see if it is noticeably
+different.
+
+p = BoolF (VarFF "p") FasleFF _|_
+n = Int 2
+s = ite p (Just n) Nothing
+  = Maybe {
+       gdNil = not p
+       gdJust = p
+       flJust = IntIte p n _|_
+    }
+s1 = ite (not p) Nothing (Just (range (IntIte p n _|_)))
+
+The condition inside range becomes...
+
+ q = ite p True _|_
+   = BoolF p (not p) _|_
+
+And the body becomes:
+
+ l = ite q Nil__ (Cons__ 0 (range x'))
+   = List {
+        gdNil = q
+        gdCons = not q
+        flCons0 = ite q _|_ 0
+        flCons1 = ite q _|_ l'
+     }
+
+You see? Same problem as before.
+
+The issue here is, I fail to infer the p must be true in the context where
+I'm calling range, so the argument to range is known.
+
+An item on the todo list is treat _|_ which is error as different from _|_
+which is unreachable. If we make the distinction, we keep track of the
+knowledge of unreachability, and we can say ite p n UNREACHABLE is just n, or
+ite p UNREACHABLE n is just n.
+
+The real problem came when we went to do:
+    ite p Nothing (Just x)
+
+We got:
+    Maybe {
+       gdNil = not p
+       gdJust = p
+       flJust = IntIte p n _|_
+    }
+
+But it should be just as valid to say:
+    Maybe {
+       gdNil = not p
+       gdJust = p
+       flJust = n
+    }
+
+Because we know flJust isn't accessed unless p is True. That is, the
+UNREACHABLE is from the unusedfield _|_.
+    
+Fri Jan  3 18:53:35 EST 2014
+
+I changed ite for data structures to special case for concreteness. I don't
+feel like this handles all the cases of UNREACHABLE _|_ we may run into, but
+it wasn't too hard and fixes the problem in the reduced test case. The next
+step is to try the less reduced test case and see if it fixed that too.
+
+Fri Jan  3 19:05:02 EST 2014
+
+Yup! That fixed the arch-extract performance bug. Rule rel now runs very fast.
+Of course, we then run into a different performance bug, which appears similar
+to this one...
+
+I wonder if there is a more general way to apply this approach? Like what if
+we defined "unreachable" for every type, with the intent that
+ite p x unreachable = x
+ite p unreachable x = x
+
+Maybe we only actually have to implement the leaves?
+Or... we could just have a special constructor for each data type which is
+Unreachable, and special case ITE on it. Or something like that...
+
+unreachable = Foo unreachable unreachable unreachable unreachable.
+
+Fri Jan  3 19:21:24 EST 2014
+
+Sketch seems broken. I'm concerned I may have done something wrong with
+strictness.
+
+Yes. This broke something. So I should not check it in yet.
+
+Yes. I see the problem. isFalse (gdFoo a) causes 'a' to be forced, but we
+shouldn't be forcing a. I think the unreachable method idea should work
+though. Maybe I'll give that a try and see.
+
+Sun Jan  5 11:49:11 EST 2014
+
+Tried defining 'unreachable' for each symbolic object.
+It seems to work, except, I didn't define it right for Int or Char, so those
+don't work yet.
+
+I fixed it for Int and Char. Now this appears to solve the problem without
+breaking things.
 

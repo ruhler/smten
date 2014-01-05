@@ -39,6 +39,8 @@ instance SmtenHS1 Symbolic where
         (p, v) <- runS x
         return (realize m p, realize m v)
 
+    unreachable1 = Symbolic (return (unreachable, unreachable))
+
 return_symbolic :: a -> Symbolic a
 return_symbolic x = Symbolic $ return (trueF, x)
 
@@ -48,8 +50,8 @@ bind_symbolic x f = Symbolic $ do
    (pf, vf) <- runS (f vx)
    return (px `andF` pf, vf)
 
-mzero_symbolic :: Symbolic a
-mzero_symbolic = Symbolic $ return (falseF, error "mzero")
+mzero_symbolic :: (SmtenHS0 a) => Symbolic a
+mzero_symbolic = Symbolic $ return (falseF, unreachable)
 
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
 mplus_symbolic a b = Symbolic $ do

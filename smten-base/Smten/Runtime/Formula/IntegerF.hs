@@ -2,7 +2,7 @@
 module Smten.Runtime.Formula.IntegerF (
     IntegerF, integerF, var_IntegerF, ite_IntegerF,
     eq_IntegerF, leq_IntegerF, add_IntegerF, sub_IntegerF,
-    parts_IntegerF, finite_IntegerF,
+    parts_IntegerF, finite_IntegerF, unreachable_IntegerF,
   ) where
 
 import Smten.Runtime.FreeID
@@ -16,6 +16,7 @@ newtype IntegerF = IntegerF (PartialF IntegerFF)
 
 instance IsFinite IntegerFF where
     finite_iteFF = iiteFF
+    finite_unreachable = IntegerFF_Unreachable
 
 integerF :: Integer -> IntegerF
 integerF x = IntegerF $ pfiniteF (integerFF x)
@@ -45,7 +46,11 @@ ite_IntegerF p (IntegerF a) (IntegerF b) = IntegerF $ ite_PartialF p a b
 --         b_ possibly not finite.
 parts_IntegerF :: IntegerF -> (BoolFF, IntegerFF, IntegerF)
 parts_IntegerF (IntegerF (PartialF p a b_)) = (p, a, IntegerF b_)
+parts_IntegerF (IntegerF PartialF_Unreachable) = (BoolFF_Unreachable, IntegerFF_Unreachable, unreachable_IntegerF)
 
 finite_IntegerF :: IntegerFF -> IntegerF
 finite_IntegerF x = IntegerF (pfiniteF x)
+
+unreachable_IntegerF :: IntegerF
+unreachable_IntegerF = IntegerF PartialF_Unreachable
 

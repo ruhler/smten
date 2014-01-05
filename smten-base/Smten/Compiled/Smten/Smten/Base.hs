@@ -25,7 +25,7 @@ import Smten.Compiled.Smten.Smten.List
 import Smten.Compiled.Smten.Smten.Tuple
 import Smten.Compiled.Smten.Smten.Unit
 
-instance SymbolicOf [a] (List__ a) where
+instance (SmtenHS0 a) => SymbolicOf [a] (List__ a) where
     tosym [] = __Nil__
     tosym (x:xs) = __Cons__ x (tosym xs)
 
@@ -52,6 +52,7 @@ error msg = {-# SCC "PRIM_ERROR" #-} P.error (toHSString msg)
 instance SmtenHS1 P.IO where
   ite1 = P.error "TODO: P.IO.ite1"
   realize1 = P.error "TODO: P.IO.realize1"
+  unreachable1 = P.error "TODO: P.IO.unreachable1"
 
 toHSString :: List__ Char -> P.String
 toHSString x = P.map toHSChar (fromList__ x)

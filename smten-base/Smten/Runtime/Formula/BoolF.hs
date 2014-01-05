@@ -26,13 +26,14 @@ import qualified Smten.Runtime.Select as S
 --  name ending in an underscore refers to a potential _|_ value. A boolean
 --  variable name not ending in an underscore refers to a finite value.
 data BoolF = BoolF BoolFF BoolFF BoolF
+           | BoolF_Unreachable
      deriving (Show)
 
 -- Construct a finite BoolF of the form:
 --   a
 -- where a is finite.
 finiteF :: BoolFF -> BoolF
-finiteF x = BoolF x falseFF (error "finiteF._|_")
+finiteF x = BoolF x falseFF BoolF_Unreachable
 
 -- Construct a partially finite BoolF of the form:
 --   a + bx_
@@ -53,10 +54,10 @@ selectF :: BoolF -> BoolF -> (BoolF, BoolF)
 selectF x_ y_ = S.approximate (BoolF falseFF trueFF x_) (BoolF falseFF trueFF y_) x_ y_
 
 trueF :: BoolF
-trueF = BoolF TrueFF FalseFF (error "trueF._|_")
+trueF = BoolF TrueFF FalseFF BoolF_Unreachable
 
 falseF :: BoolF
-falseF = BoolF FalseFF FalseFF (error "falseF._|_")
+falseF = BoolF FalseFF FalseFF BoolF_Unreachable
 
 boolF :: Bool -> BoolF
 boolF True = trueF
@@ -73,6 +74,7 @@ varF = finiteF . varFF
 --            = ~(a+b) + (~a)(~x_)
 notF :: BoolF -> BoolF
 notF (BoolF a b x_) = partialF (notFF (a + b)) (notFF a) (notF x_)
+notF BoolF_Unreachable = BoolF_Unreachable
 
 -- x_ * y_
 andF :: BoolF -> BoolF -> BoolF
@@ -88,16 +90,12 @@ andF x_@(BoolF xa xb xc_) y_ =
                     in andF x_' y_'
       in partialF a b c_
 
--- TODO: remove this once ite is implemented properly
--- x_ + y_
-orF :: BoolF -> BoolF -> BoolF
-orF x_ y_ =
-  case selectF x_ y_ of
-    (BoolF xa xb xc_, BoolF ya yb yc_) ->
-      let a = xa + ya
-          b = xb + yb
-          c_ = orF (xb *. xc_) (yb *. yc_)
-      in partialF a b c_
+    -- If y is unreachable, x * y may still be reachable, but in that
+    -- case, x must be False, in which case x * y is False.
+    -- If x is True, however, then the entire thing must be unreachable.
+    (BoolF TrueFF _ _, BoolF_Unreachable) -> BoolF_Unreachable
+    (_, BoolF_Unreachable) -> falseF
+andF BoolF_Unreachable _ = BoolF_Unreachable
 
 iteF :: BoolF -> BoolF -> BoolF -> BoolF
 iteF (BoolF pa FalseFF _) x_ y_ = iteF_ pa x_ y_
@@ -110,6 +108,9 @@ iteF p@(BoolF pa pb pc_) x_ y_
             b = iteFF pa xb (pb + ya + yb)
             c_ = iteF_ pa xc_ (iteF_ pb (iteF pc_ x_ y_) yc_)
         in partialF a b c_
+      (BoolF_Unreachable, _) -> y_
+      (_, BoolF_Unreachable) -> x_
+iteF BoolF_Unreachable _ _ = BoolF_Unreachable
 
 -- iteF with finite predicate
 iteF_ :: BoolFF -> BoolF -> BoolF -> BoolF
@@ -124,13 +125,15 @@ iteF_ p x_ y_
             b = iteFF p xb yb
             c_ = iteF_ p xc_ yc_
         in partialF a b c_
+      (BoolF_Unreachable, _) -> y_
+      (_, BoolF_Unreachable) -> x_
 
 -- For nicer syntax, we give an instance of Num for BoolF
 -- based on boolean arithmetic.
 instance Num BoolF where
   fromInteger 0 = falseF
   fromInteger 1 = trueF
-  (+) = orF
+  (+) = error "BoolF.+"
   (*) = andF
   negate = notF
   abs = error "BoolF.abs"
@@ -139,6 +142,8 @@ instance Num BoolF where
 -- | Logical AND of a finite formula and a partial formula.
 (*.) :: BoolFF -> BoolF -> BoolF
 (*.) x (BoolF a b c_) = BoolF (x*a) (x*b) c_
+(*.) TrueFF BoolF_Unreachable = BoolF_Unreachable
+(*.) _ BoolF_Unreachable = falseF
 
 -- | Return True if this object is equal to trueF
 isTrueF :: BoolF -> Bool

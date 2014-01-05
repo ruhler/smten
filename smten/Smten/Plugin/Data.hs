@@ -19,9 +19,8 @@ dataCG t constrs = do
         tyvars = tyConTyVars t
     dataD <- mkDataD n tyvars constrs
     shsD <- smtenHS n tyvars constrs
-    nulls <- mkNullD t n tyvars constrs
-    cons <- mapM (mkConD n) constrs
-    return $ concat [dataD, nulls, cons, shsD]
+    cons <- mapM (mkConD n constrs) constrs
+    return $ concat [dataD, cons, shsD]
   
 -- data Foo a b ... = Foo {
 --    gd_A :: BoolF, flA1 :: A1, flA2 :: A2, flA3 :: A3, ...
@@ -70,7 +69,8 @@ smtenHS nm tyvs cs = do
    let ty = S.ConAppT smtenhsnm [S.ConAppT qtyname tyvs']
    rel <- realizeD nm n cs
    ite <- iteD nm n cs
-   return [S.InstD ctx ty [rel, ite]]
+   unreach <- unreachableD nm n cs
+   return [S.InstD ctx ty [rel, ite, unreach]]
 
 -- iteN = \p a b -> Foo {
 --   gd* = ite0 p (gd* a) (gd* b),
@@ -112,7 +112,6 @@ iteD nm k cs = do
 realizeD :: Name -> Int -> [DataCon] -> CG S.Method
 realizeD nm k cs = do
   relnm <- usequalified "Smten.Runtime.SmtenHS" "realize"
-  nm' <- qtynameCG nm
   let mkcon :: DataCon -> CG [S.Name]
       mkcon d = do
         let dnm = dataConName d
@@ -135,51 +134,74 @@ realizeD nm k cs = do
       body = S.LamE "m" (S.LamE "x" upd)
   return $ S.Method ("realize" ++ show k) body
 
--- __NullFoo :: Foo a b ...
--- __NullFoo = Foo {
---    gd* = falseF,
---    fl* = unusedfield "*"
+-- unreachableN = Foo {
+--   gd* = unreachable,
+--   fl* = unreachable,
+--   ...
 -- }
-mkNullD :: TyCon -> Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
-mkNullD t nm ts cs = do
-  unused <- usequalified "Smten.Runtime.SmtenHS" "unusedfield"
-  false <- usequalified "Smten.Runtime.Formula" "falseF"
-  nm' <- qtynameCG nm
-  let mkcon :: DataCon -> CG [S.Field]
+unreachableD :: Name -> Int -> [DataCon] -> CG S.Method
+unreachableD nm k cs = do
+  xx <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "unreachable"
+  let mkcon :: DataCon -> CG [S.Name]
       mkcon d = do
         let dnm = dataConName d
-            mkfield :: Int -> CG S.Field
-            mkfield i = do
-              fnm <- qfieldnmCG i dnm
-              return $ S.Field fnm (S.AppE (S.VarE unused) (S.LitE (S.StringL fnm)))
+            mkfield :: Int -> CG S.Name
+            mkfield i = qfieldnmCG i dnm
         gdnm <- qguardnmCG dnm
         fields <- mapM (mkfield . fst) $ zip [1..] (dataConOrigArgTys d)
-        return (S.Field gdnm (S.VarE false) : fields)
+        return (gdnm : fields)
 
-  upds <- concat <$> mapM mkcon cs
-  let body = S.RecE (S.VarE nm') upds
-      dt = mkTyConApp t (mkTyVarTys ts)
-  ty <- topTypeCG dt
-  nullnm <- nullnmCG nm
-  return [S.ValD (S.Val nullnm (Just ty) body)]
+      mkupd :: S.Name -> S.Field
+      mkupd nm = S.Field nm xx
+  nm' <- qtynameCG nm
+  ks <- concat <$> mapM mkcon cs
+  let upds = map mkupd $ ks
+      body = S.RecE (S.VarE nm') upds
+  return $ S.Method ("unreachable" ++ show k) body
 
+-- mkConD n ds d 
 -- Generate constructor functions for each constructor.
 -- __FooA :: A1 -> A2 -> ... Foo a b ...
--- __FooA = \a b ... -> __NullFoo { gdA = trueF, flA1 = a, flA2 = b, ... }
-mkConD :: Name -> DataCon -> CG S.Dec
-mkConD tynm d = do
-  let dnm = dataConName d
-  nm <- connmCG dnm
-  ty <- typeCG $ dataConUserType d
-  null <- S.VarE <$> nullnmCG tynm
-  gdnm <- guardnmCG dnm
+-- __FooA = \a b ... -> Foo {
+--      gdA = trueF, flA1 = a, flA2 = b, ...,
+--      gdB = falseF, flB1 = unreachable, flB2 = unreachabe, ...,
+--      ...
+--   }
+--  n - the name of the type constructor: eg "Foo"
+--  ds - the list of all data constructors
+--  d - the specific data constructor to generate the constructor function for
+mkConD :: Name -> [DataCon] -> DataCon -> CG S.Dec
+mkConD tynm cs dc = do
   tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "trueF"
-  let gdupd = S.Field gdnm tt
-      numargs = length $ dataConOrigArgTys d
+  ff <- S.VarE <$> usequalified "Smten.Runtime.Formula" "falseF"
+  xx <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "unreachable"
+  tynm' <- S.VarE <$> qtynameCG tynm
+  ty <- topTypeCG $ dataConUserType dc
+  let mkcon :: DataCon -> CG [S.Field]
+      mkcon d
+        | d == dc = do
+            let dnm = dataConName d
+            gdnm <- guardnmCG dnm
+            let numargs = length $ dataConOrigArgTys d
+                vars = ["x" ++ show i | i <- [1..numargs]]
+            fields <- mapM (flip fieldnmCG dnm) [1..numargs]
+            let flupds = [S.Field fl (S.VarE v) | (fl, v) <- zip fields vars]
+            return (S.Field gdnm tt : flupds)
+        | otherwise = do
+            let dnm = dataConName d
+                mkfield :: Int -> CG S.Field
+                mkfield i = do
+                  fnm <- qfieldnmCG i dnm
+                  return $ S.Field fnm xx
+            gdnm <- qguardnmCG dnm
+            fields <- mapM (mkfield . fst) $ zip [1..] (dataConOrigArgTys d)
+            return (S.Field gdnm ff : fields)
+
+  upds <- concat <$> mapM mkcon cs
+  nm <- connmCG $ dataConName dc
+  let numargs = length $ dataConOrigArgTys dc
       vars = ["x" ++ show i | i <- [1..numargs]]
-  fields <- mapM (flip fieldnmCG dnm) [1..numargs]
-  let flupds = [S.Field fl (S.VarE v) | (fl, v) <- zip fields vars]
-      upd = S.RecE null (gdupd : flupds)
+      upd = S.RecE tynm' upds
       body = foldr S.LamE upd vars
   return $ S.ValD (S.Val nm (Just ty) body)
 

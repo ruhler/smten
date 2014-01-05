@@ -192,3 +192,33 @@ arch-extract::
     ~80% in ite for Bit
     including ~50% in iteF
 
+Perf Bug Fix
+------------
+Changes from reimpl 5: 
+ * ite p x y ==> x for Integer and Bit when x and y are concrete and x == y
+ * ite for data types checks for unreachable fields, so 
+        ite p UNREACHABLE x ==> x, ite p x UNREACHABLE ==> x
+ These 2 together were the arch-extract performance bug.
+shampi::
+   yices2, Bit: 22s
+
+nqueens::
+   yices2, Int, 24: 2s
+   yices2, Integer, 36: 26s
+   yices2, Bit, 128: 1s
+
+
+sudoku:
+ yices2, Bit, 100 boards: 4s        (note: representation changed)
+ yices2, Enum, 100 boards: 7s
+ yices2, Integer, 2 boards: 17s
+
+sketch:
+  * miniTest48, miniTest49, miniTest52 take a long time
+  * rest finish in 9s
+
+arch-extract:
+ STP FETDEC: gets past rule rel generation.
+ Seems to hang at: UNSAFEPRINT: rough size of query(66,2)
+  with slow increase in memory.
+
