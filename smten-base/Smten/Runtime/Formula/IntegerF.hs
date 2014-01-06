@@ -15,26 +15,26 @@ import Smten.Runtime.Formula.PartialF
 newtype IntegerF = IntegerF (PartialF IntegerFF)
 
 instance IsFinite IntegerFF where
-    finite_iteFF = iiteFF
+    finite_iteFF = ite_IntegerFF
     finite_unreachable = IntegerFF_Unreachable
 
 integerF :: Integer -> IntegerF
 integerF x = IntegerF $ pfiniteF (integerFF x)
 
 var_IntegerF :: FreeID -> IntegerF
-var_IntegerF x = IntegerF $ pfiniteF (ivarFF x)
+var_IntegerF x = IntegerF $ pfiniteF (var_IntegerFF x)
 
 eq_IntegerF :: IntegerF -> IntegerF -> BoolF
-eq_IntegerF (IntegerF a) (IntegerF b) = binarypF ieqFF a b
+eq_IntegerF (IntegerF a) (IntegerF b) = binarypF eq_IntegerFF a b
 
 leq_IntegerF :: IntegerF -> IntegerF -> BoolF
-leq_IntegerF (IntegerF a) (IntegerF b) = binarypF ileqFF a b
+leq_IntegerF (IntegerF a) (IntegerF b) = binarypF leq_IntegerFF a b
 
 add_IntegerF :: IntegerF -> IntegerF -> IntegerF
-add_IntegerF (IntegerF a) (IntegerF b) = IntegerF $ binaryoF iaddFF a b
+add_IntegerF (IntegerF a) (IntegerF b) = IntegerF $ binaryoF add_IntegerFF a b
 
 sub_IntegerF :: IntegerF -> IntegerF -> IntegerF
-sub_IntegerF (IntegerF a) (IntegerF b) = IntegerF $ binaryoF isubFF a b
+sub_IntegerF (IntegerF a) (IntegerF b) = IntegerF $ binaryoF sub_IntegerFF a b
 
 ite_IntegerF :: BoolF -> IntegerF -> IntegerF -> IntegerF
 ite_IntegerF p (IntegerF a) (IntegerF b) = IntegerF $ ite_PartialF p a b

@@ -4,10 +4,13 @@
 -- | Representation of a finite SMT Formula
 module Smten.Runtime.Formula.Finite (
   BoolFF(..), trueFF, falseFF, boolFF, andFF, orFF, notFF, iteFF, varFF,
-  IntegerFF(..), integerFF, iaddFF, isubFF, iiteFF, ivarFF, ieqFF, ileqFF,
-  BitFF(..), bitFF, bit_varFF, bit_eqFF, bit_leqFF, bit_addFF, bit_subFF,
-  bit_mulFF, bit_orFF, bit_andFF, bit_shlFF, bit_lshrFF, bit_concatFF,
-  bit_notFF, bit_sign_extendFF, bit_extractFF, bit_iteFF,
+
+  IntegerFF(..), integerFF, ite_IntegerFF, var_IntegerFF,
+  eq_IntegerFF, leq_IntegerFF, add_IntegerFF, sub_IntegerFF,
+
+  BitFF(..), bitFF, var_BitFF, eq_BitFF, leq_BitFF, add_BitFF, sub_BitFF,
+  mul_BitFF, bit_orFF, bit_andFF, bit_shlFF, bit_lshrFF, bit_concatFF,
+  bit_notFF, bit_sign_extendFF, bit_extractFF, ite_BitFF,
   ) where
 
 import Data.Bits
@@ -114,48 +117,48 @@ data IntegerFF =
 integerFF :: Integer -> IntegerFF
 integerFF = IntegerFF
 
-ieqFF :: IntegerFF -> IntegerFF -> BoolFF
-ieqFF (IntegerFF a) (IntegerFF b) = boolFF (a == b)
-ieqFF IntegerFF_Unreachable _ = BoolFF_Unreachable
-ieqFF _ IntegerFF_Unreachable = BoolFF_Unreachable
-ieqFF a b 
+eq_IntegerFF :: IntegerFF -> IntegerFF -> BoolFF
+eq_IntegerFF (IntegerFF a) (IntegerFF b) = boolFF (a == b)
+eq_IntegerFF IntegerFF_Unreachable _ = BoolFF_Unreachable
+eq_IntegerFF _ IntegerFF_Unreachable = BoolFF_Unreachable
+eq_IntegerFF a b 
  | a `stableNameEq` b = trueFF
  | otherwise = IEqFF a b
 
-ileqFF :: IntegerFF -> IntegerFF -> BoolFF
-ileqFF (IntegerFF a) (IntegerFF b) = boolFF (a <= b)
-ileqFF IntegerFF_Unreachable _ = BoolFF_Unreachable
-ileqFF _ IntegerFF_Unreachable = BoolFF_Unreachable
-ileqFF a b = ILeqFF a b
+leq_IntegerFF :: IntegerFF -> IntegerFF -> BoolFF
+leq_IntegerFF (IntegerFF a) (IntegerFF b) = boolFF (a <= b)
+leq_IntegerFF IntegerFF_Unreachable _ = BoolFF_Unreachable
+leq_IntegerFF _ IntegerFF_Unreachable = BoolFF_Unreachable
+leq_IntegerFF a b = ILeqFF a b
 
-iaddFF :: IntegerFF -> IntegerFF -> IntegerFF
-iaddFF (IntegerFF a) (IntegerFF b) = IntegerFF (a + b)
-iaddFF IntegerFF_Unreachable _ = IntegerFF_Unreachable
-iaddFF _ IntegerFF_Unreachable = IntegerFF_Unreachable
-iaddFF a b = IAddFF a b
+add_IntegerFF :: IntegerFF -> IntegerFF -> IntegerFF
+add_IntegerFF (IntegerFF a) (IntegerFF b) = IntegerFF (a + b)
+add_IntegerFF IntegerFF_Unreachable _ = IntegerFF_Unreachable
+add_IntegerFF _ IntegerFF_Unreachable = IntegerFF_Unreachable
+add_IntegerFF a b = IAddFF a b
 
-isubFF :: IntegerFF -> IntegerFF -> IntegerFF
-isubFF (IntegerFF a) (IntegerFF b) = IntegerFF (a - b)
-isubFF IntegerFF_Unreachable _ = IntegerFF_Unreachable
-isubFF _ IntegerFF_Unreachable = IntegerFF_Unreachable
-isubFF a b = ISubFF a b
+sub_IntegerFF :: IntegerFF -> IntegerFF -> IntegerFF
+sub_IntegerFF (IntegerFF a) (IntegerFF b) = IntegerFF (a - b)
+sub_IntegerFF IntegerFF_Unreachable _ = IntegerFF_Unreachable
+sub_IntegerFF _ IntegerFF_Unreachable = IntegerFF_Unreachable
+sub_IntegerFF a b = ISubFF a b
 
-ivarFF :: FreeID -> IntegerFF
-ivarFF = IVarFF
+var_IntegerFF :: FreeID -> IntegerFF
+var_IntegerFF = IVarFF
 
-iiteFF :: BoolFF -> IntegerFF -> IntegerFF -> IntegerFF
-iiteFF TrueFF a _ = a
-iiteFF FalseFF _ b = b
-iiteFF BoolFF_Unreachable _ _ = IntegerFF_Unreachable
-iiteFF p v@(IntegerFF a) (IntegerFF b) | a == b = v
-iiteFF _ IntegerFF_Unreachable b = b
-iiteFF _ a IntegerFF_Unreachable = a
-iiteFF p a b = IIteFF p a b
+ite_IntegerFF :: BoolFF -> IntegerFF -> IntegerFF -> IntegerFF
+ite_IntegerFF TrueFF a _ = a
+ite_IntegerFF FalseFF _ b = b
+ite_IntegerFF BoolFF_Unreachable _ _ = IntegerFF_Unreachable
+ite_IntegerFF p v@(IntegerFF a) (IntegerFF b) | a == b = v
+ite_IntegerFF _ IntegerFF_Unreachable b = b
+ite_IntegerFF _ a IntegerFF_Unreachable = a
+ite_IntegerFF p a b = IIteFF p a b
 
 instance Num IntegerFF where
   fromInteger = integerFF
-  (+) = iaddFF
-  (-) = isubFF
+  (+) = add_IntegerFF
+  (-) = sub_IntegerFF
   (*) = error "IntegerFF.*"
   abs = error "IntegerFF.abs"
   signum = error "IntegerFF.signum"
@@ -182,38 +185,38 @@ data BitFF =
 bitFF :: Bit -> BitFF
 bitFF = BitFF
 
-bit_varFF :: Integer -> FreeID -> BitFF
-bit_varFF = Var_BitFF
+var_BitFF :: Integer -> FreeID -> BitFF
+var_BitFF = Var_BitFF
 
-bit_eqFF :: BitFF -> BitFF -> BoolFF
-bit_eqFF (BitFF a) (BitFF b) = boolFF (a == b)
-bit_eqFF BitFF_Unreachable _ = BoolFF_Unreachable
-bit_eqFF _ BitFF_Unreachable = BoolFF_Unreachable
-bit_eqFF a b = BitEqFF a b
+eq_BitFF :: BitFF -> BitFF -> BoolFF
+eq_BitFF (BitFF a) (BitFF b) = boolFF (a == b)
+eq_BitFF BitFF_Unreachable _ = BoolFF_Unreachable
+eq_BitFF _ BitFF_Unreachable = BoolFF_Unreachable
+eq_BitFF a b = BitEqFF a b
 
-bit_leqFF ::  BitFF -> BitFF -> BoolFF
-bit_leqFF (BitFF a) (BitFF b) = boolFF (a <= b)
-bit_leqFF BitFF_Unreachable _ = BoolFF_Unreachable
-bit_leqFF _ BitFF_Unreachable = BoolFF_Unreachable
-bit_leqFF a b = BitLeqFF a b
+leq_BitFF ::  BitFF -> BitFF -> BoolFF
+leq_BitFF (BitFF a) (BitFF b) = boolFF (a <= b)
+leq_BitFF BitFF_Unreachable _ = BoolFF_Unreachable
+leq_BitFF _ BitFF_Unreachable = BoolFF_Unreachable
+leq_BitFF a b = BitLeqFF a b
 
-bit_addFF :: BitFF -> BitFF -> BitFF
-bit_addFF (BitFF a) (BitFF b) = BitFF (a + b)
-bit_addFF BitFF_Unreachable _ = BitFF_Unreachable
-bit_addFF _ BitFF_Unreachable = BitFF_Unreachable
-bit_addFF a b = Add_BitFF a b
+add_BitFF :: BitFF -> BitFF -> BitFF
+add_BitFF (BitFF a) (BitFF b) = BitFF (a + b)
+add_BitFF BitFF_Unreachable _ = BitFF_Unreachable
+add_BitFF _ BitFF_Unreachable = BitFF_Unreachable
+add_BitFF a b = Add_BitFF a b
 
-bit_subFF :: BitFF -> BitFF -> BitFF
-bit_subFF (BitFF a) (BitFF b) = BitFF (a - b)
-bit_subFF BitFF_Unreachable _ = BitFF_Unreachable
-bit_subFF _ BitFF_Unreachable = BitFF_Unreachable
-bit_subFF a b = Sub_BitFF a b
+sub_BitFF :: BitFF -> BitFF -> BitFF
+sub_BitFF (BitFF a) (BitFF b) = BitFF (a - b)
+sub_BitFF BitFF_Unreachable _ = BitFF_Unreachable
+sub_BitFF _ BitFF_Unreachable = BitFF_Unreachable
+sub_BitFF a b = Sub_BitFF a b
 
-bit_mulFF :: BitFF -> BitFF -> BitFF
-bit_mulFF (BitFF a) (BitFF b) = BitFF (a * b)
-bit_mulFF BitFF_Unreachable _ = BitFF_Unreachable
-bit_mulFF _ BitFF_Unreachable = BitFF_Unreachable
-bit_mulFF a b = Mul_BitFF a b
+mul_BitFF :: BitFF -> BitFF -> BitFF
+mul_BitFF (BitFF a) (BitFF b) = BitFF (a * b)
+mul_BitFF BitFF_Unreachable _ = BitFF_Unreachable
+mul_BitFF _ BitFF_Unreachable = BitFF_Unreachable
+mul_BitFF a b = Mul_BitFF a b
 
 bit_orFF :: BitFF -> BitFF -> BitFF
 bit_orFF (BitFF a) (BitFF b) = BitFF (a .|. b)
@@ -260,12 +263,12 @@ bit_extractFF hi lo (BitFF a) = BitFF (bv_extract hi lo a)
 bit_extractFF _ _ BitFF_Unreachable = BitFF_Unreachable
 bit_extractFF hi lo x = Extract_BitFF hi lo x
 
-bit_iteFF :: BoolFF -> BitFF -> BitFF -> BitFF
-bit_iteFF TrueFF a _ = a
-bit_iteFF FalseFF _ b = b
-bit_iteFF BoolFF_Unreachable _ _ = BitFF_Unreachable
-bit_iteFF p v@(BitFF a) (BitFF b) | a == b = v
-bit_iteFF _ BitFF_Unreachable b = b
-bit_iteFF _ a BitFF_Unreachable = a
-bit_iteFF p a b = Ite_BitFF p a b
+ite_BitFF :: BoolFF -> BitFF -> BitFF -> BitFF
+ite_BitFF TrueFF a _ = a
+ite_BitFF FalseFF _ b = b
+ite_BitFF BoolFF_Unreachable _ _ = BitFF_Unreachable
+ite_BitFF p v@(BitFF a) (BitFF b) | a == b = v
+ite_BitFF _ BitFF_Unreachable b = b
+ite_BitFF _ a BitFF_Unreachable = a
+ite_BitFF p a b = Ite_BitFF p a b
 

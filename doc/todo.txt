@@ -6,6 +6,12 @@ Major Performance::
     symapp of int and char looses sharing, leads to exponential blowup.
     memoization solves the specific case, but hurts concrete performance
     fairly significantly.
+    Proposal: Use ParitalF for char and Int, and then have CharFF and IntFF be
+    maps from Int to Bool. Probably want to specialize the concrete case, so
+    if the size of the map is Empty, that means UNREACHABLE. If the size of
+    the map is 1, that means concrete.
+* Add performance tests for (ite p 1 1) and (ite p 1 UNREACHABLE) ala perf3
+  and perf4
 
 Release to Public::
 * write up tutorials (github #3)
@@ -42,6 +48,12 @@ Runtime::
 
 Cleanup::
 * Naming conventions are all over the place for formulas. Fix it please.
+    Typically we combine an operation (ite, add, etc...) with a type (BitF,
+    BitFF, IntegerF, ...). Functions must start lower, constructors upper, but
+    I want the type always to be upper. So I propose the following:
+        op_Type   for a function
+        Op_Type   for a constructor.
+    But note: the _Type is only needed if it is not clear from op.
 * (let {} in x  ====>  x)    in haskell output syntax 
 * Does smten-base.cabal really need to expose all modules?
 * Support symbolic IO?
@@ -72,6 +84,17 @@ Concrete Performance::
     (see inlinePragInfo in ghc api)
 
 Symbolic Performance::
+* Get rid of hashtable for assert traversal.
+    What I want is: each Formula object has a pointer to, say, (Int, Dynamic),
+    where Int says which query number we are on, and Dynamic contains the
+    generated formula. If this is a new query, we regenerate the Dynamic,
+    otherwise we re-use the Dynamic. Checking for sharing turns into a
+    constant time operation now.
+
+    To do this... things get slightly messy, and will require unsafeIO, with
+    issues of referential transparency: when is the IORef share, and when
+    duplicated? We want it associated with the stablename of the constructor.
+
 * for yices1: having a shl_n function, which shifts by a constant amount,
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?

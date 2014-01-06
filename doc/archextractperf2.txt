@@ -1,0 +1,26 @@
+Mon Jan  6 13:56:05 EST 2014
+
+Another Arch-extract performance bug. The following query:
+
+nonArchStepNotContainedShared:
+ seq = [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(6,"RL_writeback")]
+ worklist = [
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(7,"RL_imem_move")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(8,"RL_dmem_move")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(3,"RL_branchTaken"),(5,"RL_memory"),(1,"RL_instructionFetch")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(3,"RL_branchTaken"),(5,"RL_memory"),(2,"RL_instructionDecode")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(3,"RL_branchTaken"),(5,"RL_memory"),(3,"RL_branchTaken")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(3,"RL_branchTaken"),(5,"RL_memory"),(4,"RL_execute")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(3,"RL_branchTaken"),(5,"RL_memory"),(5,"RL_memory")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(3,"RL_branchTaken"),(5,"RL_memory"),(6,"RL_writeback")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(3,"RL_branchTaken"),(5,"RL_memory"),(7,"RL_imem_move")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(3,"RL_branchTaken"),(5,"RL_memory"),(8,"RL_dmem_move")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(3,"RL_branchTaken"),(1,"RL_instructionFetch")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(3,"RL_branchTaken"),(2,"RL_instructionDecode")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(3,"RL_branchTaken"),(3,"RL_branchTaken")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(3,"RL_branchTaken"),(4,"RL_execute")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(3,"RL_branchTaken"),(5,"RL_memory")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(3,"RL_branchTaken"),(6,"RL_writeback")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(3,"RL_branchTaken"),(7,"RL_imem_move")],
+    [(1,"RL_instructionFetch"),(7,"RL_imem_move"),(8,"RL_dmem_move"),(3,"RL_branchTaken"),(8,"RL_dmem_move")]]
+

@@ -32,7 +32,7 @@ nonIteIntegerSymapp f y =
         | l P.== (h P.- 1) = f l
         | P.otherwise =
             let m = (l P.+ h) `P.div` 2
-            in ite (finiteF P.$ ileqFF x (integerFF (m P.- 1)))
+            in ite (finiteF P.$ leq_IntegerFF x (integerFF (m P.- 1)))
                            (lookin l m x)
                            (lookin m h x)
 
@@ -40,7 +40,7 @@ nonIteIntegerSymapp f y =
       --    Do symapp for x assuming x >= l
       lookabove l i x =
          let h = l P.+ i
-         in ite (finiteF P.$ ileqFF x (integerFF h))
+         in ite (finiteF P.$ leq_IntegerFF x (integerFF h))
                     (lookin l h x)
                     (lookabove h (i P.* 2) x)
 
@@ -48,11 +48,11 @@ nonIteIntegerSymapp f y =
       --    Do symapp for x assuming x < h
       lookbelow h i x =
          let l = h P.- i
-         in ite (finiteF P.$ ileqFF x (integerFF l))
+         in ite (finiteF P.$ leq_IntegerFF x (integerFF l))
                     (lookbelow l (i P.* 2) x)
                     (lookin l h x)
             
-  in ite (finiteF P.$ ileqFF y (integerFF (P.negate 1)))
+  in ite (finiteF P.$ leq_IntegerFF y (integerFF (P.negate 1)))
               (lookbelow 0 1 y)
               (lookabove 0 1 y)
         

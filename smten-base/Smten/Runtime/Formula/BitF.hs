@@ -20,29 +20,29 @@ import Smten.Runtime.Formula.PartialF
 newtype BitF (n :: Nat) = BitF (PartialF BitFF)
 
 instance IsFinite BitFF where
-    finite_iteFF = bit_iteFF
+    finite_iteFF = ite_BitFF
     finite_unreachable = BitFF_Unreachable
 
 bitF :: Bit -> BitF n
 bitF x = BitF $ pfiniteF (bitFF x)
 
 var_BitF :: Integer -> FreeID -> BitF n
-var_BitF w nm = BitF $ pfiniteF (bit_varFF w nm)
+var_BitF w nm = BitF $ pfiniteF (var_BitFF w nm)
 
 bit_eqF :: BitF n -> BitF n -> BoolF
-bit_eqF (BitF a) (BitF b) = binarypF bit_eqFF a b
+bit_eqF (BitF a) (BitF b) = binarypF eq_BitFF a b
 
 bit_leqF :: BitF n -> BitF n -> BoolF
-bit_leqF (BitF a) (BitF b) = binarypF bit_leqFF a b
+bit_leqF (BitF a) (BitF b) = binarypF leq_BitFF a b
 
 bit_addF :: BitF n -> BitF n -> BitF n
-bit_addF (BitF a) (BitF b) = BitF $ binaryoF bit_addFF a b
+bit_addF (BitF a) (BitF b) = BitF $ binaryoF add_BitFF a b
 
 bit_subF :: BitF n -> BitF n -> BitF n
-bit_subF (BitF a) (BitF b) = BitF $ binaryoF bit_subFF a b
+bit_subF (BitF a) (BitF b) = BitF $ binaryoF sub_BitFF a b
 
 bit_mulF :: BitF n -> BitF n -> BitF n
-bit_mulF (BitF a) (BitF b) = BitF $ binaryoF bit_mulFF a b
+bit_mulF (BitF a) (BitF b) = BitF $ binaryoF mul_BitFF a b
 
 bit_orF :: BitF n -> BitF n -> BitF n
 bit_orF (BitF a) (BitF b) = BitF $ binaryoF bit_orFF a b

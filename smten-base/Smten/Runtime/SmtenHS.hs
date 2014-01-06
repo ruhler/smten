@@ -90,10 +90,10 @@ instance SmtenHS0 BoolFF where
         OrFF a b -> orFF (realize m a) (realize m b)
         NotFF p -> notFF (realize m p)
         VarFF n -> boolFF (lookupBool m n)
-        IEqFF a b -> ieqFF (realize m a) (realize m b)
-        ILeqFF a b -> ileqFF (realize m a) (realize m b)
-        BitEqFF a b -> bit_eqFF (realize m a) (realize m b)
-        BitLeqFF a b -> bit_leqFF (realize m a) (realize m b)
+        IEqFF a b -> eq_IntegerFF (realize m a) (realize m b)
+        ILeqFF a b -> leq_IntegerFF (realize m a) (realize m b)
+        BitEqFF a b -> eq_BitFF (realize m a) (realize m b)
+        BitLeqFF a b -> leq_BitFF (realize m a) (realize m b)
     unreachable0 = BoolFF_Unreachable
 
 instance SmtenHS0 IntegerFF where
@@ -101,9 +101,9 @@ instance SmtenHS0 IntegerFF where
     realize0 m x = 
       case x of
         IntegerFF {} -> x
-        IAddFF a b -> iaddFF (realize m a) (realize m b)
-        ISubFF a b -> isubFF (realize m a) (realize m b)
-        IIteFF p a b -> iiteFF (realize m p) (realize m a) (realize m b)
+        IAddFF a b -> add_IntegerFF (realize m a) (realize m b)
+        ISubFF a b -> sub_IntegerFF (realize m a) (realize m b)
+        IIteFF p a b -> ite_IntegerFF (realize m p) (realize m a) (realize m b)
         IVarFF v -> integerFF (lookupInteger m v)
     unreachable0 = IntegerFF_Unreachable
 
@@ -112,9 +112,9 @@ instance SmtenHS0 BitFF where
     realize0 m x = 
       case x of
         BitFF {} -> x
-        Add_BitFF a b -> bit_addFF (realize m a) (realize m b)
-        Sub_BitFF a b -> bit_subFF (realize m a) (realize m b)
-        Mul_BitFF a b -> bit_mulFF (realize m a) (realize m b)
+        Add_BitFF a b -> add_BitFF (realize m a) (realize m b)
+        Sub_BitFF a b -> sub_BitFF (realize m a) (realize m b)
+        Mul_BitFF a b -> mul_BitFF (realize m a) (realize m b)
         Or_BitFF a b -> bit_orFF (realize m a) (realize m b)
         And_BitFF a b -> bit_andFF (realize m a) (realize m b)
         Shl_BitFF w a b -> bit_shlFF w (realize m a) (realize m b)
@@ -123,7 +123,7 @@ instance SmtenHS0 BitFF where
         Not_BitFF a -> bit_notFF (realize m a)
         SignExtend_BitFF fr to a -> bit_sign_extendFF fr to (realize m a)
         Extract_BitFF hi lo a -> bit_extractFF hi lo (realize m a)
-        Ite_BitFF p a b -> bit_iteFF (realize m p) (realize m a) (realize m b)
+        Ite_BitFF p a b -> ite_BitFF (realize m p) (realize m a) (realize m b)
         Var_BitFF w v -> bitFF (lookupBit m w v)
     unreachable0 = BitFF_Unreachable
               
