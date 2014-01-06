@@ -21,7 +21,7 @@ newtype BitF (n :: Nat) = BitF (PartialF BitFF)
 
 instance IsFinite BitFF where
     finite_iteFF = ite_BitFF
-    finite_unreachable = BitFF_Unreachable
+    finite_unreachable = Unreachable_BitFF
 
 bitF :: Bit -> BitF n
 bitF x = BitF $ pfiniteF (bitFF x)
@@ -73,7 +73,7 @@ finite_BitF x = BitF (pfiniteF x)
 
 parts_BitF :: BitF n -> (BoolFF, BitFF, BitF n)
 parts_BitF (BitF (PartialF p a b_)) = (p, a, BitF b_)
-parts_BitF (BitF PartialF_Unreachable) = (BoolFF_Unreachable, BitFF_Unreachable, unreachable_BitF)
+parts_BitF (BitF PartialF_Unreachable) = (Unreachable_BoolFF, Unreachable_BitFF, unreachable_BitF)
 
 ite_BitF :: BoolF -> BitF n -> BitF n -> BitF n
 ite_BitF p (BitF a) (BitF b) = BitF $ ite_PartialF p a b

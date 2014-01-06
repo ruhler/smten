@@ -29,3 +29,11 @@ Mon Jan  6 17:35:19 EST 2014
 I have replicated the test case out of the context of archExtract.
 Now I can start minimizing it.
 
+These seem to be the important bits:
+ architecturalSeqs = rr2 [[1,7,2]],
+ possibleSeqs = rr2 [[4]]
+ seq0 = map ((!!) rulelist) [0, 6, 7, 5]
+
+Let me first verify the problem does not appear in the master branch, then
+step through the code with these arguments and see how it simplifies.
+

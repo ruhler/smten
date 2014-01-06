@@ -82,10 +82,10 @@ instance Supported BoolFF where
     define ctx (OrFF a b) = binary (or_bool ctx) a b
     define ctx (NotFF a) = unary (not_bool ctx) a
     define ctx (VarFF id) = uservar ctx id BoolT
-    define ctx (IEqFF a b) = binary (eq_integer ctx) a b
-    define ctx (ILeqFF a b) = binary (leq_integer ctx) a b
-    define ctx (BitEqFF a b) = binary (eq_bit ctx) a b
-    define ctx (BitLeqFF a b) = binary (leq_bit ctx) a b
+    define ctx (Eq_IntegerFF a b) = binary (eq_integer ctx) a b
+    define ctx (Leq_IntegerFF a b) = binary (leq_integer ctx) a b
+    define ctx (Eq_BitFF a b) = binary (eq_bit ctx) a b
+    define ctx (Leq_BitFF a b) = binary (leq_bit ctx) a b
 
     cache = asks ar_boolcache
 

@@ -90,11 +90,11 @@ instance SmtenHS0 BoolFF where
         OrFF a b -> orFF (realize m a) (realize m b)
         NotFF p -> notFF (realize m p)
         VarFF n -> boolFF (lookupBool m n)
-        IEqFF a b -> eq_IntegerFF (realize m a) (realize m b)
-        ILeqFF a b -> leq_IntegerFF (realize m a) (realize m b)
-        BitEqFF a b -> eq_BitFF (realize m a) (realize m b)
-        BitLeqFF a b -> leq_BitFF (realize m a) (realize m b)
-    unreachable0 = BoolFF_Unreachable
+        Eq_IntegerFF a b -> eq_IntegerFF (realize m a) (realize m b)
+        Leq_IntegerFF a b -> leq_IntegerFF (realize m a) (realize m b)
+        Eq_BitFF a b -> eq_BitFF (realize m a) (realize m b)
+        Leq_BitFF a b -> leq_BitFF (realize m a) (realize m b)
+    unreachable0 = Unreachable_BoolFF
 
 instance SmtenHS0 IntegerFF where
     ite0 = error "IntegerFF.ite"
@@ -125,7 +125,7 @@ instance SmtenHS0 BitFF where
         Extract_BitFF hi lo a -> bit_extractFF hi lo (realize m a)
         Ite_BitFF p a b -> ite_BitFF (realize m p) (realize m a) (realize m b)
         Var_BitFF w v -> bitFF (lookupBit m w v)
-    unreachable0 = BitFF_Unreachable
+    unreachable0 = Unreachable_BitFF
               
 instance SmtenHS0 BoolF where
     ite0 = iteF
