@@ -103,14 +103,14 @@ uservar ctx id ty = do
        
 instance Supported IntegerFF where
     define ctx (IntegerFF i) = liftIO $ integer ctx i
-    define ctx (IAddFF a b) = binary (add_integer ctx) a b
-    define ctx (ISubFF a b) = binary (sub_integer ctx) a b
-    define ctx (IIteFF p a b) = do
+    define ctx (Add_IntegerFF a b) = binary (add_integer ctx) a b
+    define ctx (Sub_IntegerFF a b) = binary (sub_integer ctx) a b
+    define ctx (Ite_IntegerFF p a b) = do
         p' <- use p
         a' <- use a
         b' <- use b
         liftIO $ ite_integer ctx p' a' b'
-    define ctx (IVarFF id) = uservar ctx id IntegerT
+    define ctx (Var_IntegerFF id) = uservar ctx id IntegerT
 
     cache = asks ar_intcache
 

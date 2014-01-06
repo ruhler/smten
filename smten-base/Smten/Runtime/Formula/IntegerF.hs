@@ -16,7 +16,7 @@ newtype IntegerF = IntegerF (PartialF IntegerFF)
 
 instance IsFinite IntegerFF where
     finite_iteFF = ite_IntegerFF
-    finite_unreachable = IntegerFF_Unreachable
+    finite_unreachable = Unreachable_IntegerFF
 
 integerF :: Integer -> IntegerF
 integerF x = IntegerF $ pfiniteF (integerFF x)
@@ -46,7 +46,7 @@ ite_IntegerF p (IntegerF a) (IntegerF b) = IntegerF $ ite_PartialF p a b
 --         b_ possibly not finite.
 parts_IntegerF :: IntegerF -> (BoolFF, IntegerFF, IntegerF)
 parts_IntegerF (IntegerF (PartialF p a b_)) = (p, a, IntegerF b_)
-parts_IntegerF (IntegerF PartialF_Unreachable) = (BoolFF_Unreachable, IntegerFF_Unreachable, unreachable_IntegerF)
+parts_IntegerF (IntegerF PartialF_Unreachable) = (BoolFF_Unreachable, Unreachable_IntegerFF, unreachable_IntegerF)
 
 finite_IntegerF :: IntegerFF -> IntegerF
 finite_IntegerF x = IntegerF (pfiniteF x)

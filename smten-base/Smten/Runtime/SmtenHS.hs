@@ -101,11 +101,11 @@ instance SmtenHS0 IntegerFF where
     realize0 m x = 
       case x of
         IntegerFF {} -> x
-        IAddFF a b -> add_IntegerFF (realize m a) (realize m b)
-        ISubFF a b -> sub_IntegerFF (realize m a) (realize m b)
-        IIteFF p a b -> ite_IntegerFF (realize m p) (realize m a) (realize m b)
-        IVarFF v -> integerFF (lookupInteger m v)
-    unreachable0 = IntegerFF_Unreachable
+        Add_IntegerFF a b -> add_IntegerFF (realize m a) (realize m b)
+        Sub_IntegerFF a b -> sub_IntegerFF (realize m a) (realize m b)
+        Ite_IntegerFF p a b -> ite_IntegerFF (realize m p) (realize m a) (realize m b)
+        Var_IntegerFF v -> integerFF (lookupInteger m v)
+    unreachable0 = Unreachable_IntegerFF
 
 instance SmtenHS0 BitFF where
     ite0 = error "BitFF.ite"

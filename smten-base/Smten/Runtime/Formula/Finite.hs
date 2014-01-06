@@ -107,11 +107,11 @@ instance Num BoolFF where
 -- | An Integer finite formula which contains no _|_
 data IntegerFF =
     IntegerFF Integer
-  | IAddFF IntegerFF IntegerFF
-  | ISubFF IntegerFF IntegerFF
-  | IIteFF BoolFF IntegerFF IntegerFF
-  | IVarFF FreeID
-  | IntegerFF_Unreachable
+  | Add_IntegerFF IntegerFF IntegerFF
+  | Sub_IntegerFF IntegerFF IntegerFF
+  | Ite_IntegerFF BoolFF IntegerFF IntegerFF
+  | Var_IntegerFF FreeID
+  | Unreachable_IntegerFF
   deriving (Show)
 
 integerFF :: Integer -> IntegerFF
@@ -119,41 +119,41 @@ integerFF = IntegerFF
 
 eq_IntegerFF :: IntegerFF -> IntegerFF -> BoolFF
 eq_IntegerFF (IntegerFF a) (IntegerFF b) = boolFF (a == b)
-eq_IntegerFF IntegerFF_Unreachable _ = BoolFF_Unreachable
-eq_IntegerFF _ IntegerFF_Unreachable = BoolFF_Unreachable
+eq_IntegerFF Unreachable_IntegerFF _ = BoolFF_Unreachable
+eq_IntegerFF _ Unreachable_IntegerFF = BoolFF_Unreachable
 eq_IntegerFF a b 
  | a `stableNameEq` b = trueFF
  | otherwise = IEqFF a b
 
 leq_IntegerFF :: IntegerFF -> IntegerFF -> BoolFF
 leq_IntegerFF (IntegerFF a) (IntegerFF b) = boolFF (a <= b)
-leq_IntegerFF IntegerFF_Unreachable _ = BoolFF_Unreachable
-leq_IntegerFF _ IntegerFF_Unreachable = BoolFF_Unreachable
+leq_IntegerFF Unreachable_IntegerFF _ = BoolFF_Unreachable
+leq_IntegerFF _ Unreachable_IntegerFF = BoolFF_Unreachable
 leq_IntegerFF a b = ILeqFF a b
 
 add_IntegerFF :: IntegerFF -> IntegerFF -> IntegerFF
 add_IntegerFF (IntegerFF a) (IntegerFF b) = IntegerFF (a + b)
-add_IntegerFF IntegerFF_Unreachable _ = IntegerFF_Unreachable
-add_IntegerFF _ IntegerFF_Unreachable = IntegerFF_Unreachable
-add_IntegerFF a b = IAddFF a b
+add_IntegerFF Unreachable_IntegerFF _ = Unreachable_IntegerFF
+add_IntegerFF _ Unreachable_IntegerFF = Unreachable_IntegerFF
+add_IntegerFF a b = Add_IntegerFF a b
 
 sub_IntegerFF :: IntegerFF -> IntegerFF -> IntegerFF
 sub_IntegerFF (IntegerFF a) (IntegerFF b) = IntegerFF (a - b)
-sub_IntegerFF IntegerFF_Unreachable _ = IntegerFF_Unreachable
-sub_IntegerFF _ IntegerFF_Unreachable = IntegerFF_Unreachable
-sub_IntegerFF a b = ISubFF a b
+sub_IntegerFF Unreachable_IntegerFF _ = Unreachable_IntegerFF
+sub_IntegerFF _ Unreachable_IntegerFF = Unreachable_IntegerFF
+sub_IntegerFF a b = Sub_IntegerFF a b
 
 var_IntegerFF :: FreeID -> IntegerFF
-var_IntegerFF = IVarFF
+var_IntegerFF = Var_IntegerFF
 
 ite_IntegerFF :: BoolFF -> IntegerFF -> IntegerFF -> IntegerFF
 ite_IntegerFF TrueFF a _ = a
 ite_IntegerFF FalseFF _ b = b
-ite_IntegerFF BoolFF_Unreachable _ _ = IntegerFF_Unreachable
+ite_IntegerFF BoolFF_Unreachable _ _ = Unreachable_IntegerFF
 ite_IntegerFF p v@(IntegerFF a) (IntegerFF b) | a == b = v
-ite_IntegerFF _ IntegerFF_Unreachable b = b
-ite_IntegerFF _ a IntegerFF_Unreachable = a
-ite_IntegerFF p a b = IIteFF p a b
+ite_IntegerFF _ Unreachable_IntegerFF b = b
+ite_IntegerFF _ a Unreachable_IntegerFF = a
+ite_IntegerFF p a b = Ite_IntegerFF p a b
 
 instance Num IntegerFF where
   fromInteger = integerFF

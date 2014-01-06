@@ -62,7 +62,7 @@ instance SymbolicOf P.Integer IntegerFF where
     symapp f x =
       case x of
         IntegerFF i -> f i
-        IIteFF p a b -> ite (finiteF p) (symapp f a) (symapp f b)
+        Ite_IntegerFF p a b -> ite (finiteF p) (symapp f a) (symapp f b)
         _ -> nonIteIntegerSymapp f x
 
 instance SymbolicOf P.Integer IntegerF where
