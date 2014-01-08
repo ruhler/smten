@@ -56,7 +56,7 @@ expCG x@(Lam b body)
     body' <- expCG body
     return $ S.LamE b' body'
 
-expCG (Case x v ty ms) = do
+expCG e@(Case x v ty ms) = do
   let (ndefs, def) = findDefault ms
   vnm <- qnameCG $ varName v
   arg <- expCG x
@@ -66,7 +66,11 @@ expCG (Case x v ty ms) = do
              | isBoolType argty = mkBoolCase vnm def ndefs
              | isConcreteType argty = mkConcreteCase vnm def ndefs
              | isSmtenPrimType argty = mkSmtenPrimCase vnm argty def ndefs
-             | otherwise = mkDataCase vnm argty def ndefs
+             | Just (tycon, _) <- splitTyConApp_maybe argty = mkDataCase vnm tycon def ndefs
+             | ndefs <- [], Just defval <- def = mkSeqCase vnm defval
+             | otherwise = do
+                  lift $ errorMsg (text "SMTEN PLUGIN ERROR: TODO: translate " <+> ppr e)
+                  return (S.VarE "???")
 
   body <- mkBody
   let binds = [S.Val vnm Nothing arg]
@@ -137,6 +141,17 @@ mkEmptyCase x ty = do
   err <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "emptycase"
   let terr = S.SigE err ty'
   return $ S.AppE (S.AppE (S.VarE seqnm) (S.VarE x)) terr
+
+-- Case expression with single default branch.
+-- Note: the argument may be of any type, not necessarally data type.
+--  case x of { _ -> v }
+-- Translated to:
+--  x `seq` v
+mkSeqCase :: S.Name -> CoreExpr -> CG S.Exp
+mkSeqCase x v = do
+  seqnm <- usequalified "Prelude" "seq"
+  v' <- expCG v
+  return $ S.AppE (S.AppE (S.VarE seqnm) (S.VarE x)) v'
 
 mkIte :: S.Exp -> S.Exp -> S.Exp -> CG S.Exp
 mkIte p a b = do
@@ -244,48 +259,42 @@ mkSmtenPrimCase vnm argty mdef ms = do
 -- fields in different alternatives are all unique. I think that's a safe
 -- assumption given the uniqification of names ghc does before going into
 -- core.
-mkDataCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
-mkDataCase vnm argty mdef ms = do
-  case splitTyConApp_maybe argty of
-      Just (tycon, _) -> do
-          let -- mkalt returns: (gd, val, fields)
-              --   where gd is the guard for the alternative
-              --         val is the body of the alternative
-              --         fields are the fields required for the alternative 
-              mkalt :: CoreAlt -> CG (S.Exp, S.Exp, [S.PatField])
-              mkalt (DataAlt k, xs, body) = do
-                gdnm <- guardnmCG (dataConName k)
-                qgdnm <- qguardnmCG (dataConName k)
-                let gdfield = S.PatField qgdnm (S.VarP gdnm)
-                    mkbind (i, x) = do
-                      flnm <- qfieldnmCG i (dataConName k)
-                      x' <- qnameCG $ varName x
-                      return $ S.PatField flnm (S.VarP x')
-                binds <- mapM mkbind (zip [1..] xs)
-                body' <- expCG body
-                return (S.VarE gdnm, body', gdfield:binds)
+mkDataCase :: S.Name -> TyCon -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
+mkDataCase vnm tycon mdef ms = do
+   let -- mkalt returns: (gd, val, fields)
+       --   where gd is the guard for the alternative
+       --         val is the body of the alternative
+       --         fields are the fields required for the alternative 
+       mkalt :: CoreAlt -> CG (S.Exp, S.Exp, [S.PatField])
+       mkalt (DataAlt k, xs, body) = do
+         gdnm <- guardnmCG (dataConName k)
+         qgdnm <- qguardnmCG (dataConName k)
+         let gdfield = S.PatField qgdnm (S.VarP gdnm)
+             mkbind (i, x) = do
+               flnm <- qfieldnmCG i (dataConName k)
+               x' <- qnameCG $ varName x
+               return $ S.PatField flnm (S.VarP x')
+         binds <- mapM mkbind (zip [1..] xs)
+         body' <- expCG body
+         return (S.VarE gdnm, body', gdfield:binds)
 
-          def <- case mdef of
-                   Nothing -> return []
-                   Just b -> do
-                     tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "trueF"
-                     e <- expCG b
-                     return [(tt, e, [])]
+   def <- case mdef of
+            Nothing -> return []
+            Just b -> do
+              tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "trueF"
+              e <- expCG b
+              return [(tt, e, [])]
 
-          alts <- mapM mkalt ms
-          let choices = alts ++ def
-              merge [(_, x, _)] = return x
-              merge ((p, a, _):xs) = do
-                 xs' <- merge xs
-                 mkIte p a xs'
-              fields = concat [fs | (_, _, fs) <- choices]
-          body <- merge choices
-          tynm <- qtynameCG $ tyConName tycon
-          return $ S.CaseE (S.VarE vnm) [S.Alt (S.RecP tynm fields) body]
-      _ -> do
-          lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr argty)
-          return (S.VarE "???")
-      
+   alts <- mapM mkalt ms
+   let choices = alts ++ def
+       merge [(_, x, _)] = return x
+       merge ((p, a, _):xs) = do
+          xs' <- merge xs
+          mkIte p a xs'
+       fields = concat [fs | (_, _, fs) <- choices]
+   body <- merge choices
+   tynm <- qtynameCG $ tyConName tycon
+   return $ S.CaseE (S.VarE vnm) [S.Alt (S.RecP tynm fields) body]
 
 -- | Translate a case alternative directly to haskell,
 -- without special translation for handling symbolic things.

@@ -89,4 +89,10 @@ dmem_move:
   Writes the memory value to dmem response FIFO.
 
 writeback:
+  Read a value from memwb FIFO.
+  Conditioned on that value:
+    read data from dmem response FIFO, and use it to either
+        return Just ? or Nothing
+  If Just was returned, write to the register file.
+    
 

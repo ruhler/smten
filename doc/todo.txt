@@ -38,7 +38,9 @@ Runtime::
         ** symapp of int,
         ** use, unary, binary of Runtime.Assert
     - Don't call sat solver for assert False
+       except that it's nice to have for debugging.
     - Don't call sat solver for assert True
+       except that it's nice to have for debugging.
     - a & b & b & b   ====>  a & b
 
 Cleanup::
@@ -107,9 +109,6 @@ Documentation
 Known Bugs::
 * nqueens -s yices1 -e Bit 55  seg faults
 * yices1 seg faults on arch-extract isCF for rules 2, 4
-* generate code for  (case x of { __DEFAULT -> ...}) 
-    when 'x' is not an algebraic data type
-    (For example: try adding strict fields to Data.Map)
 * see problems with -O optimization above
 * symapp for variable bit-vector
     Implement it like we implement symapp for Integer
