@@ -1,8 +1,8 @@
 Major Performance::
 * Understand arch-extract performance bug
-* Finite formulas can grow infinitely (rsrch/perf3)
+* Finite formulas can grow infinitely (SMT.Opt.InfiniteFormula)
     they should be bounded in size somehow to allow for incremental queries
-* Loss of sharing for Int and Char (sketch performance bug)
+* Loss of sharing for Int and Char (sketch performance bug, perf2, SMT.Opt.IntShare)
     symapp of int and char looses sharing, leads to exponential blowup.
     memoization solves the specific case, but hurts concrete performance
     fairly significantly.

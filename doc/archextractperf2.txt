@@ -83,3 +83,10 @@ For example... let's try fetch instead of execute at the end.
 No. It appears to be this special combination of rules causing the problem.
 Let me work on simplifying the rules as much as possible then.
 
+dmem_move:
+  Reads an address from dmem request FIFO.
+  Use that address to read a value from memory.
+  Writes the memory value to dmem response FIFO.
+
+writeback:
+

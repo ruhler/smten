@@ -44,7 +44,22 @@ smttests = do
       case x of
         Just v -> assert (isTrueConcrete (v <= 5))
         Nothing -> return ()
+
+   symtesteq "SMT.Opt.InfiniteFormula" (Just ()) $ do
+      x <- mplus (return 0) (return (1 :: Integer))
+      assert (isTrueConcrete (x <= 5))
+
+   -- TODO: should we expect this to be fast?
+   symtesteq "SMT.Opt.IntShare" (Just ()) $ do
+      let n = 64
+          v = 0
+          foo :: Int -> Bool -> Int -> Int
+          foo 0 p s = s
+          foo n p s = foo (n-1) p (if p then s else s+0)
+      p <- free_Bool
+      assert (v == foo n p v)
+
    
 tests :: IO ()
-tests = runtest (SMTTestCfg smten [] []) smttests
+tests = runtest (SMTTestCfg smten ["SMT.Opt.InfiniteFormula", "SMT.Opt.IntShare"] []) smttests
 
