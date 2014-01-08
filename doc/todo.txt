@@ -10,8 +10,6 @@ Major Performance::
     maps from Int to Bool. Probably want to specialize the concrete case, so
     if the size of the map is Empty, that means UNREACHABLE. If the size of
     the map is 1, that means concrete.
-* Add performance tests for (ite p 1 1) and (ite p 1 UNREACHABLE) ala perf3
-  and perf4
 
 Release to Public::
 * write up tutorials (github #3)

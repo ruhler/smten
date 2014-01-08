@@ -37,3 +37,49 @@ These seem to be the important bits:
 Let me first verify the problem does not appear in the master branch, then
 step through the code with these arguments and see how it simplifies.
 
+I have verified the problem does not occur on the master branch.
+
+Mon Jan  6 18:51:26 EST 2014
+
+I think I've gotten it as small as I can tonight. It has a little ways to go,
+but already there is something funny. The difference between h and h' appears
+to be crucial, but I don't see any difference between them:
+  h = head [[1,7,2]]
+  h' = [1, 7, 2]
+
+Something to ponder.
+ 
+Tue Jan  7 20:12:47 EST 2014
+
+Simplified it much further. Now we have:
+
+  let seq0 = map ((!!) rulelist) [7, 5]
+      seq2 = map ((!!) rulelist) [1, 3]
+
+  run_symbolic (solver ("nonArchStep_" ++ show seq0)) $ do
+    s <- freeInstance ctor_mkCore
+    let ms0 = applys seq0 s
+        ms2 = applys seq2 s
+    assert (ms0 /= ms2)
+
+Now that appears to be the simplest I can make the query.
+Can I make the rules simpler? What rules are they?
+
+[7, 5] = [dmem_move, writeback]
+[1, 3] = [decode, execute]
+
+We could also reduce the (==). I bet it's array equality.
+It's register file equality. What does each rule do to the register file?
+  dmem_move: Nothing, but is guarded symbolically.
+  writeback: guarded by changes from dmem_move, conditionally writes to rf.
+  decode: guarded symbolically. reads from rf.
+  execute: guarded symbolically. does not touch rf.
+
+decode and execute are hefty rules. Can we pick different ones and see the
+same behavior?
+
+For example... let's try fetch instead of execute at the end.
+
+No. It appears to be this special combination of rules causing the problem.
+Let me work on simplifying the rules as much as possible then.
+
