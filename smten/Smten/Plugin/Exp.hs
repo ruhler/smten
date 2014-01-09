@@ -210,7 +210,7 @@ mkDefault (Just b) = do
 --         case __vnm of
 --              X# ... -> ...
 --              X# ... -> ...
---              X# -> default
+--              X# _ -> default
 --              Ite p a b -> ite0 p (casef a) (casef b)
 --   in casef vnm
 mkSmtenPrimCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp

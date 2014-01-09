@@ -1,6 +1,6 @@
 Major Performance::
-* Fix or work around arch-extract bug (SMT.Opt.PlusBottomBool)
-* Finite formulas can grow infinitely (SMT.Opt.InfiniteFormula)
+* Understand sketch performance regression on miniTest95.
+* Finite formulas can grow infinitely (SMT.Opt.InfiniteFormula, SMT.Opt.PlusBottomBool)
     they should be bounded in size somehow to allow for incremental queries
 * Loss of sharing for Int and Char (sketch performance bug, perf2, SMT.Opt.IntShare)
     symapp of int and char looses sharing, leads to exponential blowup.
@@ -108,7 +108,8 @@ Documentation
 
 Known Bugs::
 * nqueens -s yices1 -e Bit 55  seg faults
-* yices1 seg faults on arch-extract isCF for rules 2, 4
+* yices1 seg faults on arch-extract
+* trouble with bit blasting (try minisat on arch-extract to see)
 * see problems with -O optimization above
 * symapp for variable bit-vector
     Implement it like we implement symapp for Integer

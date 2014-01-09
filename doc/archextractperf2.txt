@@ -165,7 +165,13 @@ Why does this not cause any issue on the master branch? Because the explicit
 error is replaced with a variable, thus making things finite? Except, they
 aren't finite?
 
-So you see this issue? Yes. This is the same fundamental issue as before. We
-should be able to work around it in arch-extract by returning a dummy value
-instead of an error for the array lookup (if that's possible).
+Actually, this is a bug in the master branch. I'm puzzled as to why we don't
+run into it on the master branch when we do arch-extract. But this is the
+problem. If I change the Array implementation to return a value like 0 instead
+of _|_, then the reimpl branch finishes. I'm not convinced it's quite as fast
+as the master branch, but it's certainly not unreasonable. I'm also slightly
+puzzled as to why my fix works.
+
+I should probably time them to see. reimpl takes 23 seconds outputting
+everything to /dev/null.
 
