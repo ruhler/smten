@@ -45,6 +45,10 @@ smttests = do
         Just v -> assert (isTrueConcrete (v <= 5))
         Nothing -> return ()
 
+   symtesteq "SMT.Opt.PlusBottomBool" (Just ()) $ do
+      p <- mplus (return True) (return (error "SMT.Opt.PlusBottomBool._|_"))
+      assert (isTrueConcrete p)
+
    symtesteq "SMT.Opt.InfiniteFormula" (Just ()) $ do
       x <- mplus (return 0) (return (1 :: Integer))
       assert (isTrueConcrete (x <= 5))
@@ -61,5 +65,5 @@ smttests = do
 
    
 tests :: IO ()
-tests = runtest (SMTTestCfg smten ["SMT.Opt.InfiniteFormula", "SMT.Opt.IntShare"] []) smttests
+tests = runtest (SMTTestCfg smten ["SMT.Opt.InfiniteFormula", "SMT.Opt.IntShare", "SMT.Opt.PlusBottomBool"] []) smttests
 

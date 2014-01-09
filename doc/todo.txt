@@ -1,5 +1,5 @@
 Major Performance::
-* Understand arch-extract performance bug
+* Fix or work around arch-extract bug (SMT.Opt.PlusBottomBool)
 * Finite formulas can grow infinitely (SMT.Opt.InfiniteFormula)
     they should be bounded in size somehow to allow for incremental queries
 * Loss of sharing for Int and Char (sketch performance bug, perf2, SMT.Opt.IntShare)

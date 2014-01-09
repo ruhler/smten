@@ -89,10 +89,83 @@ dmem_move:
   Writes the memory value to dmem response FIFO.
 
 writeback:
-  Read a value from memwb FIFO.
-  Conditioned on that value:
-    read data from dmem response FIFO, and use it to either
-        return Just ? or Nothing
-  If Just was returned, write to the register file.
-    
+  Read the dmem response FIFO. Based on its value either do or don't write to
+  the register file.
+
+decode:
+  Read from instRespQ.first, and write the value to idexBuf.
+
+execute:
+  Write an arbitrary register with an arbitrary value conditioned on the value
+  of idexBuf.first.
+
+That's as simple as the bsv rules are going to get. The next question is, can
+I replicate this in pure smten code, instead of going through the bsv
+compiler?
+
+The first couple rules seem to do the following:
+  Write to the register file conditioned on the value of an arbitrary memory
+  location.
+
+The second couple of rules seem to:
+  Write an arbitrary register (not in rf) with an arbitrary value conditioned
+  on a symbolic value.
+
+Let me try to replicate this in pure smten code.
+
+A.1. Create a symbolic array to represent memory.
+A.2. Create a symbolic index into memory array.
+A.3. Read the value of the memory at that index.
+A.4. Create a symbolic array to represent the reg file.
+A.5. Based on that value, either do or don't write to the reg file addr 0, val 0.
+
+Good news! I managed to remove the second set of rules. Now all that matters
+are dmem_move and writeback. This should be much more doable.
+
+Yup! I got it. Now to minimize some more to figure out what's up.
+
+Somehow the bounds of rf2 are getting confused.
+
+Okay. I've got it:
+  run_symbolic stp $ do
+    value <- mplus (return True) (mplus (return False) (error "Boom!"))
+    let rf = (0 :: Int, 1 :: Int)
+        rf2 = if value then id rf else rf
+    assert (range rf2 == range rf2)
+
+
+And even further minimized:
+    bar :: Bool -> Bool
+    bar x = if x then True else (x && bar x)
+
+    main :: IO ()
+    main = do
+     r <- run_symbolic yices2 $ do
+            value <- mplus (return True) (return (error "Boom!"))
+            assert (bar value)
+     putStrLn (show r)
+
+Looks like 'value' is treated as symbolic to 'bar', which as we know, only
+works currently if the argument is known to be concretely True.
+
+Let's look at what value really looks like:
+
+value = ite (VarF "p") True _|_
+  = BoolF p (!p) _|_, where p = VarFF "p"
+
+q = bar value =
+        ite (BoolF p (!p) _|_)
+            True
+            ((BoolF p (!p) _|_) && q')
+ 
+
+So the answer is, yes, this really does look like a symbolic thing.
+
+Why does this not cause any issue on the master branch? Because the explicit
+error is replaced with a variable, thus making things finite? Except, they
+aren't finite?
+
+So you see this issue? Yes. This is the same fundamental issue as before. We
+should be able to work around it in arch-extract by returning a dummy value
+instead of an error for the array lookup (if that's possible).
 
