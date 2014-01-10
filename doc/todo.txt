@@ -1,5 +1,6 @@
 Major Performance::
 * Understand sketch performance regression on miniTest95.
+    It happened when I made Data.Map have strict fields.
 * Finite formulas can grow infinitely (SMT.Opt.InfiniteFormula, SMT.Opt.PlusBottomBool)
     they should be bounded in size somehow to allow for incremental queries
 * Loss of sharing for Int and Char (sketch performance bug, perf2, SMT.Opt.IntShare)

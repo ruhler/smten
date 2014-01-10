@@ -12,7 +12,7 @@ module Smten.Data.Map (
 
 import Smten.Prelude hiding (lookup, map, filter, null)
 
-data Map k a = Tip | Bin !Size !k a !(Map k a) !(Map k a)
+data Map k a = Tip | Bin Size k a (Map k a) (Map k a)
 
 type Size = Int
 
