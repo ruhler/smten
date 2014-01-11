@@ -12,7 +12,9 @@ import qualified GHC.Types as P
 import qualified GHC.Prim as P
 
 import Smten.Runtime.Formula
+import Smten.Runtime.Select
 import Smten.Runtime.SmtenHS
+import Smten.Runtime.StableNameEq
 import Smten.Runtime.SymbolicOf
 
 data Char =
@@ -33,6 +35,10 @@ toHSChar :: Char -> P.Char
 toHSChar (C# x) = P.C# x
 
 instance SmtenHS0 Char where
-    ite0 = Ite_Char
+    ite0 p a b = 
+        case (select a b) of
+           Both (C# av) (C# bv) | av `P.eqChar#` bv -> a
+           Both _ _ | a `stableNameEq` b -> a
+           _ -> Ite_Char p a b
     unreachable0 = Unreachable_Char
 

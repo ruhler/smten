@@ -1,19 +1,7 @@
-Realize Improvement::
-* Optimize things now given that ite can be more strict in its arguments?
-
 Major Performance::
-* Understand sketch performance regression on miniTest95.
-    It happened when I made Data.Map have strict fields.
+* Understand sketch performance bug
 * Finite formulas can grow infinitely (SMT.Opt.InfiniteFormula, SMT.Opt.PlusBottomBool)
     they should be bounded in size somehow to allow for incremental queries
-* Loss of sharing for Int and Char (sketch performance bug, perf2, SMT.Opt.IntShare)
-    symapp of int and char looses sharing, leads to exponential blowup.
-    memoization solves the specific case, but hurts concrete performance
-    fairly significantly.
-    Proposal: Use ParitalF for char and Int, and then have CharFF and IntFF be
-    maps from Int to Bool. Probably want to specialize the concrete case, so
-    if the size of the map is Empty, that means UNREACHABLE. If the size of
-    the map is 1, that means concrete.
 
 Release to Public::
 * write up tutorials (github #3)

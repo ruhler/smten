@@ -11,6 +11,8 @@ import qualified GHC.Types as P
 import qualified GHC.Prim as P
 
 import Smten.Runtime.Formula
+import Smten.Runtime.Select
+import Smten.Runtime.StableNameEq
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 
@@ -29,7 +31,11 @@ instance SymbolicOf P.Int Int where
         Unreachable_Int -> unreachable
 
 instance SmtenHS0 Int where
-    ite0 = Ite_Int
+    ite0 p a b = 
+        case (select a b) of
+           Both (I# av) (I# bv) | av P.==# bv -> a
+           Both _ _ | a `stableNameEq` b -> a
+           _ -> Ite_Int p a b
     unreachable0 = Unreachable_Int
 
 instance P.Num Int where
