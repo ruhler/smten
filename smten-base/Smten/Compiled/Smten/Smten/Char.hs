@@ -17,8 +17,8 @@ import Smten.Runtime.SymbolicOf
 
 data Char =
     C# P.Char#
-  | Char_Ite BoolF Char Char
-  | Char_Unreachable
+  | Ite_Char BoolF Char Char
+  | Unreachable_Char
 
 instance SymbolicOf P.Char Char where
     tosym (P.C# x) = C# x
@@ -26,13 +26,13 @@ instance SymbolicOf P.Char Char where
     symapp f x =
       case x of
         C# c -> f (P.C# c)
-        Char_Ite p a b -> ite0 p (f $$ a) (f $$ b)
-        Char_Unreachable -> unreachable
+        Ite_Char p a b -> ite0 p (f $$ a) (f $$ b)
+        Unreachable_Char -> unreachable
 
 toHSChar :: Char -> P.Char
 toHSChar (C# x) = P.C# x
 
 instance SmtenHS0 Char where
-    ite0 = Char_Ite
-    unreachable0 = Char_Unreachable
+    ite0 = Ite_Char
+    unreachable0 = Unreachable_Char
 

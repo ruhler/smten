@@ -1,13 +1,14 @@
 
 module Smten.Plugin.Name (
     nameCG, qnameCG,
-    itenmCG, qitenmCG,
     tynameCG, qtynameCG,
     guardnmCG, qguardnmCG,
     fieldnmCG, qfieldnmCG,
     nullnmCG, qnullnmCG,
     connmCG, qconnmCG,
     denewtynmCG, qdenewtynmCG,
+    itenmCG, qitenmCG,
+    unreachnmCG, qunreachnmCG,
     ) where
 
 import Data.Char
@@ -136,9 +137,17 @@ denewtynmCG = nmCG True ("__deNewTy" ++) False
 qdenewtynmCG :: Name -> CG S.Name
 qdenewtynmCG = nmCG True ("__deNewTy" ++) True
 
+-- Name of Ite constructor for Int, Char types.
 qitenmCG :: Name -> CG S.Name
-qitenmCG = nmCG True (++ "_Ite") True
+qitenmCG = nmCG True ("Ite_" ++) True
 
 itenmCG :: Name -> CG S.Name
-itenmCG = nmCG True (++ "_Ite") False
+itenmCG = nmCG True ("Ite_" ++) False
+
+-- Name of Unreachable constructor for Int, Char types.
+qunreachnmCG :: Name -> CG S.Name
+qunreachnmCG = nmCG True ("Unreachable_" ++) True
+
+unreachnmCG :: Name -> CG S.Name
+unreachnmCG = nmCG True ("Unreachable_" ++) False
 
