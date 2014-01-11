@@ -1,0 +1,57 @@
+Fri Jan 10 13:58:52 EST 2014
+Sketch is not as fast on reimpl as on master. Why not?
+
+Earlier we had identified the problem as loss of sharing in symapp for Char
+and Int.
+
+One approach is memoization. I thought this worked before, but it seems not
+to work now. What's going on?
+
+First thing: verify it doesn't work now.
+
+foo.sk: Now works efficiently.
+miniTest48.sk: Still blows up. This time in memory, whereas before it didn't.
+miniTest49.sk: Blows up in memory.
+miniTest52.sk: Blows up in memory.
+
+Let's look at some profiles.
+  VarE takes 40% time, split between an iteF and  PRIM_CHAR_EQ.
+
+The Char and Int primitives still have a hefty amount of time, but not nearly
+so overwhelming. But some ites are taking a lot of time.
+
+We have got to be loosing concreteness somewhere. I wonder if its like the
+arch-extract problem: somehow unreachable _|_ is getting mixed in with things,
+making it not concrete?
+
+I also note: foo.sk blows up if you change it slightly so that the pointers
+change, even if the values are the same. Now especially due to that added memo
+table.
+
+It's not clear to me what the problem with sketch is after adding memoization,
+but I think it's pretty clear memorization is not a good long term approach to
+handling the original problem: namely that symapp looses sharing. Is that fair
+to say?
+
+The real problem is we are loosing concreteness:
+  if p then 4 else 4
+Is becoming symbolic, instead of remaining 4. I suspect that is propagating in
+bad ways.
+
+Thus, I think the other approach should be taken. Namely, I have to look at
+Int and Char to recognize concreteness of values.
+
+Now there is an issue: looking can be  bad if I just want to realize
+something, but it is important to do things right if I am using something in a
+formula. I wonder if this deserves some more thought.
+
+What if we changed the representation of Symbolic.
+Instead of (Formula, Value)...
+Or rather, the idea is to distinguish between:
+A. Value as something which may be realized, and hence should be as lazy as
+   possible.
+B. Value as something used in a formula, which should be as eager as it needs
+to be to reduce the number of queries needed.
+
+The key part being, we know when we convert a Value into a Formula?
+

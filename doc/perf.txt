@@ -221,4 +221,5 @@ arch-extract:
  STP FETDEC: gets past rule rel generation.
  Seems to hang at: UNSAFEPRINT: rough size of query(66,2)
   with slow increase in memory.
+ After fix: 23s
 

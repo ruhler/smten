@@ -21,10 +21,6 @@ data PrimArray a = PrimArray (Array P.Int a)
                  | PrimArray_Ite BoolF (PrimArray a) (PrimArray a)
 
 instance SmtenHS1 PrimArray where
-    realize1 m x = 
-      case x of
-        PrimArray {} -> x
-        PrimArray_Ite p a b -> iterealize p a b m
     ite1 = PrimArray_Ite
     unreachable1 = P.error "PrimArray.unreachable"
 

@@ -1,39 +1,23 @@
 
 module Smten.Runtime.Model (
     Any(..),
-    Model, model, m_vars, m_cached, lookupBool, lookupInteger, lookupBit,
+    Model, model, m_vars, lookupBool, lookupInteger, lookupBit,
   ) where
 
-import System.IO.Unsafe
-
-import qualified Smten.Runtime.AnyMap as A
 import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
 
 data Any = BoolA Bool | IntegerA Integer | BitA Bit
 
-data Model = Model {
-    m_vars :: [(FreeID, Any)],
-    m_cache :: A.AnyMap
+newtype Model = Model {
+    m_vars :: [(FreeID, Any)]
 }
 
-model :: [(FreeID, Any)] -> IO Model
-model vars = do
-   cache <- A.new
-   return (Model vars cache)
+instance Show Model where
+    show = show . map fst . m_vars
 
--- | lookup the value of an object under the given model.
--- The lookup is memoized.
-m_cached :: Model -> (Model -> a -> b) -> a -> b
-m_cached m f x = unsafeDupablePerformIO $ do
-    let mc = m_cache m
-    xfnd <- A.lookup mc x
-    case xfnd of
-       Just v -> return v
-       Nothing -> do
-         let v = f m x
-         A.insert mc x v
-         return v
+model :: [(FreeID, Any)] -> IO Model
+model vars = return (Model vars)
 
 -- | Look up the boolean value for the given free variable in the model.
 -- The given variable is assumed to have boolean type.

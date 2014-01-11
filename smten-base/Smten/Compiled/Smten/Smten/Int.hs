@@ -29,10 +29,6 @@ instance SymbolicOf P.Int Int where
         Int_Unreachable -> unreachable
 
 instance SmtenHS0 Int where
-    realize0 m x = 
-      case x of
-        I# {} -> x
-        Int_Ite p a b -> iterealize p a b m
     ite0 = Int_Ite
     unreachable0 = Int_Unreachable
 

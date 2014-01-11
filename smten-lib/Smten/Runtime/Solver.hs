@@ -31,7 +31,6 @@ newtype Solver = Solver {
 -- TODO: why do we need this?
 instance SmtenHS0 Solver where
   ite0 = error "TODO: Solver.ite0"
-  realize0 = error "TODO: Solver.realize0"
   unreachable0 = error "TODO: Solver.unreachable0"
   
 

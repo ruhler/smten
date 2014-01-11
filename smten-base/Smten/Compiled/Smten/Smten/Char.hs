@@ -33,10 +33,6 @@ toHSChar :: Char -> P.Char
 toHSChar (C# x) = P.C# x
 
 instance SmtenHS0 Char where
-    realize0 m x = 
-      case x of
-        C# {} -> x
-        Char_Ite p a b -> iterealize p a b m
     ite0 = Char_Ite
     unreachable0 = Char_Unreachable
 

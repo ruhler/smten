@@ -55,7 +55,7 @@ mkDataD nm tyvars constrs = do
 --   call the chopped off type variables c1, c2, ...
 --
 -- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
---   realizeN = ...
+--   iteN = ...
 --   ...
 smtenHS :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 smtenHS nm tyvs cs = do
@@ -67,10 +67,9 @@ smtenHS nm tyvs cs = do
    ctx <- concat <$> mapM ctxCG dropped
    smtenhsnm <- usequalified "Smten.Runtime.SmtenHS" ("SmtenHS" ++ show n)
    let ty = S.ConAppT smtenhsnm [S.ConAppT qtyname tyvs']
-   rel <- realizeD nm n cs
    ite <- iteD nm n cs
    unreach <- unreachableD nm n cs
-   return [S.InstD ctx ty [rel, ite, unreach]]
+   return [S.InstD ctx ty [ite, unreach]]
 
 -- iteN = \p a b -> Foo {
 --   gd* = ite0 p (gd* a) (gd* b),
@@ -103,36 +102,6 @@ iteD nm k cs = do
       upd = S.RecE (S.VarE nm') upds
       body = S.LamE "p" (S.LamE "a" (S.LamE "b" upd))
   return $ S.Method ("ite" ++ show k) body
-
---   realizeN = \m -> \x -> Foo {
---     gd* = realize m (gd* x),
---     fl* = realize m (fl* x),
---     ...
---   }
-realizeD :: Name -> Int -> [DataCon] -> CG S.Method
-realizeD nm k cs = do
-  relnm <- usequalified "Smten.Runtime.SmtenHS" "realize"
-  let mkcon :: DataCon -> CG [S.Name]
-      mkcon d = do
-        let dnm = dataConName d
-            mkfield :: Int -> CG S.Name
-            mkfield i = qfieldnmCG i dnm
-        gdnm <- qguardnmCG dnm
-        fields <- mapM (mkfield . fst) $ zip [1..] (dataConOrigArgTys d)
-        return (gdnm : fields)
-
-      mkupd :: S.Name -> S.Field
-      mkupd nm = S.Field nm $ foldl1 S.AppE [
-                        S.VarE relnm,
-                        S.VarE "m",
-                        S.AppE (S.VarE nm) (S.VarE "x")]
-
-  nm' <- qtynameCG nm
-  ks <- concat <$> mapM mkcon cs
-  let upds = map mkupd $ ks
-      upd = S.RecE (S.VarE nm') upds
-      body = S.LamE "m" (S.LamE "x" upd)
-  return $ S.Method ("realize" ++ show k) body
 
 -- unreachableN = Foo {
 --   gd* = unreachable,

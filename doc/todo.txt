@@ -1,3 +1,6 @@
+Realize Improvement::
+* Optimize things now given that ite can be more strict in its arguments?
+
 Major Performance::
 * Understand sketch performance regression on miniTest95.
     It happened when I made Data.Map have strict fields.
@@ -54,9 +57,6 @@ Cleanup::
     But note: the _Type is only needed if it is not clear from op.
 * (let {} in x  ====>  x)    in haskell output syntax 
 * Does smten-base.cabal really need to expose all modules?
-* Support symbolic IO?
-    Q: Or is it okay because it can't ever appear in an assertion?
-    A: It is not okay, because we might want to realize a symbolic IO.
 * Why is bv_extract primitive? Why not just shift right and truncate?
 
 Smten Executable::

@@ -16,63 +16,107 @@ import Data.Functor
 import Smten.Runtime.FreeID
 import Smten.Runtime.Formula
 import Smten.Runtime.SmtenHS
-import Smten.Runtime.Select(approximate)
 import Smten.Runtime.Solver
+import Smten.Runtime.Model
 
 import qualified Smten.Compiled.Smten.Data.Maybe as S
 import Smten.Compiled.GHC.TypeLits
 
-newtype Symbolic a = Symbolic {
-    runS :: Fresh (BoolF, a)
+data Symbolic a = Symbolic {
+    -- Run the symbolic computation, producing an SMT formula and symbolic
+    -- representation of the result.
+    runS :: Fresh (BoolF, a),
+
+    -- Realize the symbolic computation given a model determining which
+    -- branches to take. The calls to fresh are aligned with those in runS so
+    -- that the variable names match the second time around.
+    relS :: Model -> Fresh a
 }
 
 instance Functor Symbolic where
-    fmap f x = Symbolic $ fmap f <$> runS x
+    fmap f x = Symbolic {
+        runS = fmap f <$> runS x,
+        relS = \m -> f <$> relS x m
+    }
+    
 
 instance SmtenHS1 Symbolic where
-    ite1 p a b = Symbolic $ do
-      ~(pa, va) <- runS a
-      ~(pb, vb) <- runS b
-      return (ite p pa pb, ite p va vb)
+    ite1 p a b = Symbolic {
+        runS = do
+          ~(pa, va) <- runS a
+          ~(pb, vb) <- runS b
+          return (ite p pa pb, ite p va vb),
 
-    realize1 m x = Symbolic $ do
-        (p, v) <- runS x
-        return (realize m p, realize m v)
+        relS = \m -> do
+          va <- relS a m
+          vb <- relS b m
+          return (ite p va vb)
+      }
 
-    unreachable1 = Symbolic (return (unreachable, unreachable))
+    unreachable1 = Symbolic {
+        runS = return (unreachable, unreachable),
+        relS = error "Symbolic.unreachable reached"
+    }
 
 return_symbolic :: a -> Symbolic a
-return_symbolic x = Symbolic $ return (trueF, x)
+return_symbolic x = Symbolic {
+    runS = return (trueF, x),
+    relS = \m -> return x
+}
 
 bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
-bind_symbolic x f = Symbolic $ do
-   (px, vx) <- runS x
-   (pf, vf) <- runS (f vx)
-   return (px `andF` pf, vf)
+bind_symbolic x f = Symbolic {
+    runS = do
+       (px, vx) <- runS x
+       (pf, vf) <- runS (f vx)
+       return (px `andF` pf, vf),
+    relS = \m -> do
+       vx <- relS x m
+       vf <- relS (f vx) m
+       return vf
+ }
+       
 
 mzero_symbolic :: (SmtenHS0 a) => Symbolic a
-mzero_symbolic = Symbolic $ return (falseF, unreachable)
+mzero_symbolic = Symbolic {
+    runS = return (falseF, unreachable),
+    relS = \m -> return (error "Symbolic.relS.mzero reached")
+ }
 
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
-mplus_symbolic a b = Symbolic $ do
-    ra <- runS a
-    rb <- runS b
-    case approximate False False (isFalseF $ fst ra) (isFalseF $ fst rb) of
-        (True, _) -> return rb
-        (_, True) -> return ra
-        _ -> do
-            p <- varF <$> fresh
-            runS $ ite1 p (Symbolic $ return ra) (Symbolic $ return rb)
+mplus_symbolic a b = Symbolic {
+    runS = do
+        p <- varF <$> fresh
+        runS $ ite1 p a b,
+
+    relS = \m -> do
+        p <- lookupBool m <$> fresh
+        relS (ite1 (boolF p) a b) m
+ }
 
 free_Integer :: Symbolic IntegerF
-free_Integer = Symbolic $ do
-    v <- var_IntegerF <$> fresh
-    return (trueF, v)
+free_Integer = Symbolic {
+    runS = do
+        v <- var_IntegerF <$> fresh
+        return (trueF, v),
+
+    relS = \m -> do
+        v <- lookupInteger m <$> fresh
+        return (integerF v)
+ }
+
 
 free_Bit :: SingI Nat n -> Symbolic (BitF n)
-free_Bit w = Symbolic $ do
-    v <- var_BitF (__deNewTyDGSingI w) <$> fresh
-    return (trueF, v)
+free_Bit w = Symbolic {
+    runS = do
+        v <- var_BitF (__deNewTyDGSingI w) <$> fresh
+        return (trueF, v),
+
+    relS = \m -> do
+        v <- lookupBit m (__deNewTyDGSingI w) <$> fresh
+        return (bitF v)
+ }
+
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
@@ -81,12 +125,12 @@ run_symbolic s q = do
        -- Try to find a solution in 'a', a finite part of the formula.
        ares <- solve s a
        case ares of
-         Just m -> return (S.__Just ({-# SCC "Realize" #-} realize m x))
+         Just m -> return (S.__Just ({-# SCC "Realize" #-} runFresh $ relS q m))
          Nothing -> do
             -- There was no solution found in 'a'.
             -- Check if we have to evaluate b*x_
             bres <- solve s b
             case bres of
                Nothing -> return S.__Nothing
-               Just _ -> run_symbolic s (Symbolic $ return (b *. x_, x))
+               Just _ -> run_symbolic s (q { runS = return (b *. x_, x)})
 

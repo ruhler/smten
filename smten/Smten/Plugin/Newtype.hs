@@ -54,7 +54,7 @@ conD n = do
 --   call the chopped off type variables c1, c2, ...
 --
 -- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
---   realizeN = ...
+--   iteN = ...
 --   ...
 smtenHS :: Name -> [TyVar] -> DataCon -> CG [S.Dec]
 smtenHS nm tyvs constr = do
@@ -67,10 +67,9 @@ smtenHS nm tyvs constr = do
    smtenhsnm <- usequalified "Smten.Runtime.SmtenHS" ("SmtenHS" ++ show n)
    let ty = S.ConAppT smtenhsnm [S.ConAppT qtyname tyvs']
        cn = dataConName constr
-   rel <- realizeD cn n
    ite <- iteD cn n
    unreach <- unreachableD cn n
-   return [S.InstD ctx ty [rel, ite, unreach]]
+   return [S.InstD ctx ty [ite, unreach]]
 
 -- iteN = \p a b = Foo (ite0 p (__deNewTyFoo a) (__deNewTyFoo b))
 iteD :: Name -> Int -> CG S.Method
@@ -86,20 +85,6 @@ iteD nm k = do
       foo = S.AppE (S.VarE cn) ite
       body = S.LamE "p" (S.LamE "a" (S.LamE "b" foo))
   return $ S.Method ("ite" ++ show k) body
-
---   realizeN = \m x -> Foo (realize0 m (__deNewTyFoo x))
-realizeD :: Name -> Int -> CG S.Method
-realizeD nm k = do
-  realize0nm <- usequalified "Smten.Runtime.SmtenHS" "realize0"
-  cn <- qnameCG nm
-  dcn <- qdenewtynmCG nm
-  let rel = foldl1 S.AppE [
-                S.VarE realize0nm,
-                S.VarE "m",
-                S.AppE (S.VarE dcn) (S.VarE "x")]
-      foo = S.AppE (S.VarE cn) rel
-      body = S.LamE "m" (S.LamE "x" foo)
-  return $ S.Method ("realize" ++ show k) body
 
 -- unreachableN = Foo unreachable
 unreachableD :: Name -> Int -> CG S.Method
