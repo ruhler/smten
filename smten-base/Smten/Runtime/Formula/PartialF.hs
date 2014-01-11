@@ -52,8 +52,8 @@ binarypF f x_ y_ =
       let p = xp * yp
           a = p * (f xa ya)
           b = notFF p
-          c_ = iteF (finiteF xp) (unarypF (f xa) yb_)
-                    (iteF (finiteF yp) (unarypF (f ya) xb_) (binarypF f xb_ yb_))
+          c_ = iteF_ xp (unarypF (f xa) yb_)
+                    (iteF_ yp (unarypF (f ya) xb_) (binarypF f xb_ yb_))
       in partialF a b c_
     (PartialF_Unreachable, _) -> BoolF_Unreachable
     (_, PartialF_Unreachable) -> BoolF_Unreachable

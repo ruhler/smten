@@ -88,7 +88,7 @@ instance SmtenHS0 (BitF n) where
     unreachable0 = unreachable_BitF
 
 instance SmtenHS2 (->) where
-    ite2 p fa fb = \x -> ite0 p (fa x) (fb x)
+    ite2 p fa fb = {-# SCC "ITE2_Fun" #-} \x -> ite0 p (fa x) (fb x)
     unreachable2 = \x -> unreachable
 
 emptycase :: a

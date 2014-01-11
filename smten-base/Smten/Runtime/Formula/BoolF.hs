@@ -3,7 +3,8 @@
 
 -- | Representation of SMT boolean formulas which may contain _|_ in subterms.
 module Smten.Runtime.Formula.BoolF (
-    BoolF(..), trueF, falseF, boolF, andF, notF, iteF, varF, finiteF, partialF,
+    BoolF(..), trueF, falseF, boolF, andF, notF, iteF, iteF_, varF, finiteF,
+    partialF,
     isTrueF, isFalseF, (*.),
   ) where
 
@@ -99,10 +100,9 @@ andF BoolF_Unreachable _ = BoolF_Unreachable
 
 iteF :: BoolF -> BoolF -> BoolF -> BoolF
 iteF (BoolF pa FalseFF _) x_ y_ = iteF_ pa x_ y_
-iteF p@(BoolF pa pb pc_) x_ y_
- | x_ `stableNameEq` y_ = x_
- | otherwise = 
+iteF p@(BoolF pa pb pc_) x_ y_ =
     case selectF x_ y_ of
+      _ | x_ `stableNameEq` y_ -> x_
       (BoolF xa xb xc_, BoolF ya yb yc_) ->
         let a = iteFF pa xa (notFF pb * ya)
             b = iteFF pa xb (pb + ya + yb)

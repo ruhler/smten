@@ -55,3 +55,20 @@ to be to reduce the number of queries needed.
 
 The key part being, we know when we convert a Value into a Formula?
 
+Sat Jan 11 16:14:25 EST 2014
+
+I fixed the surface sketch issue. But there's another now.
+
+miniTest48:
+  iteF: 70% time
+  from ite2: 70% alloc
+  from ite1
+  from ite0
+  from VarE
+
+There aren't that many ite2's implemented, so I should be able to figure out
+what's causing this, I hope.
+
+The ite2 is ite of a function. I suspect this is the state monad function.
+It's leading to allocation of tons of Expr.
+
