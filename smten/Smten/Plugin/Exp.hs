@@ -212,7 +212,12 @@ mkDefault (Just b) = do
 --              X# ... -> ...
 --              X# _ -> default
 --              Ite p a b -> ite0 p (casef a) (casef b)
+--              Unreachable -> unreachable
 --   in casef vnm
+--
+-- TODO: Perhaps a better approach here would be to generate the case
+-- expression for Prelude.Char and Prelude.Int types as a function, then call
+-- symapp? Because this is basically just duplicating code from symapp
 mkSmtenPrimCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkSmtenPrimCase vnm argty mdef ms = do
   alts <- mapM altCG ms
@@ -229,10 +234,12 @@ mkSmtenPrimCase vnm argty mdef ms = do
       tynm = tyConName tycon
   
   ite0nm <- usequalified "Smten.Runtime.SmtenHS" "ite0"
+  unreachnm <- usequalified "Smten.Runtime.SmtenHS" "unreachable"
 
   vnmv' <- qnameCG vnmv
   casefnm <- qnameCG casef
   qitenm <- qitenmCG tynm
+  qunreachnm <- qunreachnmCG tynm
   defalt <- mkDefault mdef
   let itebody = foldl1 S.AppE [
          S.VarE ite0nm,
@@ -241,8 +248,9 @@ mkSmtenPrimCase vnm argty mdef ms = do
          S.AppE (S.VarE casefnm) (S.VarE "b")]
       itepat = S.ConP qitenm [S.VarP "p", S.VarP "a", S.VarP "b"]
       itealt = S.Alt itepat itebody
+      unreachalt = S.Alt (S.ConP qunreachnm []) (S.VarE unreachnm)
 
-      allalts = alts ++ [itealt] ++ defalt
+      allalts = alts ++ [itealt, unreachalt] ++ defalt
       casee = S.CaseE (S.VarE vnmv') allalts
       lame = S.LamE vnmv' casee
       bind = S.Val casefnm Nothing lame
