@@ -10,11 +10,11 @@ module Smten.Runtime.SmtenHS (
     emptycase,
     ) where
 
-import Smten.Runtime.StableNameEq
 import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula
 
 class SmtenHS0 a where
+    -- It can be assumed that the given BoolF is not concrete.
     ite0 :: BoolF -> a -> a -> a
     unreachable0 :: a
 
@@ -56,9 +56,9 @@ ite :: (SmtenHS0 a) => BoolF -> a -> a -> a
 ite p a b 
   | isTrueF p = a
   | isFalseF p = b
-  | a `stableNameEq` b = a
   | otherwise = ite0 p a b
 
+{-# INLINEABLE unreachable #-}
 unreachable :: (SmtenHS0 a) => a
 unreachable = unreachable0
 
@@ -88,7 +88,7 @@ instance SmtenHS0 (BitF n) where
     unreachable0 = unreachable_BitF
 
 instance SmtenHS2 (->) where
-    ite2 p fa fb = \x -> ite p (fa x) (fb x)
+    ite2 p fa fb = \x -> ite0 p (fa x) (fb x)
     unreachable2 = \x -> unreachable
 
 emptycase :: a
