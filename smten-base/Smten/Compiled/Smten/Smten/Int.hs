@@ -35,6 +35,10 @@ instance SmtenHS0 Int where
         case (select a b) of
            Both (I# av) (I# bv) | av P.==# bv -> a
            Both _ _ | a `stableNameEq` b -> a
+           Both Unreachable_Int _ -> b
+           Both _ Unreachable_Int -> a
+           Left Unreachable_Int -> b
+           Right Unreachable_Int -> a
            _ -> Ite_Int p a b
     unreachable0 = Unreachable_Int
 

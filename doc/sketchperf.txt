@@ -72,3 +72,51 @@ what's causing this, I hope.
 The ite2 is ite of a function. I suspect this is the state monad function.
 It's leading to allocation of tons of Expr.
 
+Sat Jan 11 18:22:14 EST 2014
+
+Simplified things some more. Important seems to be:
+ * variable assignment.
+     This blows up:
+        foo = bar;
+        return foo;
+     This does not:
+        return bar;
+ * the number of cases.
+    Here the number of cases is based on an Int.
+
+Can I make a hypothesis for a smten test case?
+It's like the issue we had before...
+
+Looks something like:
+1. Make a symbolic Int from 0 to n
+2. Make a boolean based on that int.
+3. Have a State monad either: nop or nop, conditioned on that boolean.
+4. Insert the condition into a map.
+5. Read from the map, and assert it's the same as the boolean.
+
+Let me try, see if this triggers it.
+
+Nope. Not good enough.
+
+Sun Jan 12 09:54:03 EST 2014
+
+Interesting progress: the presence or absence of the global variable
+declaration int N = 1 makes a difference, even though the variable is not
+used. Why would that matter?
+
+More specific: if N is IntV 1, it's fine, but if N is cast from BitV True
+using ICast, it blows up.
+
+I don't understand.
+
+The problem seems to be having typeofV return a different result depending on
+the value of the IntV. Except, we know we are only calling this with (BitV
+True), right? So how can that matter?
+
+Note: we weren't properly handling unreachable for Ite of Char and Int, but
+even after fixing that, we still have the same problem.
+
+It seems to be tied up in type equality of the result? No.
+
+I don't understand.
+

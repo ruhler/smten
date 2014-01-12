@@ -39,6 +39,10 @@ instance SmtenHS0 Char where
         case (select a b) of
            Both (C# av) (C# bv) | av `P.eqChar#` bv -> a
            Both _ _ | a `stableNameEq` b -> a
+           Both Unreachable_Char _ -> b
+           Both _ Unreachable_Char -> a
+           Left Unreachable_Char -> b
+           Right Unreachable_Char -> a
            _ -> Ite_Char p a b
     unreachable0 = Unreachable_Char
 
