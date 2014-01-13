@@ -120,3 +120,60 @@ It seems to be tied up in type equality of the result? No.
 
 I don't understand.
 
+Mon Jan 13 16:19:05 EST 2014
+
+Requirements for the bug to occur:
+ * there exists a global variable whose value is icasted.
+    (even though the global variable is never referenced)
+ * icast returns a different result depending on the value of the
+   Int field for an IntV value.
+    (even though the value doesn't have the IntV constructor)
+ * Shr is performed (as opposed to Shl)
+
+if ({true} >> x) {}
+return (x == x)
+ 
+Question: what if we perform a right shift where the number of elements
+shifted is greater than the number there?
+
+For example:  3 bits, shifted by 5.
+That result should be 3 bits, but here the result is 5!
+
+That's a bug in sketch. Is it the problem here?
+
+Let me fix the definition of shift right so that doesn't happen.
+
+That didn't fix the problem I was seeing though.
+
+It appears the array access is important?
+
+It looks like it depends on array access out of bounds.
+If I do (av !! idx), with only the assertion to guard the error, things blow
+up. If I explicitly give an error based on the index instead of calling (av !!
+idx), nothing bad happens.
+
+But, that change breaks other things.
+
+I don't understand why.
+It also doesn't fix the problems with miniTest48 we were having.
+
+
+Perhaps the issue is this. We 'assert False', but with a special
+implementation of 'assert' which keeps executing, even after the assertion
+fails. You would think, instead, that if the result is 'False', then you
+should just give up. Like, use an error monad, not a monad that happens to
+keep track of some predicate as it goes. Otherwise you will trigger calls to
+_|_ when you shouldn't.
+
+This is an interesting observation. It suggests to me that something funky is
+going on with the way my version of sketch is implemented, and that perhaps I
+should sort that out first.
+
+What this suggests to me is, it is, perhaps, not a great use of my time to try
+and identify the sketch performance bug. Rather, I should focus on the sketch
+implementation itself. Clean that up. Then see if it works and why or why not.
+
+An alternative would be to look into hardware model checkers and the CAV
+synthesis competition based on those. That avoids issues with sketch being
+such a crazy language to have to deal with.
+

@@ -1,7 +1,8 @@
-Major Performance::
-* Understand sketch performance bug
-* Finite formulas can grow infinitely (SMT.Opt.InfiniteFormula, SMT.Opt.PlusBottomBool)
-    they should be bounded in size somehow to allow for incremental queries
+Main::
+* Applications
+** Hardware model checking
+* Use GHC Base
+** Add support for FFI
 
 Release to Public::
 * write up tutorials (github #3)
@@ -16,25 +17,9 @@ Release to Public::
 
 Runtime::
 * handle error and infinity correctly.
- ** andF doesn't need to be lazy in first argument
-        That is, _|_ andF falseF can be _|_
- ** Overall performance:
-    - shampi: - Concrete evaluation dominates
-    - nqueens: - Assert dominates
-    - sudoku: - Check dominates
-    - sketch: - trouble with <= and == for Int type.
+** Finite formulas can grow infinitely (SMT.Opt.InfiniteFormula, SMT.Opt.PlusBottomBool)
+    they should be bounded in size somehow to allow for incremental queries
                 
- ** Many possible optimizations removed to get decent implementation
-    - Model.cache - split into multiple caches based on type?
-    - SPECIALIZE pragmas for
-        ** symapp of int,
-        ** use, unary, binary of Runtime.Assert
-    - Don't call sat solver for assert False
-       except that it's nice to have for debugging.
-    - Don't call sat solver for assert True
-       except that it's nice to have for debugging.
-    - a & b & b & b   ====>  a & b
-
 Cleanup::
 * Naming conventions are all over the place for formulas. Fix it please.
     Typically we combine an operation (ite, add, etc...) with a type (BitF,
@@ -52,24 +37,24 @@ Smten Executable::
 * Remove generated code after generating it?
 * Add a flag for generating a cabal package?
 
-Concrete Performance::
-* Special case pattern matching on concrete objects with a tag?
-    Except, this doesn't improve symbolic performance any, which is sad.
-* Enable -O on all smten files
- - Report FastString string-table reinitializeGlobal bug to ghc
- - ite0 doesn't support types of kind # (needed for Smten.Data.Char)
- - emptycase doesn't support types of kind #  (needed for Smten.Data.Char)
- - Support unboxed tuple. (needed for Smten.Data.List,
-                                      Smten.Data.Array)
-    Both the type constructor (#, #),
-    And data constructor (for case expressions)
-      we may need a special case for this as concrete, if it, indeed, is
-      concrete...
-* optimize primitives as needed (see int_add for example)
-* generate INLINE pragmas for bindings annotated as inline?
-    (see inlinePragInfo in ghc api)
-
-Symbolic Performance::
+Performance::
+* Document current bottlenecks.
+* Concrete Performance
+   ** Special case pattern matching on concrete objects with a tag?
+        Except, this doesn't improve symbolic performance any, which is sad.
+   ** Enable -O on all smten files
+     - Report FastString string-table reinitializeGlobal bug to ghc
+     - ite0 doesn't support types of kind # (needed for Smten.Data.Char)
+     - emptycase doesn't support types of kind #  (needed for Smten.Data.Char)
+     - Support unboxed tuple. (needed for Smten.Data.List,
+                                          Smten.Data.Array)
+        Both the type constructor (#, #),
+        And data constructor (for case expressions)
+          we may need a special case for this as concrete, if it, indeed, is
+          concrete...
+   ** optimize primitives as needed (see int_add for example)
+   ** generate INLINE pragmas for bindings annotated as inline?
+        (see inlinePragInfo in ghc api)
 * Get rid of hashtable for assert traversal.
     What I want is: each Formula object has a pointer to, say, (Int, Dynamic),
     where Int says which query number we are on, and Dynamic contains the
@@ -85,6 +70,16 @@ Symbolic Performance::
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?
 * implement or_bool on all the solvers rather than falling back to the default
+* Many possible optimizations removed to get decent implementation
+   - SPECIALIZE pragmas for
+       ** symapp of int,
+       ** use, unary, binary of Runtime.Assert
+   - Don't call sat solver for assert False
+      except that it's nice to have for debugging.
+   - Don't call sat solver for assert True
+      except that it's nice to have for debugging.
+   - a & b & b & b   ====>  a & b
+
 
 Front End::
 * Auto-derive Show, Eq, Ord, Ix
