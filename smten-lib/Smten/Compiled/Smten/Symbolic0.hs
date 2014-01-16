@@ -120,16 +120,16 @@ free_Bit w = Symbolic {
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
-  case (runFresh $ runS q) of
+  case ({-# SCC "RunS" #-} runFresh $ runS q) of
      (BoolF a b x_, x) -> do
        -- Try to find a solution in 'a', a finite part of the formula.
-       ares <- solve s a
+       ares <- {-# SCC "Solve" #-} solve s a
        case ares of
          Just m -> return (S.__Just ({-# SCC "Realize" #-} runFresh $ relS q m))
          Nothing -> do
             -- There was no solution found in 'a'.
             -- Check if we have to evaluate b*x_
-            bres <- solve s b
+            bres <- {-# SCC "SolveApprox" #-} solve s b
             case bres of
                Nothing -> return S.__Nothing
                Just _ -> run_symbolic s (q { runS = return (b *. x_, x)})

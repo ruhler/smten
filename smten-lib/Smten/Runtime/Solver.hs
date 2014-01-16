@@ -41,12 +41,12 @@ solverFromAST mksolver = Solver $ \formula -> do
     res <- AST.check solver
     case res of 
         Sat -> do
-            vals <- mapM (getValue solver) vars
+            vals <- {-# SCC "ReadModel" #-} mapM (getValue solver) vars
             m <- model $ zip (map fst vars) vals
-            AST.cleanup solver
+            {-# SCC "Cleanup" #-} AST.cleanup solver
             return (Just m)
         Unsat -> do
-            AST.cleanup solver
+            {-# SCC "Cleanup" #-} AST.cleanup solver
             return Nothing
 
 

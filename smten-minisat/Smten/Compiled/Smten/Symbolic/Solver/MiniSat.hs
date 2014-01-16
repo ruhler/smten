@@ -84,7 +84,7 @@ instance SolverAST MiniSat Literal where
   getIntegerValue = nointegers
   getBitVectorValue = nobits
 
-  check s = do
+  check s = {-# SCC "MiniSatCheck" #-} do
     r <- c_minisat_issat (s_ctx s)
     case r of
        0 -> return Unsat

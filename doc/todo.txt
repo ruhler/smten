@@ -3,6 +3,8 @@ Main::
 ** Hardware model checking
 * Use GHC Base
 ** Add support for FFI
+    - unboxed tuples
+* Document current performance bottlenecks
 
 Release to Public::
 * write up tutorials (github #3)
