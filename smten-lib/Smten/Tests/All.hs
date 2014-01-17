@@ -10,6 +10,7 @@ import qualified Smten.Tests.Bit
 import qualified Smten.Tests.DataMap
 import qualified Smten.Tests.List
 import qualified Smten.Tests.Prelude
+import qualified Smten.Tests.Prim
 import qualified Smten.Tests.State
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Datatype
@@ -33,6 +34,7 @@ main = do
   test "Dummy" True
   Smten.Tests.Basic.tests
   Smten.Tests.Prelude.tests
+  Smten.Tests.Prim.tests
   Smten.Tests.Bit.tests
   Smten.Tests.DataMap.tests
   Smten.Tests.List.tests

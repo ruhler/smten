@@ -319,7 +319,8 @@ isBoolType :: Type -> Bool
 isBoolType = isType "Bool" ["Smten.Data.Bool0", "GHC.Types"]
 
 isConcreteType :: Type -> Bool
-isConcreteType t = isType "Char#" ["GHC.Prim"] t
+isConcreteType t = isType "(#,#)" ["GHC.Prim"] t
+                || isType "Char#" ["GHC.Prim"] t
                 || isType "Int#" ["GHC.Prim"] t
                 || isDictTy t
 
@@ -330,7 +331,7 @@ isSmtenPrimType t = isType "Int" ["GHC.Types"] t
 isType :: String -> [String] -> Type -> Bool
 isType wnm wmods t = 
    case splitTyConApp_maybe t of
-        Just (tycon, []) -> 
+        Just (tycon, _) -> 
             let nm = tyConName tycon
                 occnm = occNameString $ nameOccName nm
                 modnm = moduleNameString . moduleName <$> nameModule_maybe nm

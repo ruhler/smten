@@ -66,6 +66,7 @@ library
     Smten.Tests.DataMap
     Smten.Tests.List
     Smten.Tests.Prelude
+    Smten.Tests.Prim
     Smten.Tests.State
     Smten.Tests.SMT.Test
     Smten.Tests.SMT.Bit
@@ -114,6 +115,7 @@ library
     Smten.Compiled.Smten.Tests.DataMap
     Smten.Compiled.Smten.Tests.List
     Smten.Compiled.Smten.Tests.Prelude
+    Smten.Compiled.Smten.Tests.Prim
     Smten.Compiled.Smten.Tests.State
     Smten.Compiled.Smten.Tests.SMT.Test
     Smten.Compiled.Smten.Tests.SMT.Bit

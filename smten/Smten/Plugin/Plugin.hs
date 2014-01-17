@@ -87,7 +87,8 @@ moduleCG cg details = do
       imports = [S.Import nm as | (nm, as) <- importmods]
       langs = map S.LanguagePragma [
             "DataKinds", "MagicHash", "NoImplicitPrelude",
-            "RankNTypes", "ScopedTypeVariables"]
+            "RankNTypes", "ScopedTypeVariables", "UnboxedTuples"
+            ]
   return $ S.Module {
     S.mod_pragmas = S.HaddockHide : S.GhcOption "-fno-warn-unused-binds" : langs,
     S.mod_name = modnm,

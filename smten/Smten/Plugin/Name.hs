@@ -34,8 +34,8 @@ dename ty nm
   | nameis ":" nm = (Just "Smten.Smten.Base", "Cons__", error "uniqnm for :")
   | nameis "()" nm = (Just "Smten.Smten.Base", "Unit__", error "uniqnm for ()")
   | nameis "(,)" nm = (Just "Smten.Smten.Base", "Tuple2__", error "uniqnm for (,)")
-  | nameis "(,,)" nm = (Just "Smten.Smten.Base", "Tuple3__", error "uniqnm for (,)")
-  | nameis "(,,,)" nm = (Just "Smten.Smten.Base", "Tuple4__", error "uniqnm for (,)")
+  | nameis "(,,)" nm = (Just "Smten.Smten.Base", "Tuple3__", error "uniqnm for (,,)")
+  | nameis "(,,,)" nm = (Just "Smten.Smten.Base", "Tuple4__", error "uniqnm for (,,,)")
   | otherwise = 
       let modnm = moduleNameString . moduleName <$> nameModule_maybe nm
           occnm = occNameString $ nameOccName nm
@@ -71,6 +71,7 @@ resym nosym nm =
 nmCG :: Bool -> (String -> String) -> Bool -> Name -> CG S.Name
 nmCG ty f qlf nm
   | nameis "(->)" nm = return "(->)"
+  | nameis "(#,#)" nm = return "(#,#)"
   | otherwise = do
       let (modnm, occnm, unqnm) = dename ty nm
 
