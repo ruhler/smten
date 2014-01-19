@@ -47,13 +47,12 @@ Performance::
    ** Enable -O on all smten files
      - Report FastString string-table reinitializeGlobal bug to ghc
      - ite0 doesn't support types of kind # (needed for Smten.Data.Char)
+        We need SmtenHSN# classes. 
+        The real trouble will be when we try to implement the ite method
+        though. Because we can't represent multiple choices in an unboxed
+        value.
+
      - emptycase doesn't support types of kind #  (needed for Smten.Data.Char)
-     - Support unboxed tuple. (needed for Smten.Data.List,
-                                          Smten.Data.Array)
-        Both the type constructor (#, #),
-        And data constructor (for case expressions)
-          we may need a special case for this as concrete, if it, indeed, is
-          concrete...
    ** optimize primitives as needed (see int_add for example)
    ** generate INLINE pragmas for bindings annotated as inline?
         (see inlinePragInfo in ghc api)

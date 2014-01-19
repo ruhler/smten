@@ -65,3 +65,6 @@ instance (Ix i, Eq e) => Eq (Array i e) where
 instance (Ix i, Show i, Show e) => Show (Array i e) where
     show x = "array " ++ show (bounds x) ++ " " ++ show (assocs x)
 
+instance (Ix i) => Functor (Array i) where
+    fmap f arr = listArray (bounds arr) (map f (elems arr))
+    
