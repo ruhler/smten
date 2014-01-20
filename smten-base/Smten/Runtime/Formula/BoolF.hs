@@ -87,6 +87,9 @@ andF x_@(BoolF xa xb xc_) y_ =
                     let x_' = partialF (xa + xb*xca) (xb*xcb) xcc_
                         y_' = partialF (ya + yb*yca) (yb*ycb) ycc_
                     in andF x_' y_'
+                 (BoolF TrueFF _ _, BoolF_Unreachable) -> BoolF_Unreachable
+                 (_, BoolF_Unreachable) -> falseF
+                 (BoolF_Unreachable, _) -> BoolF_Unreachable
       in partialF a b c_
 
     -- If y is unreachable, x * y may still be reachable, but in that
