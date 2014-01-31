@@ -5,7 +5,6 @@
 module Smten.Runtime.Assert (Smten.Runtime.Assert.assert) where
 
 import Control.Monad.Reader
-import System.Mem.StableName
 
 import qualified Data.HashTable.IO as H
 
@@ -16,7 +15,6 @@ import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST as ST
 
-type Cache a exp = H.BasicHashTable (StableName a) exp
 type Vars = H.BasicHashTable FreeID Type
 
 data AR ctx exp = AR {
@@ -30,54 +28,48 @@ data AR ctx exp = AR {
 type AM ctx exp = ReaderT (AR ctx exp) IO
 
 class Supported a where
-    define :: (SolverAST ctx exp) => ctx -> a -> AM ctx exp exp
-
-    -- Define the value if it hasn't yet been, but look up in the
-    -- cache to see if it's already been defined first.
-    use :: (SolverAST ctx exp) => a -> AM ctx exp exp
+    build :: (SolverAST ctx exp) => a -> AM ctx exp exp
 
 assert :: (SolverAST ctx exp) => ctx -> BoolFF -> IO [(FreeID, Type)]
 assert ctx p = {-# SCC "Assert" #-} do
     key <- AC.newKey
     vars <- H.new
-    e <- runReaderT (define ctx p) (AR ctx key vars)
+    e <- runReaderT (build p) (AR ctx key vars)
     ST.assert ctx e
     H.toList vars
 
-use_xx :: (SolverAST ctx exp, Supported a) => Cache a exp -> a -> AM ctx exp exp
-use_xx c x = do
-    nm <- liftIO $ makeStableName $! x
-    found <- liftIO $ H.lookup c nm
-    case found of
-        Just v -> {-# SCC "CacheHit" #-} return v
-        Nothing -> {-# SCC "CacheMiss" #-} do
-            ctx <- asks ar_ctx
-            v <- define ctx x
-            liftIO $ H.insert c nm v
-            return v
-
 unary :: (SolverAST ctx exp, Supported a) => (exp -> IO exp) -> a -> AM ctx exp exp
 unary f a = do
-    a' <- use a
+    a' <- build a
     liftIO $ f a'
 
 binary :: (SolverAST ctx exp, Supported a) => (exp -> exp -> IO exp) -> a -> a -> AM ctx exp exp
 binary f a b = do
-    a' <- use a
-    b' <- use b
+    a' <- build a
+    b' <- build b
     liftIO $ f a' b'
 
 trinary :: (SolverAST ctx exp, Supported a, Supported b) => (exp -> exp -> exp -> IO exp) -> a -> b -> b -> AM ctx exp exp
 trinary f a b c = do
-    a' <- use a
-    b' <- use b
-    c' <- use c
+    a' <- build a
+    b' <- build b
+    c' <- build c
     liftIO $ f a' b' c'
 
+uservar :: (SolverAST ctx exp) => ctx -> FreeID -> Type -> AM ctx exp exp
+uservar ctx id ty = do
+  vars <- asks ar_vars
+  liftIO $ do
+    m <- H.lookup vars id
+    case m of
+        Nothing -> do
+           declare ctx ty (freenm id)
+           H.insert vars id ty
+        Just _ -> return ()
+    var ctx (freenm id)
+       
 instance Supported BoolFF where
-    define ctx x = use x
-
-    use x = do
+    build x = do
       key <- asks ar_cachekey
       ctx <- asks ar_ctx
       case x of
@@ -93,22 +85,8 @@ instance Supported BoolFF where
         Eq_BitFF a b c -> AC.cached c key (binary (eq_bit ctx) a b)
         Leq_BitFF a b c -> AC.cached c key (binary (leq_bit ctx) a b)
 
-uservar :: (SolverAST ctx exp) => ctx -> FreeID -> Type -> AM ctx exp exp
-uservar ctx id ty = do
-  vars <- asks ar_vars
-  liftIO $ do
-    m <- H.lookup vars id
-    case m of
-        Nothing -> do
-           declare ctx ty (freenm id)
-           H.insert vars id ty
-        Just _ -> return ()
-    var ctx (freenm id)
-       
 instance Supported IntegerFF where
-    define ctx x = use x
-
-    use x = do
+    build x = do
       key <- asks ar_cachekey
       ctx <- asks ar_ctx
       case x of
@@ -119,9 +97,7 @@ instance Supported IntegerFF where
         Var_IntegerFF id -> uservar ctx id IntegerT
 
 instance Supported BitFF where
-    define ctx x = use x
-
-    use x = do
+    build x = do
       key <- asks ar_cachekey
       ctx <- asks ar_ctx
       case x of
