@@ -15,6 +15,7 @@ module Smten.Runtime.Formula.Finite (
 
 import Data.Bits
 
+import qualified Smten.Runtime.AssertCache as AC
 import Smten.Runtime.FreeID
 import Smten.Runtime.Bit
 import Smten.Runtime.StableNameEq
@@ -26,14 +27,14 @@ data BoolFF =
  | IteFF BoolFF BoolFF BoolFF
  | AndFF BoolFF BoolFF
  | OrFF BoolFF BoolFF
- | NotFF BoolFF
+ | NotFF BoolFF AC.AssertCache
  | VarFF FreeID
  | Eq_IntegerFF IntegerFF IntegerFF
  | Leq_IntegerFF IntegerFF IntegerFF
  | Eq_BitFF BitFF BitFF
  | Leq_BitFF BitFF BitFF
  | Unreachable_BoolFF
-  deriving (Show)
+    deriving (Show)
 
 trueFF :: BoolFF
 trueFF = TrueFF
@@ -63,9 +64,9 @@ andFF a b
 notFF :: BoolFF -> BoolFF
 notFF TrueFF = FalseFF
 notFF FalseFF = TrueFF
-notFF (NotFF x) = x
+notFF (NotFF x _) = x
 notFF Unreachable_BoolFF = Unreachable_BoolFF
-notFF x = NotFF x
+notFF x = AC.new (NotFF x)
 
 orFF :: BoolFF -> BoolFF -> BoolFF
 orFF TrueFF _ = trueFF
@@ -82,7 +83,7 @@ orFF a b
 iteFF :: BoolFF -> BoolFF -> BoolFF -> BoolFF
 iteFF TrueFF a _ = a
 iteFF FalseFF _ b = b
-iteFF (NotFF p) a b = iteFF p b a
+iteFF (NotFF p _) a b = iteFF p b a
 iteFF Unreachable_BoolFF _ _ = Unreachable_BoolFF
 iteFF p TrueFF b = orFF p b
 iteFF p a FalseFF = andFF p a

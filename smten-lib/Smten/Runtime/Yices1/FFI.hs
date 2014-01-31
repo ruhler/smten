@@ -1,10 +1,12 @@
 
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 -- | Raw FFI interface to yices1.
 module Smten.Runtime.Yices1.FFI where
 
+import Data.Typeable
 import Foreign
 import Foreign.C.String
 import Foreign.C.Types
@@ -23,7 +25,7 @@ type YModel = Ptr YModel_
 data YDecl_
 type YDecl = Ptr YDecl_
 
-data YExpr_
+data YExpr_ deriving (Typeable)
 type YExpr = Ptr YExpr_
 
 type YBool = CInt

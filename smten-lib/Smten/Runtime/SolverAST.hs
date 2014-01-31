@@ -7,10 +7,11 @@ module Smten.Runtime.SolverAST (
     eq_bool, xor_bool, and_bools, or_bools,
     ) where
 
+import Data.Typeable
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.Result
 
-class SolverAST ctx exp | ctx -> exp where
+class (Typeable exp) => SolverAST ctx exp | ctx -> exp where
   declare :: ctx -> Type -> String -> IO ()
 
   getBoolValue :: ctx -> String -> IO Bool

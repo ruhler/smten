@@ -1,4 +1,5 @@
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -8,6 +9,7 @@
 module Smten.Runtime.Bits(addBits) where
 
 import Data.Functor
+import Data.Typeable
 import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.Formula.Type
@@ -15,6 +17,7 @@ import Smten.Runtime.SolverAST
 
 data Formula exp = Exp { expr :: exp }
              | BitF { bits :: [exp] }
+    deriving (Typeable)
 
 type BitVarMap e = H.BasicHashTable String (Formula e)
 

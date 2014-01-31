@@ -1,0 +1,94 @@
+Thu Jan 30 17:03:18 EST 2014
+
+Assert traversal takes up a significant amount of time in many smten
+applications. The goal of this discussion is to fix that.
+
+The problem is the time it takes to lookup and insert expressions in the
+caches. Ideally we could have a mini, one-element cache for each expression,
+and this time would be totally eliminated.
+
+First step: identify a benchmark which exhibits the assert traversal issue
+particularly well:
+  nqueens -s yices2 -e Int 24
+  Takes 2 seconds. 80% time in assert traversal from insertions and lookups.
+
+Next step: identify which caches are taking all the hits.
+
+As expected: the Bool cache.
+  Cache Lookups: 580K
+  Cache Misses: 373K
+  Cache Hits: 207K
+
+I tried a LinearHashTable just for the fun of it. It goes much slower.
+
+Break down Cache lookups and misses by constructor:
+
+And: ~178K
+Not: ~178K
+
+It's split between And and Not.
+
+Ideas to evaluate:
+* Get unsafeIO with local caches working.
+  Start by adding a local cache to all the Not constructor, get that to work.
+  Steps:
+   * Generate a "unique" for each assert traversal, carry it around in the
+     context.
+   * Define an AssertCache in AssertCache.hs
+     With methods:
+     new :: IO AssertCache
+     lookup :: (Typeable a) => AssertCache -> Unique -> IO (Maybe a)
+     insert :: (Typeable a) => AssertCache -> Unique -> a -> IO ()
+   * Add a AssertCache field to NotFF, construct NotFF using notFF
+     which does unsafePerformIO. See if it works or not. Good luck.
+* Use weak pointers and remove GC'd elements?
+  Would that do anything?
+  The documentation for it looks very sketchy. I don't have high hopes about
+  this approach.
+
+Fri Jan 31 09:00:08 EST 2014
+
+I tried splitting the bool cache into two: one for NotFF, and the other for
+other kinds of boolean formulas. It doubled the runtime! That, to me, is not
+at all expected.
+
+Why could it be? Maybe:
+* Now you are actually forcing the bool object to get the cache?
+* Two small caches have to be resized just a little bit more than one 
+big cache?
+
+I don't think it's the first, because the case should be forcing the object,
+and we force it whenever we do the cache lookup anyway.
+
+Does profiling give a hint at the second?
+
+Profiling says:
+ * The Other cache spends significantly more time deleting and lookup up
+   elements, even though the number of deletes and lookups are the same.
+
+Could this be due to machine cache behavior? The BasicHashMap deals in cache
+lines, and be switching between the NotFF cache and the AndFF cache, we 
+mess up caching behavior?
+
+Isn't there a way to see cache hits and cache misses in linux?
+
+Running /usr/bin/time with all the options doesn't show anything interesting.
+
+Fri Jan 31 10:03:43 EST 2014
+
+I tried implementing the per-formula assert cache for the Not constructor.
+It appears to work!
+
+nqueens runtime dropped from 2 seconds to 1.4 seconds.
+The time to lookup the cached value of the bool dropped from 35% to 15%.
+And memory improved as well.
+
+Cool.
+
+The next step will be applying this approach to all of the formulas.
+
+Then... we'll see how much of the problem is caching and how much of the
+problem is assert traversal, and we'll see if this has any bad implications
+for overall performance when the assert traversal wasn't a bottleneck.
+
+

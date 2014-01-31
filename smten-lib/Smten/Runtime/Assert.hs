@@ -9,6 +9,7 @@ import System.Mem.StableName
 
 import qualified Data.HashTable.IO as H
 
+import Smten.Runtime.AssertCache as AC
 import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
 import Smten.Runtime.Formula.Finite
@@ -20,6 +21,7 @@ type Vars = H.BasicHashTable FreeID Type
 
 data AR ctx exp = AR {
   ar_ctx :: ctx,
+  ar_cachekey :: AC.AssertCacheKey,
   ar_boolcache :: Cache BoolFF exp,
   ar_intcache :: Cache IntegerFF exp,
   ar_bitcache :: Cache BitFF exp,
@@ -33,27 +35,28 @@ type AM ctx exp = ReaderT (AR ctx exp) IO
 class Supported a where
     define :: (SolverAST ctx exp) => ctx -> a -> AM ctx exp exp
 
-    -- Retrieve the cache associated with objects of this data type.
-    cache :: AM ctx exp (Cache a exp)
+    -- Define the value if it hasn't yet been, but look up in the
+    -- cache to see if it's already been defined first.
+    use :: (SolverAST ctx exp) => a -> AM ctx exp exp
 
 assert :: (SolverAST ctx exp) => ctx -> BoolFF -> IO [(FreeID, Type)]
 assert ctx p = {-# SCC "Assert" #-} do
+    key <- AC.newKey
     boolc <- H.new
     bitc <- H.new
     intc <- H.new
     vars <- H.new
-    e <- runReaderT (define ctx p) (AR ctx boolc bitc intc vars)
+    e <- runReaderT (define ctx p) (AR ctx key boolc bitc intc vars)
     ST.assert ctx e
     H.toList vars
 
-use :: (SolverAST ctx exp, Supported a) => a -> AM ctx exp exp
-use x = do
+use_xx :: (SolverAST ctx exp, Supported a) => Cache a exp -> a -> AM ctx exp exp
+use_xx c x = do
     nm <- liftIO $ makeStableName $! x
-    c <- cache
     found <- liftIO $ H.lookup c nm
     case found of
-        Just v -> return v
-        Nothing -> do
+        Just v -> {-# SCC "CacheHit" #-} return v
+        Nothing -> {-# SCC "CacheMiss" #-} do
             ctx <- asks ar_ctx
             v <- define ctx x
             liftIO $ H.insert c nm v
@@ -80,14 +83,22 @@ instance Supported BoolFF where
         liftIO $ ite_bool ctx p' a' b'
     define ctx (AndFF a b) = binary (and_bool ctx) a b
     define ctx (OrFF a b) = binary (or_bool ctx) a b
-    define ctx (NotFF a) = unary (not_bool ctx) a
+    define ctx (NotFF a _) = unary (not_bool ctx) a
     define ctx (VarFF id) = uservar ctx id BoolT
     define ctx (Eq_IntegerFF a b) = binary (eq_integer ctx) a b
     define ctx (Leq_IntegerFF a b) = binary (leq_integer ctx) a b
     define ctx (Eq_BitFF a b) = binary (eq_bit ctx) a b
     define ctx (Leq_BitFF a b) = binary (leq_bit ctx) a b
 
-    cache = asks ar_boolcache
+    use x =
+      case x of
+        NotFF a c -> {-# SCC "UseBool_NotFF" #-} do
+          key <- asks ar_cachekey
+          ctx <- asks ar_ctx
+          AC.cached c key (unary (not_bool ctx) a)
+        _ -> {-# SCC "UseBool_Other" #-} do
+          c <- asks ar_boolcache
+          use_xx c x
 
 uservar :: (SolverAST ctx exp) => ctx -> FreeID -> Type -> AM ctx exp exp
 uservar ctx id ty = do
@@ -112,7 +123,9 @@ instance Supported IntegerFF where
         liftIO $ ite_integer ctx p' a' b'
     define ctx (Var_IntegerFF id) = uservar ctx id IntegerT
 
-    cache = asks ar_intcache
+    use x = {-# SCC "UseInt" #-} do
+      c <- asks ar_intcache
+      use_xx c x
 
 instance Supported BitFF where
     define ctx (BitFF x) = liftIO $ bit ctx (bv_width x) (bv_value x)
@@ -134,4 +147,6 @@ instance Supported BitFF where
         liftIO $ ite_bit ctx p' a' b'
     define ctx (Var_BitFF w id) = uservar ctx id (BitT w)
 
-    cache = asks ar_bitcache
+    use x = {-# SCC "UseBit" #-} do
+      c <- asks ar_bitcache
+      use_xx c x
