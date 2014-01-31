@@ -22,7 +22,6 @@ type Vars = H.BasicHashTable FreeID Type
 data AR ctx exp = AR {
   ar_ctx :: ctx,
   ar_cachekey :: AC.AssertCacheKey,
-  ar_bitcache :: Cache BitFF exp,
 
   -- Track the user-visible SMT variables used in the assertion.
   ar_vars :: Vars
@@ -40,9 +39,8 @@ class Supported a where
 assert :: (SolverAST ctx exp) => ctx -> BoolFF -> IO [(FreeID, Type)]
 assert ctx p = {-# SCC "Assert" #-} do
     key <- AC.newKey
-    bitc <- H.new
     vars <- H.new
-    e <- runReaderT (define ctx p) (AR ctx key bitc vars)
+    e <- runReaderT (define ctx p) (AR ctx key vars)
     ST.assert ctx e
     H.toList vars
 
@@ -121,25 +119,23 @@ instance Supported IntegerFF where
         Var_IntegerFF id -> uservar ctx id IntegerT
 
 instance Supported BitFF where
-    define ctx (BitFF x) = liftIO $ bit ctx (bv_width x) (bv_value x)
-    define ctx (Add_BitFF a b) = binary (add_bit ctx) a b
-    define ctx (Sub_BitFF a b) = binary (sub_bit ctx) a b
-    define ctx (Mul_BitFF a b) = binary (mul_bit ctx) a b
-    define ctx (Or_BitFF a b) = binary (or_bit ctx) a b
-    define ctx (And_BitFF a b) = binary (and_bit ctx) a b
-    define ctx (Shl_BitFF w a b) = binary (shl_bit ctx w) a b
-    define ctx (Lshr_BitFF w a b) = binary (lshr_bit ctx w) a b
-    define ctx (Concat_BitFF a b) = binary (concat_bit ctx) a b
-    define ctx (Not_BitFF a) = unary (not_bit ctx) a
-    define ctx (SignExtend_BitFF fr to a) = unary (sign_extend_bit ctx fr to) a
-    define ctx (Extract_BitFF hi lo a) = unary (extract_bit ctx hi lo) a
-    define ctx (Ite_BitFF p a b) = do
-        p' <- use p
-        a' <- use a
-        b' <- use b
-        liftIO $ ite_bit ctx p' a' b'
-    define ctx (Var_BitFF w id) = uservar ctx id (BitT w)
+    define ctx x = use x
 
-    use x = {-# SCC "UseBit" #-} do
-      c <- asks ar_bitcache
-      use_xx c x
+    use x = do
+      key <- asks ar_cachekey
+      ctx <- asks ar_ctx
+      case x of
+        BitFF x -> liftIO $ bit ctx (bv_width x) (bv_value x)
+        Add_BitFF a b c -> AC.cached c key (binary (add_bit ctx) a b)
+        Sub_BitFF a b c -> AC.cached c key (binary (sub_bit ctx) a b)
+        Mul_BitFF a b c -> AC.cached c key (binary (mul_bit ctx) a b)
+        Or_BitFF a b c -> AC.cached c key (binary (or_bit ctx) a b)
+        And_BitFF a b c -> AC.cached c key (binary (and_bit ctx) a b)
+        Shl_BitFF w a b c -> AC.cached c key (binary (shl_bit ctx w) a b)
+        Lshr_BitFF w a b c -> AC.cached c key (binary (lshr_bit ctx w) a b)
+        Concat_BitFF a b c -> AC.cached c key (binary (concat_bit ctx) a b)
+        Not_BitFF a c -> AC.cached c key (unary (not_bit ctx) a)
+        SignExtend_BitFF fr to a c -> AC.cached c key (unary (sign_extend_bit ctx fr to) a)
+        Extract_BitFF hi lo a c -> AC.cached c key (unary (extract_bit ctx hi lo) a)
+        Ite_BitFF p a b c -> AC.cached c key (trinary (ite_bit ctx) p a b)
+        Var_BitFF w id -> uservar ctx id (BitT w)

@@ -167,18 +167,18 @@ instance Num IntegerFF where
 
 data BitFF =
     BitFF Bit
-  | Add_BitFF BitFF BitFF
-  | Sub_BitFF BitFF BitFF
-  | Mul_BitFF BitFF BitFF
-  | Or_BitFF BitFF BitFF
-  | And_BitFF BitFF BitFF
-  | Shl_BitFF Integer BitFF BitFF   -- ^ Shl bitwidth a b
-  | Lshr_BitFF Integer BitFF BitFF  -- ^ Lshr bitwidth a b
-  | Concat_BitFF BitFF BitFF   -- ^ Concat a_width a b
-  | Not_BitFF BitFF
-  | SignExtend_BitFF Integer Integer BitFF    -- ^ SignExtend from_width to_width x
-  | Extract_BitFF Integer Integer BitFF -- ^ Extract hi lo x
-  | Ite_BitFF BoolFF BitFF BitFF 
+  | Add_BitFF BitFF BitFF AC.AssertCache
+  | Sub_BitFF BitFF BitFF AC.AssertCache
+  | Mul_BitFF BitFF BitFF AC.AssertCache
+  | Or_BitFF BitFF BitFF AC.AssertCache
+  | And_BitFF BitFF BitFF AC.AssertCache
+  | Shl_BitFF Integer BitFF BitFF AC.AssertCache  -- ^ Shl bitwidth a b
+  | Lshr_BitFF Integer BitFF BitFF AC.AssertCache -- ^ Lshr bitwidth a b
+  | Concat_BitFF BitFF BitFF AC.AssertCache  -- ^ Concat a_width a b
+  | Not_BitFF BitFF AC.AssertCache
+  | SignExtend_BitFF Integer Integer BitFF AC.AssertCache   -- ^ SignExtend from_width to_width x
+  | Extract_BitFF Integer Integer BitFF AC.AssertCache -- ^ Extract hi lo x
+  | Ite_BitFF BoolFF BitFF BitFF AC.AssertCache 
   | Var_BitFF Integer FreeID          -- ^ Var width name
   | Unreachable_BitFF
      deriving (Show)
@@ -205,64 +205,64 @@ add_BitFF :: BitFF -> BitFF -> BitFF
 add_BitFF (BitFF a) (BitFF b) = BitFF (a + b)
 add_BitFF Unreachable_BitFF _ = Unreachable_BitFF
 add_BitFF _ Unreachable_BitFF = Unreachable_BitFF
-add_BitFF a b = Add_BitFF a b
+add_BitFF a b = AC.new (Add_BitFF a b)
 
 sub_BitFF :: BitFF -> BitFF -> BitFF
 sub_BitFF (BitFF a) (BitFF b) = BitFF (a - b)
 sub_BitFF Unreachable_BitFF _ = Unreachable_BitFF
 sub_BitFF _ Unreachable_BitFF = Unreachable_BitFF
-sub_BitFF a b = Sub_BitFF a b
+sub_BitFF a b = AC.new (Sub_BitFF a b)
 
 mul_BitFF :: BitFF -> BitFF -> BitFF
 mul_BitFF (BitFF a) (BitFF b) = BitFF (a * b)
 mul_BitFF Unreachable_BitFF _ = Unreachable_BitFF
 mul_BitFF _ Unreachable_BitFF = Unreachable_BitFF
-mul_BitFF a b = Mul_BitFF a b
+mul_BitFF a b = AC.new (Mul_BitFF a b)
 
 bit_orFF :: BitFF -> BitFF -> BitFF
 bit_orFF (BitFF a) (BitFF b) = BitFF (a .|. b)
 bit_orFF Unreachable_BitFF _ = Unreachable_BitFF
 bit_orFF _ Unreachable_BitFF = Unreachable_BitFF
-bit_orFF a b = Or_BitFF a b
+bit_orFF a b = AC.new (Or_BitFF a b)
 
 bit_andFF :: BitFF -> BitFF -> BitFF
 bit_andFF (BitFF a) (BitFF b) = BitFF (a .&. b)
 bit_andFF Unreachable_BitFF _ = Unreachable_BitFF
 bit_andFF _ Unreachable_BitFF = Unreachable_BitFF
-bit_andFF a b = And_BitFF a b
+bit_andFF a b = AC.new (And_BitFF a b)
 
 bit_shlFF :: Integer -> BitFF -> BitFF -> BitFF
 bit_shlFF _ (BitFF a) (BitFF b) = BitFF (a `bv_shl` b)
 bit_shlFF _ Unreachable_BitFF _ = Unreachable_BitFF
 bit_shlFF _ _ Unreachable_BitFF = Unreachable_BitFF
-bit_shlFF w a b = Shl_BitFF w a b
+bit_shlFF w a b = AC.new (Shl_BitFF w a b)
 
 bit_lshrFF :: Integer -> BitFF -> BitFF -> BitFF
 bit_lshrFF _ (BitFF a) (BitFF b) = BitFF (a `bv_lshr` b)
 bit_lshrFF _ Unreachable_BitFF _ = Unreachable_BitFF
 bit_lshrFF _ _ Unreachable_BitFF = Unreachable_BitFF
-bit_lshrFF w a b = Lshr_BitFF w a b
+bit_lshrFF w a b = AC.new (Lshr_BitFF w a b)
 
 bit_concatFF :: BitFF -> BitFF -> BitFF
 bit_concatFF (BitFF a) (BitFF b) = BitFF (a `bv_concat` b)
 bit_concatFF Unreachable_BitFF _ = Unreachable_BitFF
 bit_concatFF _ Unreachable_BitFF = Unreachable_BitFF
-bit_concatFF a b = Concat_BitFF a b
+bit_concatFF a b = AC.new (Concat_BitFF a b)
 
 bit_notFF :: BitFF -> BitFF
 bit_notFF (BitFF a) = BitFF (complement a)
 bit_notFF Unreachable_BitFF = Unreachable_BitFF
-bit_notFF a = Not_BitFF a
+bit_notFF a = AC.new (Not_BitFF a)
 
 bit_sign_extendFF :: Integer -> Integer -> BitFF -> BitFF
 bit_sign_extendFF fr to (BitFF a) = BitFF (bv_sign_extend (to-fr) a)
 bit_sign_extendFF _ _ Unreachable_BitFF = Unreachable_BitFF
-bit_sign_extendFF fr to x = SignExtend_BitFF fr to x
+bit_sign_extendFF fr to x = AC.new (SignExtend_BitFF fr to x)
 
 bit_extractFF :: Integer -> Integer -> BitFF -> BitFF
 bit_extractFF hi lo (BitFF a) = BitFF (bv_extract hi lo a)
 bit_extractFF _ _ Unreachable_BitFF = Unreachable_BitFF
-bit_extractFF hi lo x = Extract_BitFF hi lo x
+bit_extractFF hi lo x = AC.new (Extract_BitFF hi lo x)
 
 ite_BitFF :: BoolFF -> BitFF -> BitFF -> BitFF
 ite_BitFF TrueFF a _ = a
@@ -271,5 +271,5 @@ ite_BitFF Unreachable_BoolFF _ _ = Unreachable_BitFF
 ite_BitFF p v@(BitFF a) (BitFF b) | a == b = v
 ite_BitFF _ Unreachable_BitFF b = b
 ite_BitFF _ a Unreachable_BitFF = a
-ite_BitFF p a b = Ite_BitFF p a b
+ite_BitFF p a b = AC.new (Ite_BitFF p a b)
 
