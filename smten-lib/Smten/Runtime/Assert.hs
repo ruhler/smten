@@ -22,7 +22,6 @@ type Vars = H.BasicHashTable FreeID Type
 data AR ctx exp = AR {
   ar_ctx :: ctx,
   ar_cachekey :: AC.AssertCacheKey,
-  ar_boolcache :: Cache BoolFF exp,
   ar_intcache :: Cache IntegerFF exp,
   ar_bitcache :: Cache BitFF exp,
 
@@ -42,11 +41,10 @@ class Supported a where
 assert :: (SolverAST ctx exp) => ctx -> BoolFF -> IO [(FreeID, Type)]
 assert ctx p = {-# SCC "Assert" #-} do
     key <- AC.newKey
-    boolc <- H.new
     bitc <- H.new
     intc <- H.new
     vars <- H.new
-    e <- runReaderT (define ctx p) (AR ctx key boolc bitc intc vars)
+    e <- runReaderT (define ctx p) (AR ctx key bitc intc vars)
     ST.assert ctx e
     H.toList vars
 
@@ -73,32 +71,31 @@ binary f a b = do
     b' <- use b
     liftIO $ f a' b'
 
-instance Supported BoolFF where
-    define ctx TrueFF = liftIO $ bool ctx True
-    define ctx FalseFF = liftIO $ bool ctx False
-    define ctx (IteFF p a b) = do
-        p' <- use p
-        a' <- use a
-        b' <- use b
-        liftIO $ ite_bool ctx p' a' b'
-    define ctx (AndFF a b) = binary (and_bool ctx) a b
-    define ctx (OrFF a b) = binary (or_bool ctx) a b
-    define ctx (NotFF a _) = unary (not_bool ctx) a
-    define ctx (VarFF id) = uservar ctx id BoolT
-    define ctx (Eq_IntegerFF a b) = binary (eq_integer ctx) a b
-    define ctx (Leq_IntegerFF a b) = binary (leq_integer ctx) a b
-    define ctx (Eq_BitFF a b) = binary (eq_bit ctx) a b
-    define ctx (Leq_BitFF a b) = binary (leq_bit ctx) a b
+trinary :: (SolverAST ctx exp, Supported a) => (exp -> exp -> exp -> IO exp) -> a -> a -> a -> AM ctx exp exp
+trinary f a b c = do
+    a' <- use a
+    b' <- use b
+    c' <- use c
+    liftIO $ f a' b' c'
 
-    use x =
+instance Supported BoolFF where
+    define ctx x = use x
+
+    use x = do
+      key <- asks ar_cachekey
+      ctx <- asks ar_ctx
       case x of
-        NotFF a c -> {-# SCC "UseBool_NotFF" #-} do
-          key <- asks ar_cachekey
-          ctx <- asks ar_ctx
-          AC.cached c key (unary (not_bool ctx) a)
-        _ -> {-# SCC "UseBool_Other" #-} do
-          c <- asks ar_boolcache
-          use_xx c x
+        TrueFF -> liftIO $ bool ctx True
+        FalseFF -> liftIO $ bool ctx False
+        IteFF p a b c -> AC.cached c key (trinary (ite_bool ctx) p a b)
+        AndFF a b c -> AC.cached c key (binary (and_bool ctx) a b)
+        OrFF a b c -> AC.cached c key (binary (or_bool ctx) a b)
+        NotFF a c -> AC.cached c key (unary (not_bool ctx) a)
+        VarFF id -> uservar ctx id BoolT
+        Eq_IntegerFF a b c -> AC.cached c key (binary (eq_integer ctx) a b)
+        Leq_IntegerFF a b c -> AC.cached c key (binary (leq_integer ctx) a b)
+        Eq_BitFF a b c -> AC.cached c key (binary (eq_bit ctx) a b)
+        Leq_BitFF a b c -> AC.cached c key (binary (leq_bit ctx) a b)
 
 uservar :: (SolverAST ctx exp) => ctx -> FreeID -> Type -> AM ctx exp exp
 uservar ctx id ty = do

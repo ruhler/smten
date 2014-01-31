@@ -24,15 +24,15 @@ import Smten.Runtime.StableNameEq
 data BoolFF =
    TrueFF
  | FalseFF
- | IteFF BoolFF BoolFF BoolFF
- | AndFF BoolFF BoolFF
- | OrFF BoolFF BoolFF
+ | IteFF BoolFF BoolFF BoolFF AC.AssertCache
+ | AndFF BoolFF BoolFF AC.AssertCache
+ | OrFF BoolFF BoolFF AC.AssertCache
  | NotFF BoolFF AC.AssertCache
  | VarFF FreeID
- | Eq_IntegerFF IntegerFF IntegerFF
- | Leq_IntegerFF IntegerFF IntegerFF
- | Eq_BitFF BitFF BitFF
- | Leq_BitFF BitFF BitFF
+ | Eq_IntegerFF IntegerFF IntegerFF AC.AssertCache
+ | Leq_IntegerFF IntegerFF IntegerFF AC.AssertCache
+ | Eq_BitFF BitFF BitFF AC.AssertCache
+ | Leq_BitFF BitFF BitFF AC.AssertCache
  | Unreachable_BoolFF
     deriving (Show)
 
@@ -59,7 +59,7 @@ andFF Unreachable_BoolFF _ = falseFF
 andFF _ Unreachable_BoolFF = falseFF
 andFF a b
  | a `stableNameEq` b = a
- | otherwise = AndFF a b
+ | otherwise = AC.new (AndFF a b)
             
 notFF :: BoolFF -> BoolFF
 notFF TrueFF = FalseFF
@@ -78,7 +78,7 @@ orFF Unreachable_BoolFF _ = trueFF
 orFF _ Unreachable_BoolFF = trueFF
 orFF a b
  | a `stableNameEq` b = a
- | otherwise = OrFF a b
+ | otherwise = AC.new (OrFF a b)
 
 iteFF :: BoolFF -> BoolFF -> BoolFF -> BoolFF
 iteFF TrueFF a _ = a
@@ -92,7 +92,7 @@ iteFF p FalseFF b = andFF (notFF p) b
 iteFF _ Unreachable_BoolFF b = b
 iteFF _ a Unreachable_BoolFF = a
 iteFF p a b | a `stableNameEq` b = a
-iteFF p a b = IteFF p a b
+iteFF p a b = AC.new (IteFF p a b)
 
 -- For nicer syntax, we give an instance of Num for BoolFF
 -- based on boolean arithmetic.
@@ -124,13 +124,13 @@ eq_IntegerFF Unreachable_IntegerFF _ = Unreachable_BoolFF
 eq_IntegerFF _ Unreachable_IntegerFF = Unreachable_BoolFF
 eq_IntegerFF a b 
  | a `stableNameEq` b = trueFF
- | otherwise = Eq_IntegerFF a b
+ | otherwise = AC.new (Eq_IntegerFF a b)
 
 leq_IntegerFF :: IntegerFF -> IntegerFF -> BoolFF
 leq_IntegerFF (IntegerFF a) (IntegerFF b) = boolFF (a <= b)
 leq_IntegerFF Unreachable_IntegerFF _ = Unreachable_BoolFF
 leq_IntegerFF _ Unreachable_IntegerFF = Unreachable_BoolFF
-leq_IntegerFF a b = Leq_IntegerFF a b
+leq_IntegerFF a b = AC.new (Leq_IntegerFF a b)
 
 add_IntegerFF :: IntegerFF -> IntegerFF -> IntegerFF
 add_IntegerFF (IntegerFF a) (IntegerFF b) = IntegerFF (a + b)
@@ -193,13 +193,13 @@ eq_BitFF :: BitFF -> BitFF -> BoolFF
 eq_BitFF (BitFF a) (BitFF b) = boolFF (a == b)
 eq_BitFF Unreachable_BitFF _ = Unreachable_BoolFF
 eq_BitFF _ Unreachable_BitFF = Unreachable_BoolFF
-eq_BitFF a b = Eq_BitFF a b
+eq_BitFF a b = AC.new (Eq_BitFF a b)
 
 leq_BitFF ::  BitFF -> BitFF -> BoolFF
 leq_BitFF (BitFF a) (BitFF b) = boolFF (a <= b)
 leq_BitFF Unreachable_BitFF _ = Unreachable_BoolFF
 leq_BitFF _ Unreachable_BitFF = Unreachable_BoolFF
-leq_BitFF a b = Leq_BitFF a b
+leq_BitFF a b = AC.new (Leq_BitFF a b)
 
 add_BitFF :: BitFF -> BitFF -> BitFF
 add_BitFF (BitFF a) (BitFF b) = BitFF (a + b)
