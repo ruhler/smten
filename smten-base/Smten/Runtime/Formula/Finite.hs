@@ -108,9 +108,9 @@ instance Num BoolFF where
 -- | An Integer finite formula which contains no _|_
 data IntegerFF =
     IntegerFF Integer
-  | Add_IntegerFF IntegerFF IntegerFF
-  | Sub_IntegerFF IntegerFF IntegerFF
-  | Ite_IntegerFF BoolFF IntegerFF IntegerFF
+  | Add_IntegerFF IntegerFF IntegerFF AC.AssertCache
+  | Sub_IntegerFF IntegerFF IntegerFF AC.AssertCache
+  | Ite_IntegerFF BoolFF IntegerFF IntegerFF AC.AssertCache
   | Var_IntegerFF FreeID
   | Unreachable_IntegerFF
   deriving (Show)
@@ -136,13 +136,13 @@ add_IntegerFF :: IntegerFF -> IntegerFF -> IntegerFF
 add_IntegerFF (IntegerFF a) (IntegerFF b) = IntegerFF (a + b)
 add_IntegerFF Unreachable_IntegerFF _ = Unreachable_IntegerFF
 add_IntegerFF _ Unreachable_IntegerFF = Unreachable_IntegerFF
-add_IntegerFF a b = Add_IntegerFF a b
+add_IntegerFF a b = AC.new (Add_IntegerFF a b)
 
 sub_IntegerFF :: IntegerFF -> IntegerFF -> IntegerFF
 sub_IntegerFF (IntegerFF a) (IntegerFF b) = IntegerFF (a - b)
 sub_IntegerFF Unreachable_IntegerFF _ = Unreachable_IntegerFF
 sub_IntegerFF _ Unreachable_IntegerFF = Unreachable_IntegerFF
-sub_IntegerFF a b = Sub_IntegerFF a b
+sub_IntegerFF a b = AC.new (Sub_IntegerFF a b)
 
 var_IntegerFF :: FreeID -> IntegerFF
 var_IntegerFF = Var_IntegerFF
@@ -154,7 +154,7 @@ ite_IntegerFF Unreachable_BoolFF _ _ = Unreachable_IntegerFF
 ite_IntegerFF p v@(IntegerFF a) (IntegerFF b) | a == b = v
 ite_IntegerFF _ Unreachable_IntegerFF b = b
 ite_IntegerFF _ a Unreachable_IntegerFF = a
-ite_IntegerFF p a b = Ite_IntegerFF p a b
+ite_IntegerFF p a b = AC.new (Ite_IntegerFF p a b)
 
 instance Num IntegerFF where
   fromInteger = integerFF

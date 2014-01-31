@@ -22,7 +22,6 @@ type Vars = H.BasicHashTable FreeID Type
 data AR ctx exp = AR {
   ar_ctx :: ctx,
   ar_cachekey :: AC.AssertCacheKey,
-  ar_intcache :: Cache IntegerFF exp,
   ar_bitcache :: Cache BitFF exp,
 
   -- Track the user-visible SMT variables used in the assertion.
@@ -42,9 +41,8 @@ assert :: (SolverAST ctx exp) => ctx -> BoolFF -> IO [(FreeID, Type)]
 assert ctx p = {-# SCC "Assert" #-} do
     key <- AC.newKey
     bitc <- H.new
-    intc <- H.new
     vars <- H.new
-    e <- runReaderT (define ctx p) (AR ctx key bitc intc vars)
+    e <- runReaderT (define ctx p) (AR ctx key bitc vars)
     ST.assert ctx e
     H.toList vars
 
@@ -71,7 +69,7 @@ binary f a b = do
     b' <- use b
     liftIO $ f a' b'
 
-trinary :: (SolverAST ctx exp, Supported a) => (exp -> exp -> exp -> IO exp) -> a -> a -> a -> AM ctx exp exp
+trinary :: (SolverAST ctx exp, Supported a, Supported b) => (exp -> exp -> exp -> IO exp) -> a -> b -> b -> AM ctx exp exp
 trinary f a b c = do
     a' <- use a
     b' <- use b
@@ -110,19 +108,17 @@ uservar ctx id ty = do
     var ctx (freenm id)
        
 instance Supported IntegerFF where
-    define ctx (IntegerFF i) = liftIO $ integer ctx i
-    define ctx (Add_IntegerFF a b) = binary (add_integer ctx) a b
-    define ctx (Sub_IntegerFF a b) = binary (sub_integer ctx) a b
-    define ctx (Ite_IntegerFF p a b) = do
-        p' <- use p
-        a' <- use a
-        b' <- use b
-        liftIO $ ite_integer ctx p' a' b'
-    define ctx (Var_IntegerFF id) = uservar ctx id IntegerT
+    define ctx x = use x
 
-    use x = {-# SCC "UseInt" #-} do
-      c <- asks ar_intcache
-      use_xx c x
+    use x = do
+      key <- asks ar_cachekey
+      ctx <- asks ar_ctx
+      case x of
+        IntegerFF i -> liftIO $ integer ctx i
+        Add_IntegerFF a b c -> AC.cached c key (binary (add_integer ctx) a b)
+        Sub_IntegerFF a b c -> AC.cached c key (binary (sub_integer ctx) a b)
+        Ite_IntegerFF p a b c -> AC.cached c key (trinary (ite_integer ctx) p a b)
+        Var_IntegerFF id -> uservar ctx id IntegerT
 
 instance Supported BitFF where
     define ctx (BitFF x) = liftIO $ bit ctx (bv_width x) (bv_value x)
