@@ -91,4 +91,85 @@ Then... we'll see how much of the problem is caching and how much of the
 problem is assert traversal, and we'll see if this has any bad implications
 for overall performance when the assert traversal wasn't a bottleneck.
 
+I switched all formulas over to per-formula caches.
+
+After all that:
+ nqueens dropped 1.96 to 1.57.
+ Assert dropped from 80% time to 74% time. 
+
+Not nearly as good as I was hoping. I think there is some bottleneck or silly
+performance block that perhaps we can do away with.
+
+Ideas:
+* We should specialize and inline everything in Assert
+  - Because the Supported class is just to for metaprogramming
+* Make AssertCache.cached inlineable?
+* I didn't put caches on all the objects
+  - Maybe we should be caching literals and vars too?
+* Use dupable unsafe perform IO?
+* Reader monad overhead: maybe pass ctx and key as arguments everywhere
+  instead of using the reader monad.
+
+Let me look at profiling to try and understand. In particular, the difference
+between just and and not, and having everything per-formula cached.
+
+All the difference is inside the assert traversal. Let me add profiling to
+that.
+
+* 40% is in uservar.
+* 20% is in cached.
+
+Small, but perhaps non-trivial amount of time is spent in unary, binary, and
+trinary.
+
+Note that enabling profiling and adding SCCs also has a notable impact on
+performance.
+
+Let me try the following:
+1. Specialize and inline everything in assert traversal.
+
+First: do we already specialize and inline everything?
+
+In particular, what I want to see is no "Supported" dictionary anywhere in the
+generated code:
+
+* unary, binary, and trinary should all be specialized
+* calls to 'build' should all be to the specialized versions
+
+What we actually see currently:
+ * 'build' takes a Supported dictionary
+ * 'uservar' has table ops totally inlined
+ * $fSupportedBitFF1 is 'build' for BitFF
+   - binary is inlined and specialized
+
+In other words, it looks like Supported is totally inlined away. Perfect.
+
+2. Make 'cached' inlineable, because currently that is not specialized. In
+particular, I want to specialize it for the Reader monad and see if that
+helps.
+
+Answer: no, it does not help. It doesn't really make a difference, but if
+anything, it makes things worse. So I'll undo that change.
+
+3. Try caching vars, because I think that could be the big thing.
+
+Yup! That was it.
+Total time for nqueens is down to under 1s.
+
+The assert traversal is down to 50% time. Memory is still up at 70% allocation
+(down from 80%).
+
+Note, though, I'm not sure I can believe the profiling numbers because they
+don't include the optimization that I verified is happening inlining
+supported.
+
+That's disconcerting...
+
+What if I try turning on optimization with profiling?
+It makes no difference to the reported numbers.
+
+Good. I think I have the assert traversal fixed up as desired.
+
+Now the real question is, how does the performance of other applications hold
+up? Is this an overall improvement?
 

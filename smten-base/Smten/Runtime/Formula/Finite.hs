@@ -28,7 +28,7 @@ data BoolFF =
  | AndFF BoolFF BoolFF AC.AssertCache
  | OrFF BoolFF BoolFF AC.AssertCache
  | NotFF BoolFF AC.AssertCache
- | VarFF FreeID
+ | VarFF FreeID AC.AssertCache
  | Eq_IntegerFF IntegerFF IntegerFF AC.AssertCache
  | Leq_IntegerFF IntegerFF IntegerFF AC.AssertCache
  | Eq_BitFF BitFF BitFF AC.AssertCache
@@ -47,7 +47,7 @@ boolFF True = trueFF
 boolFF False = falseFF
 
 varFF :: FreeID -> BoolFF
-varFF = VarFF
+varFF x = AC.new (VarFF x)
 
 andFF :: BoolFF -> BoolFF -> BoolFF
 andFF TrueFF b = b
@@ -111,7 +111,7 @@ data IntegerFF =
   | Add_IntegerFF IntegerFF IntegerFF AC.AssertCache
   | Sub_IntegerFF IntegerFF IntegerFF AC.AssertCache
   | Ite_IntegerFF BoolFF IntegerFF IntegerFF AC.AssertCache
-  | Var_IntegerFF FreeID
+  | Var_IntegerFF FreeID AC.AssertCache
   | Unreachable_IntegerFF
   deriving (Show)
 
@@ -145,7 +145,7 @@ sub_IntegerFF _ Unreachable_IntegerFF = Unreachable_IntegerFF
 sub_IntegerFF a b = AC.new (Sub_IntegerFF a b)
 
 var_IntegerFF :: FreeID -> IntegerFF
-var_IntegerFF = Var_IntegerFF
+var_IntegerFF x = AC.new (Var_IntegerFF x)
 
 ite_IntegerFF :: BoolFF -> IntegerFF -> IntegerFF -> IntegerFF
 ite_IntegerFF TrueFF a _ = a
@@ -179,7 +179,7 @@ data BitFF =
   | SignExtend_BitFF Integer Integer BitFF AC.AssertCache   -- ^ SignExtend from_width to_width x
   | Extract_BitFF Integer Integer BitFF AC.AssertCache -- ^ Extract hi lo x
   | Ite_BitFF BoolFF BitFF BitFF AC.AssertCache 
-  | Var_BitFF Integer FreeID          -- ^ Var width name
+  | Var_BitFF Integer FreeID AC.AssertCache         -- ^ Var width name
   | Unreachable_BitFF
      deriving (Show)
 
@@ -187,8 +187,8 @@ bitFF :: Bit -> BitFF
 bitFF = BitFF
 
 var_BitFF :: Integer -> FreeID -> BitFF
-var_BitFF = Var_BitFF
-
+var_BitFF x f = AC.new (Var_BitFF x f)
+ 
 eq_BitFF :: BitFF -> BitFF -> BoolFF
 eq_BitFF (BitFF a) (BitFF b) = boolFF (a == b)
 eq_BitFF Unreachable_BitFF _ = Unreachable_BoolFF

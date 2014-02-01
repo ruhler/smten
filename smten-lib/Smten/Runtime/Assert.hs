@@ -79,7 +79,7 @@ instance Supported BoolFF where
         AndFF a b c -> AC.cached c key (binary (and_bool ctx) a b)
         OrFF a b c -> AC.cached c key (binary (or_bool ctx) a b)
         NotFF a c -> AC.cached c key (unary (not_bool ctx) a)
-        VarFF id -> uservar ctx id BoolT
+        VarFF id c -> AC.cached c key (uservar ctx id BoolT)
         Eq_IntegerFF a b c -> AC.cached c key (binary (eq_integer ctx) a b)
         Leq_IntegerFF a b c -> AC.cached c key (binary (leq_integer ctx) a b)
         Eq_BitFF a b c -> AC.cached c key (binary (eq_bit ctx) a b)
@@ -94,7 +94,7 @@ instance Supported IntegerFF where
         Add_IntegerFF a b c -> AC.cached c key (binary (add_integer ctx) a b)
         Sub_IntegerFF a b c -> AC.cached c key (binary (sub_integer ctx) a b)
         Ite_IntegerFF p a b c -> AC.cached c key (trinary (ite_integer ctx) p a b)
-        Var_IntegerFF id -> uservar ctx id IntegerT
+        Var_IntegerFF id c -> AC.cached c key (uservar ctx id IntegerT)
 
 instance Supported BitFF where
     build x = do
@@ -114,4 +114,4 @@ instance Supported BitFF where
         SignExtend_BitFF fr to a c -> AC.cached c key (unary (sign_extend_bit ctx fr to) a)
         Extract_BitFF hi lo a c -> AC.cached c key (unary (extract_bit ctx hi lo) a)
         Ite_BitFF p a b c -> AC.cached c key (trinary (ite_bit ctx) p a b)
-        Var_BitFF w id -> uservar ctx id (BitT w)
+        Var_BitFF w id c -> AC.cached c key (uservar ctx id (BitT w))
