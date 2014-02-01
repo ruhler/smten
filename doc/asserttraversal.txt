@@ -173,3 +173,8 @@ Good. I think I have the assert traversal fixed up as desired.
 Now the real question is, how does the performance of other applications hold
 up? Is this an overall improvement?
 
+The answer: it appears overwhelmingly yes, this is a performance improvement
+every application I tried.
+
+So we keep it and call it done. Cool.
+

@@ -223,3 +223,28 @@ arch-extract:
   with slow increase in memory.
  After fix: 23s
 
+Assert Traversal Fix
+--------------------
+Use per-formula caches in the assert traversal.
+
+shampi::
+   yices2, Bit: 9s
+
+nqueens::
+  yices2, Int, 32: 3s
+  yices2, Integer, 36: 26s
+  yices2, Bit, 128: 1s
+
+sudoku:
+  yices2, Bit, 100 boards: 4s
+  yices2, Enum, 100 boards: 6s
+  yices2, Integer, 2 boards: 17s
+
+sketch:
+  passing tests: 6s,
+    And a test taking 20 seconds before went down to 2.
+
+arch-extract:
+ STP FETDEC: 22s
+  
+
