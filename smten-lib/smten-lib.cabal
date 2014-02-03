@@ -54,7 +54,6 @@ library
     Smten.Symbolic.Solver.Debug
     Smten.Symbolic.Solver.Pure
     Smten.Symbolic.Solver.Smten
-    Smten.Symbolic.Solver.Yices1
     Smten.Symbolic.Solver.Yices2
     Smten.Symbolic.Solver.Z3
     Smten.System.Environment
@@ -103,7 +102,6 @@ library
     Smten.Compiled.Smten.Symbolic.SMT
     Smten.Compiled.Smten.Symbolic.Solver.Debug
     Smten.Compiled.Smten.Symbolic.Solver.Smten
-    Smten.Compiled.Smten.Symbolic.Solver.Yices1
     Smten.Compiled.Smten.Symbolic.Solver.Yices2
     Smten.Compiled.Smten.Symbolic.Solver.Z3
     Smten.Compiled.Smten.System.Environment
@@ -131,14 +129,11 @@ library
     Smten.Runtime.AnyKeyMap
     Smten.Runtime.Assert
     Smten.Runtime.Debug
-    Smten.Runtime.Yices1.FFI
     Smten.Runtime.Yices2.FFI
     Smten.Runtime.Z3.FFI
     Smten.Smten.TypeLitsTH
-    Smten.Tests.Yices1
     Smten.Tests.Yices2
     Smten.Tests.Z3
-    Smten.Compiled.Smten.Tests.Yices1
     Smten.Compiled.Smten.Tests.Yices2
     Smten.Compiled.Smten.Tests.Z3
 
@@ -149,8 +144,7 @@ library
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
   extra-libraries: dl
-  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
-             Smten/Runtime/Yices1/y1.c
+  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c
 
 Test-Suite tests
     type: exitcode-stdio-1.0
@@ -161,8 +155,7 @@ Test-Suite tests
                    smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
     ghc-options: -rtsopts
     extra-libraries: dl
-    c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
-             Smten/Runtime/Yices1/y1.c
+    c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c
 
 test-suite y2tests
   type: exitcode-stdio-1.0
@@ -172,19 +165,7 @@ test-suite y2tests
                  template-haskell ==2.8.*, containers ==0.5.*,
                  smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   extra-libraries: dl
-  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
-             Smten/Runtime/Yices1/y1.c
-
-test-suite y1tests
-  type: exitcode-stdio-1.0
-  main-is: y1tests.hs
-  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
-                 pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
-                 template-haskell ==2.8.*, containers ==0.5.*,
-                 smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
-  extra-libraries: dl
-  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
-             Smten/Runtime/Yices1/y1.c
+  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c
 
 test-suite z3tests
   type: exitcode-stdio-1.0
@@ -194,6 +175,5 @@ test-suite z3tests
                  template-haskell ==2.8.*, containers ==0.5.*,
                  smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   extra-libraries: dl
-  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c,
-             Smten/Runtime/Yices1/y1.c
+  c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c
     

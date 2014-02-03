@@ -24,6 +24,7 @@ proc install {x} {
     indir build/$x "hrun cabal install --builddir ../build/$x-$::USER"
 }
 
+unreg smten-yices1
 unreg smten-minisat
 unreg smten-stp
 unreg smten-lib
@@ -35,4 +36,5 @@ install smten-base
 install smten-lib
 install smten-stp
 install smten-minisat
+install smten-yices1
 

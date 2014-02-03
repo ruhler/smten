@@ -44,6 +44,7 @@ if {![file exists "build/home/cabal"]} {
 }
 
 # Uninstall all the smten libraries already installed.
+catch {hrun ghc-pkg unregister smten-yices1}
 catch {hrun ghc-pkg unregister smten-minisat}
 catch {hrun ghc-pkg unregister smten-stp}
 catch {hrun ghc-pkg unregister smten-lib}
@@ -101,10 +102,6 @@ proc smten-lib {} {
             -fplugin=Smten.Plugin.Plugin Smten/Tests/All.hs
             
         hrun $::GHC --make -osuf o_smten -hisuf hi_smten -c \
-            -main-is Smten.Tests.Yices1.main \
-            -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices1.hs
-
-        hrun $::GHC --make -osuf o_smten -hisuf hi_smten -c \
             -main-is Smten.Tests.Yices2.main \
             -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices2.hs
 
@@ -114,6 +111,23 @@ proc smten-lib {} {
 
         hrun cabal configure --enable-tests --enable-benchmarks \
             --with-compiler=$::GHC
+        hrun cabal build
+        hrun cabal test
+        hrun cabal sdist
+        hrun cabal install --with-compiler=$::GHC
+    }
+}
+
+proc smten-yices1 {} {
+    # The smten-yices1 package
+    hrun cp -r -f -l smten-yices1 build/
+    substcabal smten-yices1
+    indir build/smten-yices1 {
+        hrun $::GHC --make -c -osuf o_smten -hisuf hi_smten \
+            -main-is Smten.Tests.Yices1.main \
+            -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices1.hs
+
+        hrun cabal configure --enable-tests --enable-benchmarks --with-compiler=$::GHC
         hrun cabal build
         hrun cabal test
         hrun cabal sdist
@@ -163,4 +177,5 @@ smten-lib
 
 smten-stp
 smten-minisat
+smten-yices1
 

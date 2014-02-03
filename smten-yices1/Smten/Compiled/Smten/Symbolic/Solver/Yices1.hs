@@ -178,10 +178,6 @@ instance SolverAST Yices1 YExpr where
 
 yices1 :: Solver
 yices1 = solverFromAST $ do
-  r <- c_yices_load
-  case r of
-    0 -> return ()
-    _ -> error "yices1 backend: unable to load libyices.so"
   ptr <- c_yices_mk_context
   vars <- H.new
   return $ Yices1 ptr vars

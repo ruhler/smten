@@ -1,0 +1,167 @@
+Sun Feb  2 11:16:54 EST 2014
+
+Yices1 Bug.
+
+There is a bug with yices1 bit vectors which shows up in all the applications.
+
+This is to try and understand what the cause of the bug is.
+
+rsrch/y1bug/bar2.hs:
+  * We create a formula which is the conjunction of a bunch of equalities
+    of free bit vector variables
+  * Breaks with:
+     n = 122: seg fault in sMYW_info
+     n = 160: seg fault in sN1E_info
+     n = 229: unknown var f~14
+     n = 230: unknown var f~16
+     n = 231: unknown var f~18
+     n = 242: seg fault in sN1E_info
+     n = 243: internal error: invalid closure, info=(nil)
+     and so on
+  * Bit vector size = 8
+
+Last time I looked at this, I found that calling yices1_get_bitvector_value
+seems to be what makes this problem appear or go away.
+
+If I change yices1_get_bitvector_value to fill in bit 0 for everything and
+return 1, we don't get a seg fault.
+
+Hypothesis: yices1_get_bitvector_value must be writing memory out of bounds.
+
+This then causes heap corruption of some sort?
+
+Let's first check: what values is yicse1 returning for the bit vectors?
+
+Exactly the same thing I was returning: all zeroes.
+
+Brainstorm of other ideas:
+* Something wrong with dynamically linking yices1?
+* ghc gc thinks something in yices1 is a pointer it should follow?
+
+How can I test my first hypothesis?
+Hypothesis: yices_get_bitvector_value is writting somewhere out of bounds.
+
+When?
+
+Here's a question: can I look at the assembly code for
+yices_get_bitvector_value? Do an objdump and see what it's doing?
+
+It's difficult to read assembly is the problem.
+
+Can I have gdb tell me every location being written to?
+Can I replicate the behavior outside of haskell?
+
+I would say that should be relatively easy, but I fear it will be 
+difficult to trigger the seg fault, because memory isn't so important 
+as it is in ghc.
+
+Here's a question. Do I need to get values for each different bit vector, or
+is it enough to just keep getting the value for the same bit vector over
+and over again?
+
+Or: what if I cached the model, rather than creating a new model every time?
+
+How about this:
+1. try to replicate the test case as a c program.
+   maybe I'll get lucky, something will crash, and I can send it to bruno.
+2. run valgrind on the c program, see if it sees anything.
+
+(1): we don't get a seg fault. Hopefully valgrind can tell us something.
+(2): we don't get anything.
+
+Next 2 things to try:
+A. Simplify bar2 so it uses the yices1 FFI interface instead of solve.
+Maybe this will reveal something.
+
+B. Pull yices1 out of smten-lib, and switch to a static library.
+I bet this at least makes the problem go away.
+
+A. I've simplified the test case. The only thing it uses is
+Smten.Runtime.Yices1.FFI now. It still exhibits the crash. I've even managed
+to separate the entire thing from smten now. That's good progress.
+
+What next?
+
+Try to make it simpler. Try to remove anything slightly suspicious.
+Try to move as much as possible into the c code...
+
+Try to use the static yices1 library...
+
+* If I use the formula 'true', there is no problem.
+
+Aha! Got it. It's a problem with 'withCString'?
+
+Or something related to that. If I implement the conversion to a c string
+in c code, there is no problem.
+
+Why could that be?
+* a bug in withCString?
+* yices1 assumes the name sticks around?
+
+Let me try... dynamically allocate and release the cstring in the c code.
+
+No issue.
+
+Let me try... creating a new CString, not freeing it until the end?
+
+That still seg faults.
+
+Let me try newCAstring.
+
+Still crashes.
+
+If I use newArray0, still crashes.
+
+What if I allocate an array which is really big?
+
+Still seg faults.
+
+What if I allocate a single array which I reuse for everything?
+
+Still seg faults.
+
+Well... I don't know what to do. I don't seem to be able to convert
+a haskell string to a (const char*) in a safe way.
+
+Options:
+ * Pass an int instead of a const char*.
+   Because we know the form the strings will take anyway.
+ * Pass an int, and keep a map in the yices1 context?
+   And hope an 'int' is big enough?
+ * Don't pass anything, have the c code figure out the next new name based on
+   a counter and keep a map to it?
+
+Because really, the name doesn't matter at all. The only thing that matters is
+coming up with a unique string.
+
+Ah. Now that, to me, sounds like a plan.
+
+Have a global fresh id counter in y1.c. Have decl not take a name, but just
+return a fresh declaration. We already keep a map.
+
+Let me get this working in the minimized test case first.
+
+It doesn't work.
+
+And, actually, it doesn't work even if I pass the name using an int. It just
+takes longer to run into a seg fault. Which means, I haven't actually found
+the problem.
+
+Let me try leaking memory, see if that helps.
+
+Nope. It doesn't.
+
+But not calling get_bitvector_value really does seem to help...
+
+Perhaps I should give up on this line of work, and try instead: statically
+linking the library.
+
+Answer: statically linking the library fixes the issue. Let me just go that
+route.
+
+* shampi works
+* nqueens appears to work
+* sudoku appears to work
+* arch-extract still seg faults
+
+

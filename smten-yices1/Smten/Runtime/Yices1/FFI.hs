@@ -35,124 +35,121 @@ yFalse = -1
 yTrue  = 1
 yUndef = 0
 
-foreign import ccall "y1_load"
-    c_yices_load  :: IO CInt
-
-foreign import ccall "y1_mk_context"
+foreign import ccall "yices_mk_context"
     c_yices_mk_context  :: IO YContext
 
-foreign import ccall "y1_del_context"
+foreign import ccall "yices_del_context"
     c_yices_del_context :: YContext -> IO ()
 
-foreign import ccall "y1_parse_command"
+foreign import ccall "yices_parse_command"
     c_yices_parse_command :: YContext -> CString -> IO Bool
 
-foreign import ccall "y1_check"
+foreign import ccall "yices_check"
     c_yices_check :: YContext -> IO YBool
 
-foreign import ccall "y1_assert"
+foreign import ccall "yices_assert"
     c_yices_assert :: YContext -> YExpr -> IO ()
 
-foreign import ccall "y1_get_model"
+foreign import ccall "yices_get_model"
     c_yices_get_model :: YContext -> IO YModel
 
-foreign import ccall "y1_get_last_error_message"
+foreign import ccall "yices_get_last_error_message"
     c_yices_get_last_error_message :: IO CString
 
-foreign import ccall "y1_get_value"
+foreign import ccall "yices_get_value"
     c_yices_get_value :: YModel -> YDecl -> IO YBool
 
-foreign import ccall "y1_get_int_value"
+foreign import ccall "yices_get_int_value"
     c_yices_get_int_value :: YModel -> YDecl -> Ptr CLong -> IO CInt
 
-foreign import ccall "y1_get_bitvector_value"
+foreign import ccall "yices_get_bitvector_value"
     c_yices_get_bitvector_value :: YModel -> YDecl -> CUInt -> Ptr CInt -> IO CInt
 
-foreign import ccall "y1_get_var_decl_from_name"
+foreign import ccall "yices_get_var_decl_from_name"
     c_yices_get_var_decl_from_name :: YContext -> CString -> IO YDecl
 
-foreign import ccall "y1_mk_type"
+foreign import ccall "yices_mk_type"
     c_yices_mk_type :: YContext -> CString -> IO YType
 
-foreign import ccall "y1_mk_bitvector_type"
+foreign import ccall "yices_mk_bitvector_type"
     c_yices_mk_bitvector_type :: YContext -> CUInt -> IO YType
 
-foreign import ccall "y1_mk_var_decl"
+foreign import ccall "yices_mk_var_decl"
     c_yices_mk_var_decl :: YContext -> CString -> YType -> IO YDecl
 
-foreign import ccall "y1_mk_var_from_decl"
+foreign import ccall "yices_mk_var_from_decl"
     c_yices_mk_var_from_decl :: YContext -> YDecl -> IO YExpr
 
-foreign import ccall "y1_mk_true"
+foreign import ccall "yices_mk_true"
     c_yices_mk_true :: YContext -> IO YExpr
 
-foreign import ccall "y1_mk_false"
+foreign import ccall "yices_mk_false"
     c_yices_mk_false :: YContext -> IO YExpr
 
-foreign import ccall "y1_mk_not"
+foreign import ccall "yices_mk_not"
     c_yices_mk_not :: YContext -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_bv_not"
+foreign import ccall "yices_mk_bv_not"
     c_yices_mk_bv_not :: YContext -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_and"
+foreign import ccall "yices_mk_and"
     c_yices_mk_and :: YContext -> Ptr YExpr -> CUInt -> IO YExpr
 
-foreign import ccall "y1_mk_sum"
+foreign import ccall "yices_mk_sum"
     c_yices_mk_sum :: YContext -> Ptr YExpr -> CUInt -> IO YExpr
 
-foreign import ccall "y1_mk_sub"
+foreign import ccall "yices_mk_sub"
     c_yices_mk_sub :: YContext -> Ptr YExpr -> CUInt -> IO YExpr
 
-foreign import ccall "y1_mk_ite"
+foreign import ccall "yices_mk_ite"
     c_yices_mk_ite :: YContext -> YExpr -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_eq"
+foreign import ccall "yices_mk_eq"
     c_yices_mk_eq :: YContext -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_le"
+foreign import ccall "yices_mk_le"
     c_yices_mk_le :: YContext -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_bv_add"
+foreign import ccall "yices_mk_bv_add"
     c_yices_mk_bv_add :: YContext -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_bv_sub"
+foreign import ccall "yices_mk_bv_sub"
     c_yices_mk_bv_sub :: YContext -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_bv_mul"
+foreign import ccall "yices_mk_bv_mul"
     c_yices_mk_bv_mul :: YContext -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_bv_and"
+foreign import ccall "yices_mk_bv_and"
     c_yices_mk_bv_and :: YContext -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_bv_or"
+foreign import ccall "yices_mk_bv_or"
     c_yices_mk_bv_or :: YContext -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_bv_concat"
+foreign import ccall "yices_mk_bv_concat"
     c_yices_mk_bv_concat :: YContext -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_bv_sign_extend"
+foreign import ccall "yices_mk_bv_sign_extend"
     c_yices_mk_bv_sign_extend :: YContext -> YExpr -> CUInt -> IO YExpr
 
-foreign import ccall "y1_mk_bv_extract"
+foreign import ccall "yices_mk_bv_extract"
     c_yices_mk_bv_extract :: YContext -> CUInt -> CUInt -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_bv_le"
+foreign import ccall "yices_mk_bv_le"
     c_yices_mk_bv_le :: YContext -> YExpr -> YExpr -> IO YExpr
 
-foreign import ccall "y1_mk_num"
+foreign import ccall "yices_mk_num"
     c_yices_mk_num :: YContext -> CInt -> IO YExpr
 
-foreign import ccall "y1_mk_bv_constant"
+foreign import ccall "yices_mk_bv_constant"
     c_yices_mk_bv_constant :: YContext -> CUInt -> CULong -> IO YExpr
 
-foreign import ccall "y1_mk_bv_constant_from_array"
+foreign import ccall "yices_mk_bv_constant_from_array"
     c_yices_mk_bv_constant_from_array :: YContext -> CUInt -> Ptr CInt -> IO YExpr
 
-foreign import ccall "y1_mk_bv_shift_left0"
+foreign import ccall "yices_mk_bv_shift_left0"
     c_yices_mk_bv_shift_left0 :: YContext -> YExpr -> CUInt -> IO YExpr
 
-foreign import ccall "y1_mk_bv_shift_right0"
+foreign import ccall "yices_mk_bv_shift_right0"
     c_yices_mk_bv_shift_right0 :: YContext -> YExpr -> CUInt -> IO YExpr
 
 toResult :: YBool -> Result
