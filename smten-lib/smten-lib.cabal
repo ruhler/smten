@@ -25,6 +25,7 @@ library
   exposed-modules:
     Smten.Runtime.Bits
     Smten.Runtime.Integers
+    Smten.Runtime.Model
     Smten.Runtime.Solver
     Smten.Runtime.SolverAST
     Smten.Runtime.Result

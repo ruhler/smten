@@ -71,7 +71,6 @@ library
     Smten.Runtime.Formula.Finite
     Smten.Runtime.Formula.Type
     Smten.Runtime.FreeID
-    Smten.Runtime.Model
     Smten.Runtime.Select
     Smten.Runtime.SmtenHS
     Smten.Runtime.StableNameEq
