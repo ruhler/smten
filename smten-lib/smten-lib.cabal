@@ -130,6 +130,7 @@ library
     Smten.Runtime.AnyKeyMap
     Smten.Runtime.Assert
     Smten.Runtime.Debug
+    Smten.Runtime.HashTable
     Smten.Runtime.Yices2.FFI
     Smten.Runtime.Z3.FFI
     Smten.Smten.TypeLitsTH
@@ -141,6 +142,7 @@ library
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                  pretty ==1.1.*, array ==0.4.*, ghc-prim ==0.3.*,
                  template-haskell ==2.8.*, containers ==0.5.*,
+                 hashable ==1.2.*,
                  smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
@@ -153,6 +155,7 @@ Test-Suite tests
     build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                    pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
                    template-haskell ==2.8.*, containers ==0.5.*,
+                   hashable ==1.2.*,
                    smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
     ghc-options: -rtsopts
     extra-libraries: dl
@@ -164,6 +167,7 @@ test-suite y2tests
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                  pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
                  template-haskell ==2.8.*, containers ==0.5.*,
+                 hashable ==1.2.*,
                  smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   extra-libraries: dl
   c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c
@@ -174,6 +178,7 @@ test-suite z3tests
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                  pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
                  template-haskell ==2.8.*, containers ==0.5.*,
+                 hashable ==1.2.*,
                  smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   extra-libraries: dl
   c-sources: Smten/Runtime/Yices2/y2.c, Smten/Runtime/Z3/z3.c

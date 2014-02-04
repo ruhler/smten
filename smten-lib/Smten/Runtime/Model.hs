@@ -6,24 +6,28 @@ module Smten.Runtime.Model (
 
 import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
+import qualified Smten.Runtime.HashTable as HT
 
 data Any = BoolA Bool | IntegerA Integer | BitA Bit
 
-newtype Model = Model {
-    m_vars :: [(FreeID, Any)]
+-- TODO: Why not get rid of m_vars, make Model a newtype, and instead
+-- reconstruct m_vars from the hash table?
+data Model = Model {
+    m_vars :: [(FreeID, Any)],
+    m_hashed :: HT.HashTable FreeID Any
 }
 
 instance Show Model where
     show = show . map fst . m_vars
 
 model :: [(FreeID, Any)] -> IO Model
-model vars = return (Model vars)
+model vars = return (Model vars (HT.table vars))
 
 -- | Look up the boolean value for the given free variable in the model.
 -- The given variable is assumed to have boolean type.
 lookupBool :: Model -> FreeID -> Bool
 lookupBool m nm =
-  case lookup nm (m_vars m) of
+  case HT.lookup nm (m_hashed m) of
     Just (BoolA x) -> x
     Just _ -> error "lookupBool: type mismatch"
     Nothing -> False    -- any value will do for the default.
@@ -32,7 +36,7 @@ lookupBool m nm =
 -- The given variable is assumed to have integer type.
 lookupInteger :: Model -> FreeID -> Integer
 lookupInteger m nm =
-  case lookup nm (m_vars m) of
+  case HT.lookup nm (m_hashed m) of
     Just (IntegerA x) -> x
     Just _ -> error "lookupInteger: type mismatch"
     Nothing -> 0        -- any value will do for the default.
@@ -41,7 +45,7 @@ lookupInteger m nm =
 -- The given variable is assumed to have bit type for the given width.
 lookupBit :: Model -> Integer -> FreeID -> Bit
 lookupBit m w nm =
-  case lookup nm (m_vars m) of
+  case HT.lookup nm (m_hashed m) of
     Just (BitA x) -> x
     Just _ -> error "lookupBit: type mismatch"
     Nothing -> bv_make w 0 -- any value will do for the default
