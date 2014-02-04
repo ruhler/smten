@@ -1,11 +1,3 @@
-Main::
-* Applications
-** Hardware model checking
-* Use GHC Base
-** Add support for FFI
-    - unboxed tuples
-* Document current performance bottlenecks
-
 Release to Public::
 * write up tutorials (github #3)
     T5-BitVectors
@@ -39,7 +31,9 @@ Smten Executable::
 * Add a flag for generating a cabal package?
 
 Performance::
-* Document current bottlenecks.
+* Replace association list with a hash table for the model
+  Because linear lookup when the number of vars increases is bad.
+  We see this bottleneck on nqueens with the Bool representation.
 * Concrete Performance
    ** Special case pattern matching on concrete objects with a tag?
         Except, this doesn't improve symbolic performance any, which is sad.
