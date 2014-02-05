@@ -1,0 +1,167 @@
+
+Wed Feb  5 09:14:35 EST 2014
+
+Performance blowup:
+
+main :: IO ()
+main = do
+ r <- run_symbolic yices2 $ do
+       p <- free_Bool
+       let a = (if p then 1 else 0) :: Int
+           m4 = case a of
+                   0 -> Tip
+                   1 -> Tip
+                   _ -> error "_|_"
+           m3 = insert "v" False m4
+           m2 = insert "w" False m3 
+           m1 = insert "x" False m2
+           m0 = insert "y" False m1
+           x = lookup "z" m0
+       assert (x == Just False)
+ putStrLn (show r)
+
+Observations:
+ * It's the error "_|_" which makes m4 not equal to Tip,
+    but shouldn't that be unreachable?
+ * Changing the type of a to an Enum causes the blowup to go away
+ * Using Integer for a still blows up
+
+Focusing on a as Int.
+
+First question:
+
+Why is m4 not concrete 'Tip'?
+
+I expect something like:
+ a = Ite_Int p 0 1
+ m4 = ite (a == 0)
+        then Tip
+        else ite (a == 1)
+               then Tip
+               else _|_
+    = ite (ite p true false)
+        then Tip
+        else ite (ite p false true)
+                then Tip
+                else _|_
+    = ite p
+        then Tip
+        else ite (!p)
+            then Tip
+            else _|_
+
+Ah. So now you see.
+We don't realize that (p & !p) is always true.
+
+This should give me enough to write another Opt test.
+
+Questions:
+ A. Is there a natural way we can recognize the error is unreachable?
+ B. Why doesn't our handling of partial formulas take care of the problem?
+    That is, what's wrong with not recognizing the error is unreachable?
+    Should it work just fine anyway? 
+
+A.
+We could handle case expressions for Int differently from how they are handled
+now. Instead of an ite chain which asks: is this equal to 0, is this equal to
+1, and so on, we could do a sym-app like thing:
+
+ m4 = case a of
+        0 -> Tip
+        1 -> Tip
+        _ -> _|_
+    = symapp (\x -> case x of
+                        0 -> Tip
+                        1 -> Tip
+                        _ -> _|_) a
+    = ite p Tip Tip
+    = Tip
+
+Just like we want!
+
+We could also do a similar thing for Char and Integer. Basically for any
+numeric case expressions.
+
+For integer, things would be more interesting because of variables, where you
+may need to revert to ite chains like we had before.
+
+The difference is, on the one hand we can ask:
+  * What are all the cases we need to consider?
+    This gives an ite chain like we have.
+On the other hand, we can ask:
+  * What are all the values we need to apply this operation on?
+    This gives the symapp approach.
+
+I have a suspicion using the symapp approach could make a huge difference in
+the performance for Int. The problem with the ite chain is it leads to a lot
+of duplication and loss of knowledge. For example, in this test case,
+knowledge lost that we know a is not 0 when we are checking if it is 1.
+
+B.
+
+ m4 = ite p Tip (ite (!p) Tip _|_)
+    = ite p Tip (ite (!p) ( Map { gdTip = True,
+                                  gdBin = False,
+                                  flBin* = unreachable } _|_)
+    = ite p Tip (Map {
+                   gdTip = ite !p True _|_
+                   gdBin = ite !p False _|_
+                   flBin* = _|_
+                 }
+    = ite p (Map {              (Map {
+                gdTip = True       gdTip = ite !p True _|_
+                gdBin = False      gdBin = ite !p False _|_
+                flBin* = _|_})     flBin* = _|_ })
+    = Map {
+        gdTip = ite p True (ite !p True _|_)
+        gdBin = ite p False (ite !p False _|_)
+        flBin* = _|_ }
+
+m3 = insert "v" False (Map {
+                            gdTip = ite p True (ite !p True _|_)
+                            gdBin = ite p False (ite !p False _|_)
+                            flBin* = _|_ })
+   = ite (ite p True (ite !p True _|_))
+        (Bin 1 "v" False Tip Tip)
+        _|_
+
+Well, anyway, you can see the false _|_ leads to many false paths.
+Worst case, maybe it gets stuck in an infinite loop because eventually
+we have a recursive call we make on the symbolic thing which should
+have been concrete.
+
+Some ideas:
+ * We know we don't want to hit _|_ if we can avoid it. Can we get
+   anywhere if we treat _|_ as unreachable?
+
+ SAT: if it's not really unreachable, we will run into it. (we won't avoid
+      it though)
+ UNSAT: no way to know if it's really unsat.
+
+Ah, note, this is misleading. The problem isn't with _|_, it's with having an
+unreachable value. We could change _|_ to (singleton "foo" False) in the test
+case, and it still blows up, because it looks symbolic where it wasn't.
+
+No. There are two approaches to solving this problem which make sense:
+
+1. Avoid the unreachable object in the first place.
+By (A).
+
+2. Have a good solution for avoiding blowup of recursive functions with
+symbolic arguments. Ideally one which avoids doing work on the unreachable
+branch, but perhaps more general.
+
+
+I think (1) will always help improve performance, and ought to be done for
+best performance.
+
+I think (2) is actually a more general solution, because it helps the case
+where you have reachable symbolic things that lead to infinite recursion.
+Of course, I don't have (2). I have to figure something out.
+
+Wed Feb  5 13:01:12 EST 2014
+
+Problem! We already support a sane way of handling case for Int and Char (if
+not exactly symapp). What's broken is GHC is turning it into ite chains before
+we see the case. This is because we have RebindableSyntax on. Hmm...
+

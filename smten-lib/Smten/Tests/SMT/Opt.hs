@@ -53,6 +53,14 @@ smttests = do
       x <- mplus (return 0) (return (1 :: Integer))
       assert (isTrueConcrete (x <= 5))
 
+   symtesteq "SMT.Opt.UnreachableError" (Just ()) $ do
+      x <- mplus (return 0) (return 1) :: Symbolic Int
+      let p = case x of
+                0 -> True
+                1 -> True
+                _ -> error "_|_"
+      assert (isTrueConcrete p)
+
    -- TODO: should we expect this to be fast?
    symtesteq "SMT.Opt.IntShare" (Just ()) $ do
       let n = 64
@@ -65,5 +73,9 @@ smttests = do
 
    
 tests :: IO ()
-tests = runtest (SMTTestCfg smten ["SMT.Opt.InfiniteFormula", "SMT.Opt.PlusBottomBool"] []) smttests
+tests = runtest (SMTTestCfg smten [
+            "SMT.Opt.InfiniteFormula",
+            "SMT.Opt.PlusBottomBool",
+            "SMT.Opt.UnreachableError"
+            ] []) smttests
 

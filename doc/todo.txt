@@ -31,9 +31,6 @@ Smten Executable::
 * Add a flag for generating a cabal package?
 
 Performance::
-* Replace association list with a hash table for the model
-  Because linear lookup when the number of vars increases is bad.
-  We see this bottleneck on nqueens with the Bool representation.
 * Concrete Performance
    ** Special case pattern matching on concrete objects with a tag?
         Except, this doesn't improve symbolic performance any, which is sad.
