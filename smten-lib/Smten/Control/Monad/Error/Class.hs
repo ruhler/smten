@@ -4,7 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Control.Monad.Error.Class (
     Error(..), MonadError(..),
     )  where

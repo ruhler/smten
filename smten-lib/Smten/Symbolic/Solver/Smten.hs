@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Symbolic.Solver.Smten (smten) where
 
 import Smten.Plugin.Annotations

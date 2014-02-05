@@ -1,7 +1,7 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Control.Monad.Error (
     module Smten.Control.Monad.Error.Class,
     module Smten.Control.Monad,

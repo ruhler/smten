@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Debug.Trace (trace, traceShow) where
 
 import Smten.Prelude

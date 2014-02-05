@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Control.Monad.Trans (
     MonadTrans(..),
     MonadIO(..),

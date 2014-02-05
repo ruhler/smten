@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | This module provides the z3 solver for smten.
 module Smten.Symbolic.Solver.Z3 (z3) where
 
