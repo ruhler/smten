@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | This module provides the Symbolic monad, for orchestration of symbolic
 -- computations.

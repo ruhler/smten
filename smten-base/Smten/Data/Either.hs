@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -O #-}
 module Smten.Data.Either (
     Either(..), either,

@@ -1,6 +1,6 @@
 
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Tests.Z3 (main) where
 
 import Smten.Prelude

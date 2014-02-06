@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | The implementation of this module is based on 
 -- the source for Control.Monad.State.Strict from mtl-1.1.1.1
 module Smten.Control.Monad.State.Strict (

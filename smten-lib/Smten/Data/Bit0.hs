@@ -2,7 +2,7 @@
 {-# LANGUAGE DataKinds, KindSignatures #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Bit0 (
     Bit, 
     bv_eq, bv_leq,

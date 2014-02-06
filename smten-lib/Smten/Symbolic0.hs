@@ -1,6 +1,6 @@
 
 {-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Symbolic0 (
     Symbolic, Solver, run_symbolic,
     return_symbolic, bind_symbolic, 

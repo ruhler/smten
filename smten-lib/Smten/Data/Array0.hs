@@ -1,11 +1,9 @@
 
 {-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Data.Array0 (
     PrimArray, primArray, primSelect,
     ) where
 
-import Prelude
 import Data.Array
 
 import Smten.Plugin.Annotations

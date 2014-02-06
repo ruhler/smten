@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | A monad for repeated SMT queries.
 module Smten.Symbolic.SMT (SMT, query, runSMT) where
