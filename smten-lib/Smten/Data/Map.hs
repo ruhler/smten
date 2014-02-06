@@ -2,7 +2,7 @@
 -- Implementation of binary balanced tree based on Data.Map source from
 -- containers-3.0.0.0.
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Map (
     Map,
     lookup, insert,

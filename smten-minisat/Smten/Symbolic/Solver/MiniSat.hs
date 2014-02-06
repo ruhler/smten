@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | This module provides a MiniSat backend for smten.
 module Smten.Symbolic.Solver.MiniSat (minisat) where

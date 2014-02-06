@@ -102,7 +102,7 @@ main = do
     Make -> do
       let s1 = ["--make", "-osuf", "smten_o",
                 "-fplugin=Smten.Plugin.Plugin",
-                "-XRebindableSyntax", "-XNoImplicitPrelude",
+                "-XNoImplicitPrelude",
                 "-O0", "-c"] ++ o_s1args opts
       putStrLn "Stage 1: Compiling using ghc with smten plugin"
       putStrLn $ "ghc " ++ show s1

@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | This module provides the yices1 solver for smten.
 module Smten.Symbolic.Solver.Yices1 (yices1) where
 

@@ -1,5 +1,5 @@
 
-{-# LANGUAGE RebindableSyntax, NoImplicitPrelude #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving #-}

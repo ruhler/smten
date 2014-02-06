@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | This module provides the STP backend for smten.
 module Smten.Symbolic.Solver.STP (stp) where
 

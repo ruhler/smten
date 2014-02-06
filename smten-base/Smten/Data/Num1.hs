@@ -1,4 +1,5 @@
 
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RebindableSyntax #-}
 module Smten.Data.Num1 (
     Num(..)

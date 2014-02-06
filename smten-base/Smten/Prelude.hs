@@ -38,7 +38,7 @@ module Smten.Prelude (
     -- PreludeIO
     FilePath, putChar, putStr, putStrLn, getContents,
 
-    ifThenElse, primitive,
+    primitive,
     ) where
 
 import Smten.Control.Monad

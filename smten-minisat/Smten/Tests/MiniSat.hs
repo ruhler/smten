@@ -1,6 +1,6 @@
 
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Tests.MiniSat (main) where
 
 import Smten.Prelude

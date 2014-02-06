@@ -1,6 +1,6 @@
 
 {-# LANGUAGE UnboxedTuples #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Tests.Prim (tests, f) where
 
 import Smten.Prelude

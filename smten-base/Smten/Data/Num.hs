@@ -1,5 +1,4 @@
 
-{-# LANGUAGE RebindableSyntax #-}
 module Smten.Data.Num (
     Num(..)
      ) where

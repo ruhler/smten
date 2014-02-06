@@ -1,5 +1,5 @@
 
-{-# LANGUAGE RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE PatternGuards #-}
 module Smten.Data.List (
     map, (++), filter, concat, concatMap,

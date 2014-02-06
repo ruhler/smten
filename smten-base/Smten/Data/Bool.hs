@@ -4,7 +4,6 @@
 
 module Smten.Data.Bool (
     Bool(..), (&&), (||), not, otherwise,
-    ifThenElse,
   ) where
 
 import Smten.Data.Bool0
@@ -26,10 +25,4 @@ not False = True
 
 otherwise :: Bool
 otherwise = True
-
-ifThenElse :: Bool -> a -> a -> a
-ifThenElse p x y = 
-    case p of
-      True -> x 
-      False -> y
 

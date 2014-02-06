@@ -1,6 +1,6 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Array (
     Array, array, listArray, (!), bounds, indices, elems, assocs, (//),
     module Smten.Data.Ix

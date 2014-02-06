@@ -1,9 +1,8 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.EnumInt () where
 
 import Smten.Smten.Base
-import Smten.Data.Bool
 import Smten.Data.Enum
 import Smten.Data.Function
 import Smten.Data.Ord

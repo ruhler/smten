@@ -1,6 +1,6 @@
 
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Tests.Array (tests) where
 
 import Smten.Prelude

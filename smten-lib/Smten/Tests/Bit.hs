@@ -1,6 +1,6 @@
 
 {-# LANGUAGE DataKinds, TypeOperators #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Tests.Bit (tests, FunnyKind(..), my_bv_concat) where
 
 import Smten.Prelude

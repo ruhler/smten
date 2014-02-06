@@ -40,9 +40,6 @@ Smten Executable::
 * Add a flag for generating a cabal package?
 
 Performance::
-* Remove "RebindableSyntax"
-  It will improve if, and case for primitives, potentially substantially.
-  - Remove RebindableSyntax where-ever possible from Base and Lib
 * Concrete Performance
    ** Special case pattern matching on concrete objects with a tag?
         Except, this doesn't improve symbolic performance any, which is sad.

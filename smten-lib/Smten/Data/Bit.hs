@@ -2,7 +2,7 @@
 {-# LANGUAGE DataKinds, KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Bit (
     Bit,
     bv_and, bv_or, bv_xor, bv_shl, bv_lshr, bv_not, bv_concat,

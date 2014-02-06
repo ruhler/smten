@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Tests.SMT.Opt (tests) where
 
 import Smten.Prelude
@@ -75,7 +75,6 @@ smttests = do
 tests :: IO ()
 tests = runtest (SMTTestCfg smten [
             "SMT.Opt.InfiniteFormula",
-            "SMT.Opt.PlusBottomBool",
-            "SMT.Opt.UnreachableError"
+            "SMT.Opt.PlusBottomBool"
             ] []) smttests
 
