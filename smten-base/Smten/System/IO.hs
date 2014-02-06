@@ -20,10 +20,6 @@ instance Functor IO where
        v <- x
        return (f v)
 
-instance Monad IO where
-    return = return_io
-    (>>=) = bind_io
-    
 putStr :: String -> IO ()
 putStr s = mapM_ putChar s
 

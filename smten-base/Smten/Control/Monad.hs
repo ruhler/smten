@@ -9,21 +9,20 @@ module Smten.Control.Monad (
     ap,
     ) where
 
-import Smten.Smten.Base
+-- We use the prelude's definition of monad so that we can use Haskell's
+-- natural do notation.
+--
+-- Smten.Control.Monad0 provides a local definition which we can compile
+-- to Smten code and use. It's imported here to ensure it is compiled to
+-- Smten code.
+import Prelude (Monad(..))
+import Smten.Control.Monad0 ()
+
 import Smten.Data.Bool
 import Smten.Data.Function
 import Smten.Data.List0
 
 infixr 1 =<<, <=<, >=>
-infixl 1 >>, >>=
-
-class Monad m where
-    return :: a -> m a
-    (>>=) :: m a -> (a -> m b) -> m b
-    (>>) :: m a -> m b -> m b
-    (>>) x y = x >>= \_ -> y
-    fail :: String -> m a
-    fail s = error s
 
 sequence :: Monad m => [m a] -> m [a]
 sequence = foldr mcons (return [])

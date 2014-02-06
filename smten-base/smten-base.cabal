@@ -22,6 +22,7 @@ source-repository this
 library
   exposed-modules:
     Smten.Prelude
+    Smten.Control.Monad0
     Smten.Control.Monad
     Smten.Data.Bool
     Smten.Data.Bool0
@@ -77,6 +78,7 @@ library
     Smten.Runtime.SymbolicOf
 
     Smten.Compiled.Smten.Prelude
+    Smten.Compiled.Smten.Control.Monad0
     Smten.Compiled.Smten.Control.Monad
     Smten.Compiled.Smten.Data.Bool
     Smten.Compiled.Smten.Data.Bool0
