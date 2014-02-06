@@ -9,13 +9,7 @@ import Smten.Symbolic.Solver.Smten
 import Smten.Tests.SMT.Test
 
 data MyEnum = E1 | E2 | E3 | E4
-
-instance Eq MyEnum where
-    (==) E1 E1 = True
-    (==) E2 E2 = True
-    (==) E3 E3 = True
-    (==) E4 E4 = True
-    (==) _ _ = False
+    deriving (Eq)
 
 free_MyEnum :: Symbolic MyEnum
 free_MyEnum = msum (map return [E1, E2, E3, E4])
@@ -27,9 +21,7 @@ rotateenum E3 = E4
 rotateenum _ = E3
 
 data MyStruct = MyStruct MyEnum Bool
-
-instance Eq MyStruct where
-    (==) (MyStruct a b) (MyStruct c d) = (a == c) && (b == d)
+    deriving (Eq)
 
 free_MyStruct :: Symbolic MyStruct
 free_MyStruct = do
@@ -43,11 +35,7 @@ changestruct (MyStruct e _) = MyStruct e True
 
 data MyMix = Mix1 Bool Bool
            | Mix2 Bool
-
-instance Eq MyMix where
-    (==) (Mix1 a b) (Mix1 c d) = (a == c) && (b == d)
-    (==) (Mix2 a) (Mix2 b) = (a == b)
-    (==) _ _ = False
+    deriving (Eq)
 
 free_MyMix :: Symbolic MyMix
 free_MyMix = 

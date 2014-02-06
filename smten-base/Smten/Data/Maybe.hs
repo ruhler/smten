@@ -18,11 +18,7 @@ import Smten.Derive.Show
 import Smten.Smten.Base
 
 data Maybe a = Nothing | Just a
-
-instance (Eq a) => Eq (Maybe a) where
-    (==) Nothing Nothing = True
-    (==) (Just a) (Just b) = a == b
-    (==) _ _ = False
+    deriving (Eq)
 
 showsPrecMaybe :: (Show a) => Int -> Maybe a -> ShowS
 showsPrecMaybe = $(derive_showsPrec ''Maybe)

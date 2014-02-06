@@ -270,22 +270,22 @@ tests = do
     testtypesyn
     testwhereclause
     testclassctx
-    --testsaderiving
+    testsaderiving
     testirrefutable
     testletrec
 
     putStrLn "Basic PASSED"
 
---data FunnyDeriveEQ a = FunnyDeriveEQ (a, a)
---    deriving (Eq)
---
---data SDerivedEq a = SDEq1 a | SDEq2 a a
---deriving instance (Eq a) => Eq (SDerivedEq a)
+data FunnyDeriveEQ a = FunnyDeriveEQ (a, a)
+    deriving (Eq)
 
---testsaderiving :: IO ()
---testsaderiving = do
---    test "saderive1" (SDEq2 (5 :: Integer) 9 == SDEq2 5 9)
---    test "saderive2" (SDEq1 (5 :: Integer) /= SDEq2 5 9)
+data SDerivedEq a = SDEq1 a | SDEq2 a a
+deriving instance (Eq a) => Eq (SDerivedEq a)
+
+testsaderiving :: IO ()
+testsaderiving = do
+    test "saderive1" (SDEq2 (5 :: Integer) 9 == SDEq2 5 9)
+    test "saderive2" (SDEq1 (5 :: Integer) /= SDEq2 5 9)
 
 testclassctx :: IO ()
 testclassctx = do

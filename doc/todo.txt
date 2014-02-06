@@ -36,7 +36,6 @@ Performance::
 * Remove "RebindableSyntax"
   It will improve if, and case for primitives, potentially substantially.
   - Remove RebindableSyntax where-ever possible from Base and Lib
-  - Change Eq class to use Prelude's (and we get deriving?)
   - Change Show class to use Prelude's
   - Change Num class to use Prelude's
 * Concrete Performance
@@ -70,8 +69,8 @@ Performance::
 
 
 Front End::
-* Auto-derive Show, Eq, Ord, Ix
-  maybe look into possibility of using Eq, Ord, etc... from ghc for this
+* Auto-derive Show, Ord, Ix
+  Use the same approach as we did for Eq.
 
 Documentation
 * Generated code should have a comment saying it was automatically generated.

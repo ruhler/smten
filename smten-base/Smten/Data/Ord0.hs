@@ -42,12 +42,7 @@ class (Eq a) => Ord a where
       | otherwise = y
 
 data Ordering = LT | EQ | GT
-
-instance Eq Ordering where
-    (==) LT LT = True
-    (==) EQ EQ = True
-    (==) GT GT = True
-    (==) _ _ = False
+    deriving (Eq)
 
 comparing :: (Ord a) => (b -> a) -> b -> b -> Ordering
 comparing p x y = compare (p x) (p y)
