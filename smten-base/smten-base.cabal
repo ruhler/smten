@@ -36,6 +36,8 @@ library
     Smten.Data.EnumInt
     Smten.Data.Eq
     Smten.Data.Eq0
+    Smten.Data.Eq1
+    Smten.Data.EqInteger
     Smten.Data.Integral
     Smten.Data.Integral0
     Smten.Data.List
@@ -92,6 +94,8 @@ library
     Smten.Compiled.Smten.Data.EnumInt
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.Eq0
+    Smten.Compiled.Smten.Data.Eq1
+    Smten.Compiled.Smten.Data.EqInteger
     Smten.Compiled.Smten.Data.Integral
     Smten.Compiled.Smten.Data.Integral0
     Smten.Compiled.Smten.Data.List
@@ -118,6 +122,7 @@ library
 
     Smten.Compiled.Control.Exception.Base
     Smten.Compiled.GHC.Base
+    Smten.Compiled.GHC.Classes
     Smten.Compiled.GHC.CString
     Smten.Compiled.GHC.Enum
     Smten.Compiled.GHC.Integer.Type

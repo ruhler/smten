@@ -21,6 +21,12 @@ import qualified Smten.Plugin.Output.Syntax as S
 nameis :: String -> Name -> Bool
 nameis str nm = str == (occNameString $ nameOccName nm)
 
+qnameis :: String -> String -> Name -> Bool
+qnameis mod str nm = and [
+    str == (occNameString $ nameOccName nm),
+    Just mod == (moduleNameString . moduleName <$> nameModule_maybe nm)
+    ]
+
 -- dename ty nm
 -- Extract the module name, occurence name, and unique name for the given
 -- name.
@@ -36,6 +42,7 @@ dename ty nm
   | nameis "(,)" nm = (Just "Smten.Smten.Base", "Tuple2__", error "uniqnm for (,)")
   | nameis "(,,)" nm = (Just "Smten.Smten.Base", "Tuple3__", error "uniqnm for (,,)")
   | nameis "(,,,)" nm = (Just "Smten.Smten.Base", "Tuple4__", error "uniqnm for (,,,)")
+  | qnameis "GHC.Integer.Type" "Integer" nm = (Just "Smten.Smten.Base", "Integer", error "uniqnm for Integer")
   | otherwise = 
       let modnm = moduleNameString . moduleName <$> nameModule_maybe nm
           occnm = occNameString $ nameOccName nm

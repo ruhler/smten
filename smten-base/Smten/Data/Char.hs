@@ -13,9 +13,6 @@ import Smten.Data.Eq
 import Smten.Data.Num
 import Smten.Data.Ord
 
-instance Eq Char where 
-   (==) = char_eq
-
 instance Ord Char where
     (<=) = char_leq
 

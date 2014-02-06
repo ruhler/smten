@@ -1,0 +1,57 @@
+
+Thu Feb  6 10:38:19 EST 2014
+
+Goal: switch to using the definition of the Eq class from GHC Prelude.
+
+Why: 
+ * Because we get auto-deriving of Eq then
+ * Because we need to in order to use the Num class from GHC Prelude, which
+   we need to in order to remove RebindableSyntax, which will hopefully
+   avoid an issue with translating Int cases which can introduce unreachable
+   errors which can lead to performance blowups.
+
+How:
+ * Export Prelude(Eq(..)) in Smten.Prelude
+ * Define my own copy of Eq(..) somewhere else which I automatically compile
+   with the Smten plugin
+
+Difficulty:
+  * Working out module dependencies.
+
+Here is the current problem:
+
+* Eq is defined in GHC.Classes
+* The Integer type is defined in GHC.Integer.Type
+* The Integer instance of Eq is defined in GHC.Integer.Type
+
+* The generated Smten code for the integer instance of Eq will depend on
+  the Integer type.
+* The generated Smten code for the integer instance of Eq needs to be
+  exported by Smten.Compiled.GHC.Integer.Type
+
+Either the generated Smten code for the integer instance of Eq is
+A. in Smten.Compiled.GHC.Integer.Type, or
+B. it is defined elsewhere.
+
+A. 
+The Smten.Compiled.GHC.Integer.Type should be generated, but it needs to
+use my definition of the Integer type, not itself.
+
+B.
+But then we get a recursive module dependency.
+
+What if we did the following:
+
+In GHC.Integer.Type for smten compilation,
+ define: 
+  type Integer = SmtenPrimInteger
+  instance Eq Integer where ...
+
+Arrange for the type synonym to appear in the generated file, and all should
+be well?
+
+Actually, it turns out an easy solution is just to remap
+GHC.Integer.Type.Integer to Smten.Smten.Base.Integer. And it works!
+
+We don't have auto-deriving quite yet. I'll save that for the next step.
+

@@ -14,6 +14,8 @@ Runtime::
     they should be bounded in size somehow to allow for incremental queries
                 
 Cleanup::
+* Understand the interface between Smten.Prelude and GHC.Prelude, and clean
+  it up, because I have a feely things are getting sloppy there.
 * Naming conventions are all over the place for formulas. Fix it please.
     Typically we combine an operation (ite, add, etc...) with a type (BitF,
     BitFF, IntegerF, ...). Functions must start lower, constructors upper, but
@@ -34,6 +36,8 @@ Performance::
 * Remove "RebindableSyntax"
   It will improve if, and case for primitives, potentially substantially.
   - Remove RebindableSyntax where-ever possible from Base and Lib
+  - Change Eq class to use Prelude's (and we get deriving?)
+  - Change Show class to use Prelude's
   - Change Num class to use Prelude's
 * Concrete Performance
    ** Special case pattern matching on concrete objects with a tag?
