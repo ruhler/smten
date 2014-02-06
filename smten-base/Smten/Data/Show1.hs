@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Show1 (
-    ShowS, Show(..), shows, showChar, showString, showParen,
+    ShowS, Show(..), showList__, shows, showChar, showString, showParen,
     ) where
 
 import Smten.Smten.Base
@@ -14,16 +14,18 @@ type ShowS = String -> String
 
 class Show a where
     showsPrec :: Int -> a -> ShowS
-    showsPrec _ x s = show x ++ s
-
     show :: a -> String
-    show x = showsPrec 0 x ""
-
     showList :: [a] -> ShowS
-    showList [] = showString "[]"
-    showList (x:xs) = showChar '[' . shows x . showl xs
-       where showl [] = showChar ']'
-             showl (x:xs) = showChar ',' . shows x . showl xs
+
+    showsPrec _ x s = show x ++ s
+    show x= shows x ""
+    showList ls s = showList__ shows ls s
+
+showList__ :: (a -> ShowS) -> [a] -> ShowS
+showList__ _ [] s = "[]" ++ s
+showList__ showx (x:xs) s = '[' : showx x (showl xs)
+  where showl [] = ']' : s
+        showl (y:ys) = ',' : showx y (showl ys)
 
 shows :: (Show a) => a -> ShowS
 shows = showsPrec 0
