@@ -189,8 +189,8 @@ patternlet =
   let (a, b) = (1, 5)
   in a + b
 
---data DerivedEq a = DEq1 a | DEq2 a a
---    deriving (Eq)
+data DerivedEq a = DEq1 a | DEq2 a a
+    deriving (Eq)
 
 -- Funny operator, for testing precedence of operaters with no fixity
 -- specified.
@@ -244,8 +244,8 @@ tests = do
     test "J" ('A' == 'A')
     test "K" ('A' /= 'B')
     test "L" (6 == patternlet)
-    --test "M" (DEq2 (5 :: Integer) 9 == DEq2 5 9)
-    --test "N" (DEq1 (5 :: Integer) /= DEq2 5 9)
+    test "M" (DEq2 (5 :: Integer) 9 == DEq2 5 9)
+    test "N" (DEq1 (5 :: Integer) /= DEq2 5 9)
     test "P" (length "foo\n" == 4)
     test "hex literal" (0x18 == (24 :: Integer))
     test "HEX literal" (0X18 == (24 :: Integer))
