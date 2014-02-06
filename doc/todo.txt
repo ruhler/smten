@@ -16,6 +16,13 @@ Runtime::
 Cleanup::
 * Understand the interface between Smten.Prelude and GHC.Prelude, and clean
   it up, because I have a feely things are getting sloppy there.
+  We have the following kinds of things:
+  - Normal smten code: written in haskell, generates haskell
+  - Base smten code: uses GHC.Base definition for stage 1,
+                     but we make a copy and compile it separately to get
+                     code for stage 2
+  - Primitive code: uses "primitive" for stage 1, hand written code used for
+                     stage 2.
 * Naming conventions are all over the place for formulas. Fix it please.
     Typically we combine an operation (ite, add, etc...) with a type (BitF,
     BitFF, IntegerF, ...). Functions must start lower, constructors upper, but
@@ -36,7 +43,6 @@ Performance::
 * Remove "RebindableSyntax"
   It will improve if, and case for primitives, potentially substantially.
   - Remove RebindableSyntax where-ever possible from Base and Lib
-  - Change Show class to use Prelude's
   - Change Num class to use Prelude's
 * Concrete Performance
    ** Special case pattern matching on concrete objects with a tag?
@@ -71,6 +77,7 @@ Performance::
 Front End::
 * Auto-derive Show, Ord, Ix
   Use the same approach as we did for Eq.
+* Auto-deriving of Eq doesn't work on Enums.
 
 Documentation
 * Generated code should have a comment saying it was automatically generated.
