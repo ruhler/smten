@@ -43,7 +43,6 @@ Performance::
 * Remove "RebindableSyntax"
   It will improve if, and case for primitives, potentially substantially.
   - Remove RebindableSyntax where-ever possible from Base and Lib
-  - Change Num class to use Prelude's
 * Concrete Performance
    ** Special case pattern matching on concrete objects with a tag?
         Except, this doesn't improve symbolic performance any, which is sad.
@@ -77,6 +76,9 @@ Performance::
 Front End::
 * Auto-derive Show, Ord, Ix
   Use the same approach as we did for Eq.
+  - For Show:
+    Figure out how to export Ord in GHC.Classes
+    Perhaps by organizing the Prelude source similar to how GHC does?
 * Auto-deriving of Eq doesn't work on Enums.
 
 Documentation
