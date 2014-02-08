@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RebindableSyntax #-}
-module Smten.Data.Num1 (
+module Smten.GHC.Num (
     Num(..)
      ) where
 

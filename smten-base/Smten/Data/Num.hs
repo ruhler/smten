@@ -6,5 +6,5 @@ module Smten.Data.Num (
 -- Expose the Prelude version of Num, but also import our local
 -- version so code is generated for it.
 import Prelude
-import Smten.Data.Num1 ()
+import Smten.GHC.Num ()
 

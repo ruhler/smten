@@ -45,7 +45,6 @@ library
     Smten.Data.Maybe
     Smten.Data.Num
     Smten.Data.Num0
-    Smten.Data.Num1
     Smten.Data.Read
     Smten.Data.Show
     Smten.Data.Show0
@@ -55,6 +54,7 @@ library
     Smten.Data.Ord1
     Smten.Data.Tuple
     Smten.Derive.Show
+    Smten.GHC.Num
     Smten.Smten.Base
     Smten.Smten.Char
     Smten.Smten.Int
@@ -105,7 +105,6 @@ library
     Smten.Compiled.Smten.Data.Maybe
     Smten.Compiled.Smten.Data.Num
     Smten.Compiled.Smten.Data.Num0
-    Smten.Compiled.Smten.Data.Num1
     Smten.Compiled.Smten.Data.Read
     Smten.Compiled.Smten.Data.Show
     Smten.Compiled.Smten.Data.Show0
@@ -114,6 +113,7 @@ library
     Smten.Compiled.Smten.Data.Ord0
     Smten.Compiled.Smten.Data.Ord1
     Smten.Compiled.Smten.Data.Tuple
+    Smten.Compiled.Smten.GHC.Num
     Smten.Compiled.Smten.Smten.Base
     Smten.Compiled.Smten.Smten.Char
     Smten.Compiled.Smten.Smten.Int

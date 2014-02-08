@@ -14,6 +14,8 @@ import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}
 
+-- TODO: Move the integer primitives to Smten.GHC.Integer.Type
+
 {-# NOINLINE int_add #-}
 int_add :: Int -> Int -> Int
 int_add = {-# SCC "PRIM_INT_ADD" #-} (P.+)
