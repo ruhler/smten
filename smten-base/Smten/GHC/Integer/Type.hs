@@ -3,6 +3,7 @@
 module Smten.GHC.Integer.Type (
    plusInteger, minusInteger, timesInteger,
    absInteger, signumInteger, eqInteger,
+   leqInteger,
     ) where
 
 import qualified Prelude as P
@@ -35,4 +36,8 @@ signumInteger = {-# SCC "PRIM_SIGNUM_INTEGER" #-} P.signum
 {-# NOINLINE eqInteger #-}
 eqInteger :: Integer -> Integer -> Bool
 eqInteger = {-# SCC "PRIM_EQ_INTEGER" #-} (P.==)
+
+{-# NOINLINE leqInteger #-}
+leqInteger :: Integer -> Integer -> Bool
+leqInteger = {-# SCC "PRIM_LEQ_INTEGER" #-} (P.<=)
 

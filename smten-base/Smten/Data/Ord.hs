@@ -12,12 +12,13 @@ import Smten.Data.Bool
 import Smten.Data.Eq
 import Smten.Data.Ord0
 import Smten.Data.Ord1
+import Smten.GHC.Integer.Type
 
 instance Ord Int where
     (<=) = int_leq
 
 instance Ord Integer where
-    (<=) = integer_leq
+    (<=) = leqInteger
 
 instance (Ord a, Ord b) => Ord (a, b) where
     (<=) (a, b) (c, d) = (a < c) || (a == c && b <= d)
