@@ -2,6 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.GHC.Show (
     ShowS, Show(..), showList__, shows, showChar, showString, showParen,
+    showSpace,
     ) where
 
 import Smten.Smten.Base
@@ -41,6 +42,9 @@ showParen b p =
   case b of
     True -> showChar '(' . p . showChar ')' 
     False -> p
+
+showSpace :: ShowS
+showSpace = \ xs -> ' ' : xs
 
 instance Show () where
     show () = "()"

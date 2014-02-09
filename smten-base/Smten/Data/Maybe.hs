@@ -11,20 +11,11 @@ import Smten.Control.Monad
 import Smten.Data.Bool
 import Smten.Data.Eq
 import Smten.Data.Functor
-import Smten.Data.Function
-import Smten.Data.Ord
 import Smten.Data.Show
-import Smten.Derive.Show
 import Smten.Smten.Base
 
 data Maybe a = Nothing | Just a
-    deriving (Eq)
-
-showsPrecMaybe :: (Show a) => Int -> Maybe a -> ShowS
-showsPrecMaybe = $(derive_showsPrec ''Maybe)
-
-instance (Show a) => Show (Maybe a) where
-   showsPrec = showsPrecMaybe
+    deriving (Eq, Show)
 
 instance Functor Maybe where
     fmap _ Nothing = Nothing

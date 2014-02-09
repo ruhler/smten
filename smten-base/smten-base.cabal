@@ -50,7 +50,6 @@ library
     Smten.Data.OrdInteger
     Smten.Data.Ordering
     Smten.Data.Tuple
-    Smten.Derive.Show
 
     Smten.GHC.Classes
     Smten.GHC.Integer.Type

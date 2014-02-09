@@ -14,6 +14,7 @@ Runtime::
     they should be bounded in size somehow to allow for incremental queries
                 
 Cleanup::
+* Use GHC.Prim for primitive char equality and other ops.
 * Understand the interface between Smten.Prelude and GHC.Prelude, and clean
   it up, because I have a feely things are getting sloppy there.
   We have the following kinds of things:
@@ -71,14 +72,10 @@ Performance::
 
 
 Front End::
-* Auto-derive Show, Ord, Ix
+* Auto-derive Ord, Ix
   Use the same approach as we did for Eq.
-  - For Show:
-    Figure out how to export from GHC.Classes:
-        Ord, >=, OrdInt
-    Figure out how to export from GHC.Base:
-        (.)
-    Perhaps by organizing the Prelude source similar to how GHC does?
+  - For Ord:
+    It might work. Try it.
 * Auto-deriving of Eq doesn't work on Enums.
 
 Documentation
