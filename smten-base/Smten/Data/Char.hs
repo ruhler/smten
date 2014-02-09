@@ -13,9 +13,6 @@ import Smten.Data.Eq
 import Smten.Data.Num
 import Smten.Data.Ord
 
-instance Ord Char where
-    (<=) = char_leq
-
 -- used for string literal pattern matching.
 eqString :: String -> String -> Bool
 eqString [] [] = True

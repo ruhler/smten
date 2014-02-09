@@ -47,8 +47,8 @@ library
     Smten.Data.Show
     Smten.Data.Show0
     Smten.Data.Ord
+    Smten.Data.OrdInteger
     Smten.Data.Ordering
-    Smten.Data.Ord0
     Smten.Data.Tuple
     Smten.Derive.Show
 
@@ -109,8 +109,8 @@ library
     Smten.Compiled.Smten.Data.Show
     Smten.Compiled.Smten.Data.Show0
     Smten.Compiled.Smten.Data.Ord
+    Smten.Compiled.Smten.Data.OrdInteger
     Smten.Compiled.Smten.Data.Ordering
-    Smten.Compiled.Smten.Data.Ord0
     Smten.Compiled.Smten.Data.Tuple
 
     Smten.Compiled.Smten.GHC.Classes
