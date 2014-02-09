@@ -57,6 +57,12 @@ instance Eq Bool where
 instance Eq Char where 
    (==) = char_eq
 
+instance Eq Ordering where
+   (==) LT LT = True
+   (==) EQ EQ = True
+   (==) GT GT = True
+   (==) _ _ = False
+
 
 (&&) :: Bool -> Bool -> Bool
 (&&) True x = x

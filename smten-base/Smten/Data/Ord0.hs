@@ -1,11 +1,13 @@
 
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE PatternGuards #-}
 module Smten.Data.Ord0 (
     Ord(..),
     Ordering(..),
     comparing,
  ) where
+
+import Prelude(Ordering(..))
+import Smten.Data.Ordering ()
 
 import Smten.Data.Bool
 import Smten.Data.Eq
@@ -41,10 +43,6 @@ class (Eq a) => Ord a where
       | x <= y = x
       | otherwise = y
 
-data Ordering = LT | EQ | GT
-    deriving (Eq)
-
 comparing :: (Ord a) => (b -> a) -> b -> b -> Ordering
 comparing p x y = compare (p x) (p y)
-
 
