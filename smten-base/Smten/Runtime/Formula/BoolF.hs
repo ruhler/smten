@@ -2,7 +2,7 @@
 -- | Representation of SMT boolean formulas which may contain _|_ in subterms.
 module Smten.Runtime.Formula.BoolF (
     BoolF(..), trueF, falseF, boolF, andF, notF, iteF, iteF_, varF, finiteF,
-    partialF,
+    partialF, unreachableF, isUnreachableF,
     isTrueF, isFalseF, (*.),
   ) where
 
@@ -43,6 +43,9 @@ partialF TrueFF _ _ = trueF
 partialF FalseFF FalseFF _ = falseF
 partialF FalseFF TrueFF x_ = x_
 partialF a b x_ = BoolF a b x_
+
+unreachableF :: BoolF
+unreachableF = BoolF_Unreachable
 
 -- Select between two formulas.
 -- selectF x_ y_
@@ -155,4 +158,8 @@ isTrueF _ = False
 isFalseF :: BoolF -> Bool
 isFalseF (BoolF FalseFF FalseFF _) = True
 isFalseF _ = False
+
+isUnreachableF :: BoolF -> Bool
+isUnreachableF BoolF_Unreachable = True
+isUnreachableF _ = False
 
