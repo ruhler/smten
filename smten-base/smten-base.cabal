@@ -54,6 +54,7 @@ library
     Smten.Data.Ord1
     Smten.Data.Tuple
     Smten.Derive.Show
+    Smten.GHC.Integer.Type
     Smten.GHC.Num
     Smten.Smten.Base
     Smten.Smten.Char
@@ -113,6 +114,7 @@ library
     Smten.Compiled.Smten.Data.Ord0
     Smten.Compiled.Smten.Data.Ord1
     Smten.Compiled.Smten.Data.Tuple
+    Smten.Compiled.Smten.GHC.Integer.Type
     Smten.Compiled.Smten.GHC.Num
     Smten.Compiled.Smten.Smten.Base
     Smten.Compiled.Smten.Smten.Char

@@ -7,6 +7,7 @@ module Smten.GHC.Num (
 
 import Smten.Smten.Base
 import Smten.Data.Num0
+import Smten.GHC.Integer.Type
 
 infixl 7 *
 infixl 6 +, -
@@ -35,7 +36,8 @@ instance Num Integer where
     (+) = integer_add
     (-) = integer_sub
     (*) = integer_mul
+    fromInteger x = x
+
     abs = integer_abs
     signum = integer_signum
-    fromInteger x = x
     
