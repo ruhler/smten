@@ -36,7 +36,6 @@ library
     Smten.Data.EnumInt
     Smten.Data.Eq
     Smten.Data.Eq0
-    Smten.Data.Eq1
     Smten.Data.EqInteger
     Smten.Data.Integral
     Smten.Data.Integral0
@@ -54,6 +53,7 @@ library
     Smten.Data.Tuple
     Smten.Derive.Show
 
+    Smten.GHC.Classes
     Smten.GHC.Integer.Type
     Smten.GHC.Num
     Smten.GHC.Show
@@ -99,7 +99,6 @@ library
     Smten.Compiled.Smten.Data.EnumInt
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.Eq0
-    Smten.Compiled.Smten.Data.Eq1
     Smten.Compiled.Smten.Data.EqInteger
     Smten.Compiled.Smten.Data.Integral
     Smten.Compiled.Smten.Data.Integral0
@@ -116,6 +115,7 @@ library
     Smten.Compiled.Smten.Data.Ord1
     Smten.Compiled.Smten.Data.Tuple
 
+    Smten.Compiled.Smten.GHC.Classes
     Smten.Compiled.Smten.GHC.Integer.Type
     Smten.Compiled.Smten.GHC.Num
     Smten.Compiled.Smten.GHC.Show

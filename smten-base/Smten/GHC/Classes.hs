@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -O #-}
-module Smten.Data.Eq1 (Eq(..)) where
+module Smten.GHC.Classes (Eq(..)) where
 
 import Smten.Smten.Char
 import Smten.Smten.Int

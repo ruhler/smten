@@ -5,7 +5,7 @@ module Smten.Data.EqInteger () where
 
 import Smten.Smten.Base
 import Smten.Data.Eq0
-import Smten.Data.Eq1
+import Smten.GHC.Classes
 
 instance Eq Integer where
     (==) = integer_eq
