@@ -1,6 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Data.Show1 (
+module Smten.GHC.Show (
     ShowS, Show(..), showList__, shows, showChar, showString, showParen,
     ) where
 

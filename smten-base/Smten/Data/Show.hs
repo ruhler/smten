@@ -7,5 +7,5 @@ module Smten.Data.Show (
 -- Expose the Prelude version of Show, but also import our local
 -- version so code is generated for it.
 import Prelude
-import Smten.Data.Show1 ()
+import Smten.GHC.Show ()
 
