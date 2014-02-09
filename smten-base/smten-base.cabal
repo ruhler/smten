@@ -35,7 +35,6 @@ library
     Smten.Data.EnumInteger
     Smten.Data.EnumInt
     Smten.Data.Eq
-    Smten.Data.Eq0
     Smten.Data.EqInteger
     Smten.Data.Integral
     Smten.Data.Integral0
@@ -98,7 +97,6 @@ library
     Smten.Compiled.Smten.Data.EnumInteger
     Smten.Compiled.Smten.Data.EnumInt
     Smten.Compiled.Smten.Data.Eq
-    Smten.Compiled.Smten.Data.Eq0
     Smten.Compiled.Smten.Data.EqInteger
     Smten.Compiled.Smten.Data.Integral
     Smten.Compiled.Smten.Data.Integral0
