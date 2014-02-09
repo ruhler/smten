@@ -8,6 +8,10 @@ Release to Public::
     T8-Profiling
 * put smten on hackage (after tutorials are posted nicely?)
 
+Prelude::
+* make it so people can import Prelude instead of Smten.Prelude
+ - Use GHC.Prim.+# and friends instead of int_add and friends.
+
 Runtime::
 * handle error and infinity correctly.
 ** Finite formulas can grow infinitely (SMT.Opt.InfiniteFormula, SMT.Opt.PlusBottomBool)
