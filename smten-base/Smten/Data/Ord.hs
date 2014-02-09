@@ -1,5 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE PatternGuards #-}
 module Smten.Data.Ord (
     Ord(..),
@@ -7,15 +8,30 @@ module Smten.Data.Ord (
     comparing,
  ) where
 
+import GHC.Prim
+import GHC.Types hiding (Ordering)
 import Smten.Smten.Base
 import Smten.Data.Bool
 import Smten.Data.Eq
 import Smten.Data.Ord0
-import Smten.Data.Ord1
 import Smten.GHC.Integer.Type
 
 instance Ord Int where
-    (<=) = int_leq
+    (<)     = ltInt
+    (<=)    = leInt
+    (>=)    = geInt
+    (>)     = gtInt
+
+{-# INLINE gtInt #-}
+{-# INLINE geInt #-}
+{-# INLINE ltInt #-}
+{-# INLINE leInt #-}
+gtInt, geInt, ltInt, leInt :: Int -> Int -> Bool
+(I# x) `gtInt` (I# y) = x >#  y
+(I# x) `geInt` (I# y) = x >=# y
+(I# x) `ltInt` (I# y) = x <#  y
+(I# x) `leInt` (I# y) = x <=# y
+
 
 instance Ord Integer where
     (<=) = leqInteger
