@@ -1,15 +1,21 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -O #-}
-module Smten.GHC.Classes (Eq(..)) where
+module Smten.GHC.Classes (
+    (&&), (||), not,
+    Eq(..)
+    ) where
 
 import Smten.Smten.Char
 import Smten.Smten.Int
-import Smten.Data.Bool
+import Smten.Data.Bool0
 import Smten.Data.Char0
 import Smten.Data.Eq0
 
 infix 4 ==, /=
+infixr 3 &&
+infixr 2 ||
+
 
 -- Note: this has to match the definition from Prelude
 class Eq a where
@@ -45,4 +51,16 @@ instance Eq Bool where
 instance Eq Char where 
    (==) = char_eq
 
+
+(&&) :: Bool -> Bool -> Bool
+(&&) True x = x
+(&&) False _ = False
+
+(||) :: Bool -> Bool -> Bool
+(||) True _ = True
+(||) False x = x
+
+not :: Bool -> Bool
+not True = False
+not False = True
 
