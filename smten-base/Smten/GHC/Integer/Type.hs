@@ -1,8 +1,8 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.GHC.Integer.Type (
-   integer_add, integer_sub, integer_mul,
-   integer_abs, integer_signum,
+   plusInteger, minusInteger, timesInteger,
+   absInteger, signumInteger,
     ) where
 
 import qualified Prelude as P
@@ -11,23 +11,23 @@ import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}
 
-{-# NOINLINE integer_add #-}
-integer_add :: Integer -> Integer -> Integer
-integer_add = {-# SCC "PRIM_INTEGER_ADD" #-} (P.+)
+{-# NOINLINE plusInteger #-}
+plusInteger :: Integer -> Integer -> Integer
+plusInteger = {-# SCC "PRIM_PLUS_INTEGER" #-} (P.+)
 
-{-# NOINLINE integer_sub #-}
-integer_sub :: Integer -> Integer -> Integer
-integer_sub = {-# SCC "PRIM_INTEGER_SUB" #-} (P.-)
+{-# NOINLINE minusInteger #-}
+minusInteger :: Integer -> Integer -> Integer
+minusInteger = {-# SCC "PRIM_MINUS_INTEGER" #-} (P.-)
 
-{-# NOINLINE integer_mul #-}
-integer_mul :: Integer -> Integer -> Integer
-integer_mul = {-# SCC "PRIM_INTEGER_MUL" #-} (P.*)
+{-# NOINLINE timesInteger #-}
+timesInteger :: Integer -> Integer -> Integer
+timesInteger = {-# SCC "PRIM_TIMES_INTEGER" #-} (P.*)
 
-{-# NOINLINE integer_abs #-}
-integer_abs :: Integer -> Integer
-integer_abs = {-# SCC "PRIM_INTEGER_ABS" #-} P.abs
+{-# NOINLINE absInteger #-}
+absInteger :: Integer -> Integer
+absInteger = {-# SCC "PRIM_ABS_INTEGER" #-} P.abs
 
-{-# NOINLINE integer_signum #-}
-integer_signum :: Integer -> Integer
-integer_signum = {-# SCC "PRIM_INTEGER_SIGNUM" #-} P.signum
+{-# NOINLINE signumInteger #-}
+signumInteger :: Integer -> Integer
+signumInteger = {-# SCC "PRIM_SIGNUM_INTEGER" #-} P.signum
 

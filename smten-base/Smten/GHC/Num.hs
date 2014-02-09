@@ -33,11 +33,11 @@ instance Num Int where
     fromInteger = int_fromInteger
 
 instance Num Integer where
-    (+) = integer_add
-    (-) = integer_sub
-    (*) = integer_mul
+    (+) = plusInteger
+    (-) = minusInteger
+    (*) = timesInteger
     fromInteger x = x
 
-    abs = integer_abs
-    signum = integer_signum
+    abs = absInteger
+    signum = signumInteger
     
