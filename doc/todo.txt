@@ -74,7 +74,10 @@ Front End::
 * Auto-derive Show, Ord, Ix
   Use the same approach as we did for Eq.
   - For Show:
-    Figure out how to export Ord in GHC.Classes
+    Figure out how to export from GHC.Classes:
+        Ord, >=, OrdInt
+    Figure out how to export from GHC.Base:
+        (.)
     Perhaps by organizing the Prelude source similar to how GHC does?
 * Auto-deriving of Eq doesn't work on Enums.
 

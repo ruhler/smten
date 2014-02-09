@@ -1,16 +1,15 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE MagicHash #-}
 {-# OPTIONS_GHC -O #-}
 module Smten.GHC.Classes (
     (&&), (||), not,
     Eq(..)
     ) where
 
-import Smten.Smten.Char
-import Smten.Smten.Int
-import Smten.Data.Bool0
+import GHC.Prim
+import GHC.Types
 import Smten.Data.Char0
-import Smten.Data.Eq0
 
 infix 4 ==, /=
 infixr 3 &&
@@ -26,7 +25,14 @@ class Eq a where
     (/=) x y = not (x == y)
 
 instance Eq Int where
-    (==) = int_eq
+    (==) = eqInt
+    (/=) = neInt
+
+{-# INLINE eqInt #-}
+{-# INLINE neInt #-}
+eqInt, neInt :: Int -> Int -> Bool
+(I# x) `eqInt` (I# y) = x ==# y
+(I# x) `neInt` (I# y) = x /=# y
 
 instance Eq () where
     (==) () () = True
