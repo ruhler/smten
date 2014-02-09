@@ -9,7 +9,6 @@ module Smten.GHC.Classes (
 
 import GHC.Prim
 import GHC.Types
-import Smten.Data.Char0
 
 infix 4 <, <=, >=, >
 infix 4 ==, /=
@@ -55,8 +54,9 @@ instance Eq Bool where
     (==) False True = False
     (==) False False = True
 
-instance Eq Char where 
-   (==) = char_eq
+instance Eq Char where
+    (C# c1) == (C# c2) = c1 `eqChar#` c2
+    (C# c1) /= (C# c2) = c1 `neChar#` c2
 
 instance Eq Ordering where
    (==) LT LT = True
@@ -117,8 +117,10 @@ instance (Ord a) => Ord [a] where
     (<=) (a:as) (b:bs) = a < b || (a == b && as <= bs)
 
 instance Ord Char where
-    (<=) = char_leq
-
+    (C# c1) >  (C# c2) = c1 `gtChar#` c2
+    (C# c1) >= (C# c2) = c1 `geChar#` c2
+    (C# c1) <= (C# c2) = c1 `leChar#` c2
+    (C# c1) <  (C# c2) = c1 `ltChar#` c2
 
 (&&) :: Bool -> Bool -> Bool
 (&&) True x = x
