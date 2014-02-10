@@ -46,6 +46,7 @@ Smten Executable::
 
 Performance::
 * Concrete Performance
+   ** Give better instance of Ord for tuples. see how shampi improves.
    ** Special case pattern matching on concrete objects with a tag?
         Except, this doesn't improve symbolic performance any, which is sad.
    ** Enable -O on all smten files
