@@ -5,6 +5,9 @@ module Smten.GHC.Num (
     Num(..)
      ) where
 
+-- Note: this module is hardwired in the smten plugin to generate code to
+-- Smten.Compiled.GHC.Num instead of Smten.Compiled.Smten.GHC.Num
+
 import Smten.Smten.Base
 import Smten.Data.Num0
 import Smten.GHC.Integer.Type

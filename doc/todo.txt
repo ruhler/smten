@@ -1,9 +1,5 @@
 Next::
-1. Add a plugin annotation to change the target module generated
- - Use it for Smten.GHC.Classes ==> Smten.Compiled.GHC.Classes
-              Smten.GHC.Num ==> Smten.Compiled.GHC.Num
-              Smten.GHC.Show ==> Smten.Compiled.GHC.Show
-2. Auto-derive Eq and Ord in Smten.GHC.Classes
+1. Auto-derive Eq and Ord in Smten.GHC.Classes
     by deriving Prelude.Eq and Prelude.Ord on Unit__, List__, and TupleN__
 
 Release to Public::

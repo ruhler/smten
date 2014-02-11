@@ -60,13 +60,16 @@ pass m = do
       mod <- runCG modnm (moduleCG cg details)
       debugTraceMsg $ text "Smten Plugin: outputting haskell..."
       flags <- getDynFlags
-      let slashes = moduleNameSlashes $ moduleName (mg_module m)
-          odir = fromMaybe "." (objectDir flags)
-          tgt = odir ++ "/Smten/Compiled/" ++ slashes ++ ".hs"
+      let odir = fromMaybe "." (objectDir flags)
+          tgt = odir ++ "/" ++ map dot2slash (toGenMod modnm) ++ ".hs"
       liftIO $ do
           createDirectoryIfMissing True (directory tgt)
           S.renderToFile tgt mod
   return m
+
+dot2slash :: Char -> Char
+dot2slash '.' = '/'
+dot2slash c = c
 
 getIsPrim :: ModGuts -> CoreM Bool
 getIsPrim m = do
@@ -83,7 +86,7 @@ moduleCG cg details = do
   exports <- concat <$> mapM exportCG (typeEnvElts (md_types details))
   importmods <- getimports
   let myname = moduleName (cg_module cg)
-      modnm = "Smten.Compiled." ++ moduleNameString myname
+      modnm = toGenMod (moduleNameString myname)
       imports = [S.Import nm as | (nm, as) <- importmods]
       langs = map S.LanguagePragma [
             "DataKinds", "MagicHash", "NoImplicitPrelude",

@@ -112,10 +112,7 @@ library
     Smten.Compiled.Smten.Data.Ordering
     Smten.Compiled.Smten.Data.Tuple
 
-    Smten.Compiled.Smten.GHC.Classes
     Smten.Compiled.Smten.GHC.Integer.Type
-    Smten.Compiled.Smten.GHC.Num
-    Smten.Compiled.Smten.GHC.Show
 
     Smten.Compiled.Smten.Smten.Base
     Smten.Compiled.Smten.Smten.Char

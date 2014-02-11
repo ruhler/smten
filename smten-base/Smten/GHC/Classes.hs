@@ -7,6 +7,9 @@ module Smten.GHC.Classes (
     Eq(..), Ord(..),
     ) where
 
+-- Note: this module is hardwired in the smten plugin to generate code to
+-- Smten.Compiled.GHC.Classes instead of Smten.Compiled.Smten.GHC.Classes
+
 import GHC.Prim
 import GHC.Types
 

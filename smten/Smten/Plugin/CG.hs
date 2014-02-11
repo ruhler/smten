@@ -2,6 +2,7 @@
 module Smten.Plugin.CG (
    CG, runCG, lift,
    usequalified, getimports,
+   toGenMod,
    gets,
     ) where
 
@@ -22,6 +23,13 @@ data CGS = CGS {
 }
 
 type CG = StateT CGS CoreM
+
+-- Given the source module, turn it into the generated module
+toGenMod :: String -> String
+toGenMod "Smten.GHC.Classes" = "Smten.Compiled.GHC.Classes"
+toGenMod "Smten.GHC.Num" = "Smten.Compiled.GHC.Num"
+toGenMod "Smten.GHC.Show" = "Smten.Compiled.GHC.Show"
+toGenMod s = "Smten.Compiled." ++ s
 
 
 -- | Use the given qualified id.
@@ -57,5 +65,5 @@ getimports = gets (Map.toList . cgs_imports)
 --   m - the name of the module being generated.
 --   x - the code generation to run.
 runCG :: String -> CG a -> CoreM a
-runCG nm m = evalStateT m (CGS ("Smten.Compiled." ++ nm) Map.empty)
+runCG nm m = evalStateT m (CGS (toGenMod nm) Map.empty)
 
