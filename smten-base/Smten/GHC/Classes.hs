@@ -1,6 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -O #-}
 module Smten.GHC.Classes (
     (&&), (||), not,
@@ -10,8 +11,12 @@ module Smten.GHC.Classes (
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Classes instead of Smten.Compiled.Smten.GHC.Classes
 
+import qualified GHC.Classes as P
 import GHC.Prim
 import GHC.Types
+import Smten.Smten.Unit
+import Smten.Smten.List
+import Smten.Smten.Tuple
 
 infix 4 <, <=, >=, >
 infix 4 ==, /=
@@ -37,20 +42,13 @@ eqInt, neInt :: Int -> Int -> Bool
 (I# x) `eqInt` (I# y) = x ==# y
 (I# x) `neInt` (I# y) = x /=# y
 
-instance Eq () where
-    (==) () () = True
+deriving instance P.Eq Unit__
+deriving instance (P.Eq a, P.Eq b) => P.Eq (Tuple2__ a b)
+deriving instance (P.Eq a, P.Eq b, P.Eq c) => P.Eq (Tuple3__ a b c)
+deriving instance (P.Eq a, P.Eq b, P.Eq c, P.Eq d) => P.Eq (Tuple4__ a b c d)
+deriving instance (P.Eq a) => P.Eq (List__ a)
 
-instance (Eq a, Eq b) => Eq (a, b) where
-    (==) (a, b) (c, d) = (a == c) && (b == d)
-
-instance (Eq a, Eq b, Eq c) => Eq (a, b, c) where
-    (==) (a1, a2, a3) (b1, b2, b3) = (a1 == b1) && (a2 == b2) && (a3 == b3)
-
-instance (Eq a) => Eq [a] where
-    (==) [] [] = True
-    (==) (a:as) (b:bs) = a == b && as == bs
-    (==) _ _ = False
-
+-- TODO: can we auto-derive this?
 instance Eq Bool where
     (==) True True = True
     (==) True False = False
@@ -61,6 +59,7 @@ instance Eq Char where
     (C# c1) == (C# c2) = c1 `eqChar#` c2
     (C# c1) /= (C# c2) = c1 `neChar#` c2
 
+-- TODO: can we auto-derive this?
 instance Eq Ordering where
    (==) LT LT = True
    (==) EQ EQ = True
@@ -105,19 +104,11 @@ gtInt, geInt, ltInt, leInt :: Int -> Int -> Bool
 (I# x) `ltInt` (I# y) = x <#  y
 (I# x) `leInt` (I# y) = x <=# y
 
-
-instance (Ord a, Ord b) => Ord (a, b) where
-    (<=) (a, b) (c, d) = (a < c) || (a == c && b <= d)
-
-instance (Ord a, Ord b, Ord c) => Ord (a, b, c) where
-    (<=) (a1, a2, a3) (b1, b2, b3) =
-        (a1 < b1) || (a1 == b1 && (a2 < b2 || a2 == b2 && a3 <= b3))
-    
-instance (Ord a) => Ord [a] where
-    (<=) [] [] = True
-    (<=) [] (_:_) = True
-    (<=) (_:_) [] = False
-    (<=) (a:as) (b:bs) = a < b || (a == b && as <= bs)
+deriving instance P.Ord Unit__
+deriving instance (P.Ord a, P.Ord b) => P.Ord (Tuple2__ a b)
+deriving instance (P.Ord a, P.Ord b, P.Ord c) => P.Ord (Tuple3__ a b c)
+deriving instance (P.Ord a, P.Ord b, P.Ord c, P.Ord d) => P.Ord (Tuple4__ a b c d)
+deriving instance (P.Ord a) => P.Ord (List__ a)
 
 instance Ord Char where
     (C# c1) >  (C# c2) = c1 `gtChar#` c2

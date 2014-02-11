@@ -1,9 +1,3 @@
-Next::
-1. Auto-derive Eq and Ord in Smten.GHC.Classes
-    by deriving Prelude.Eq and Prelude.Ord on Unit__, List__, and TupleN__
-    Except: it generates the wrong names for dictionaries...
-    How to fix that problem?
-
 Release to Public::
 * write up tutorials (github #3)
     T5-BitVectors
@@ -52,7 +46,6 @@ Smten Executable::
 
 Performance::
 * Concrete Performance
-   ** Give better instance of Ord for tuples. see how shampi improves.
    ** Special case pattern matching on concrete objects with a tag?
         Except, this doesn't improve symbolic performance any, which is sad.
    ** Enable -O on all smten files
@@ -64,7 +57,6 @@ Performance::
         value.
 
      - emptycase doesn't support types of kind #  (needed for Smten.Data.Char)
-   ** optimize primitives as needed (see int_add for example)
    ** generate INLINE pragmas for bindings annotated as inline?
         (see inlinePragInfo in ghc api)
 * for yices1: having a shl_n function, which shifts by a constant amount,
@@ -83,10 +75,8 @@ Performance::
 
 
 Front End::
-* Auto-derive Ord, Ix
+* Auto-derive Ix
   Use the same approach as we did for Eq.
-  - For Ord:
-    It might work. Try it.
 * Auto-deriving of Eq doesn't work on Enums.
 
 Documentation

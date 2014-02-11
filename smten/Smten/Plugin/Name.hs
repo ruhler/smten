@@ -49,6 +49,24 @@ dename ty nm
           unqnm = show $ nameUnique nm
       in (modnm, occnm, unqnm)
 
+-- For class instances, symbol names are generated with the type embedded.
+-- Here we remap those symbols for wired types so we can use ghc auto-deriving
+-- to auto-derive the class instances by auto-deriving for the 
+-- unwired counterpart.
+--
+-- For example, to derive Eq for (,), we can now say:
+--  deriving instance (Prelude.Eq a, Prelude.Eq b) => Prelude.Eq (Tuple2__ a b)
+-- And anyone using the Eq instance for (,) will use the symbols defined
+-- by the auto-derivation.
+dewire :: String -> String
+dewire ('[':']':xs) = "List__" ++ dewire xs
+dewire ('(':')':xs) = "Unit__" ++ dewire xs
+dewire ('(':',':')':xs) = "Tuple2__" ++ dewire xs
+dewire ('(':',':',':')':xs) = "Tuple3__" ++ dewire xs
+dewire ('(':',':',':',':')':xs) = "Tuple4__" ++ dewire xs
+dewire (x:xs) = x : dewire xs
+dewire [] = []
+
 -- Given a base name, turn it into an acceptable haskell name.
 -- Returns 'True' if the resulting name is symbolic, false otherwise.
 --
@@ -87,7 +105,7 @@ nmCG ty f qlf nm
 
           isconsym = (head occnm == ':')
 
-          (issym, occnm') = resym (useuniq || isconsym) occnm
+          (issym, occnm') = resym (useuniq || isconsym) (dewire occnm)
 
           unqlf = f $ if useuniq
                         then occnm' ++ "_" ++ unqnm
