@@ -289,9 +289,11 @@ mkDataCase vnm tycon mdef ms = do
    def <- case mdef of
             Nothing -> return []
             Just b -> do
-              tt <- S.VarE <$> usequalified "Smten.Runtime.Formula" "trueF"
+              -- Note: the condition is unreachable, because if there is 
+              -- a default, it's always last, and the 'merge' function ignores
+              -- the condition for the last alternative.
               e <- expCG b
-              return [(tt, e, [])]
+              return [(error "mkDataCase: unreachable condition", e, [])]
 
    alts <- mapM mkalt ms
    let choices = alts ++ def

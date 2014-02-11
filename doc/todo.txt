@@ -1,6 +1,8 @@
 Next::
 1. Auto-derive Eq and Ord in Smten.GHC.Classes
     by deriving Prelude.Eq and Prelude.Ord on Unit__, List__, and TupleN__
+    Except: it generates the wrong names for dictionaries...
+    How to fix that problem?
 
 Release to Public::
 * write up tutorials (github #3)
