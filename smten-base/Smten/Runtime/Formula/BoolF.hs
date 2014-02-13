@@ -1,8 +1,9 @@
 
 -- | Representation of SMT boolean formulas which may contain _|_ in subterms.
 module Smten.Runtime.Formula.BoolF (
-    BoolF(..), trueF, falseF, boolF, andF, notF, iteF, iteF_, varF, finiteF,
-    partialF, unreachableF, isUnreachableF,
+    BoolF(..), trueF, falseF, boolF, andF, notF, iteF, iteF_, iteF__,
+    varF, finiteF,
+    unreachableF, isUnreachableF,
     isTrueF, isFalseF, (*.),
   ) where
 
@@ -56,17 +57,17 @@ selectF :: BoolF -> BoolF -> (BoolF, BoolF)
 selectF x_ y_ = S.approximate (BoolF falseFF trueFF x_) (BoolF falseFF trueFF y_) x_ y_
 
 trueF :: BoolF
-trueF = BoolF TrueFF FalseFF BoolF_Unreachable
+trueF = finiteF TrueFF
 
 falseF :: BoolF
-falseF = BoolF FalseFF FalseFF BoolF_Unreachable
+falseF = finiteF FalseFF
 
 boolF :: Bool -> BoolF
 boolF True = trueF
 boolF False = falseF
 
 varF :: FreeID -> BoolF
-varF = finiteF . varFF
+varF x = finiteF (varFF x)
 
 -- Notes
 --  Partial:    ~(a + bx_)
@@ -131,6 +132,12 @@ iteF_ p x_ y_
         in partialF a b c_
       (BoolF_Unreachable, _) -> y_
       (_, BoolF_Unreachable) -> x_
+
+-- iteF with finite predicate and True branch
+--  x = if p then a else b
+--    = p & a | ~p & b
+iteF__ :: BoolFF -> BoolFF -> BoolF -> BoolF
+iteF__ p a b = partialF (p `andFF` a) (notFF p) b
 
 -- For nicer syntax, we give an instance of Num for BoolF
 -- based on boolean arithmetic.

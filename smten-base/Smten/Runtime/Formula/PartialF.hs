@@ -41,7 +41,7 @@ pfiniteF x = PartialF trueFF x PartialF_Unreachable
 
 -- partial unary predicate
 unarypF :: (a -> BoolFF) -> PartialF a -> BoolF
-unarypF f (PartialF p a b_) = partialF (p * f a) (notFF p) (unarypF f b_)
+unarypF f (PartialF p a b_) = iteF__ p (f a) (unarypF f b_)
 unarypF _ (PartialF_Unreachable) = unreachableF
 
 -- partial binary predicate
@@ -50,11 +50,9 @@ binarypF f x_ y_ =
   case pselectF x_ y_ of
     (PartialF xp xa xb_, PartialF yp ya yb_) ->
       let p = xp * yp
-          a = p * (f xa ya)
-          b = notFF p
           c_ = iteF_ xp (unarypF (f xa) yb_)
                     (iteF_ yp (unarypF (f ya) xb_) (binarypF f xb_ yb_))
-      in partialF a b c_
+      in iteF__ p (f xa ya) c_
     (PartialF_Unreachable, _) -> unreachableF
     (_, PartialF_Unreachable) -> unreachableF
 
