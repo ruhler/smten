@@ -1,7 +1,7 @@
 
 -- | Representation of SMT boolean formulas which may contain _|_ in subterms.
 module Smten.Runtime.Formula.BoolF (
-    BoolF(..), trueF, falseF, boolF, andF, notF, iteF, iteF_, iteF__,
+    BoolF(BoolF), trueF, falseF, boolF, andF, notF, iteF, iteF_, iteF__,
     varF, finiteF,
     unreachableF, isUnreachableF,
     isTrueF, isFalseF, (*.),

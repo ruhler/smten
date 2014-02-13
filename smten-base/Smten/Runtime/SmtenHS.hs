@@ -76,7 +76,7 @@ instance SmtenHS0 BitFF where
               
 instance SmtenHS0 BoolF where
     ite0 = iteF
-    unreachable0 = BoolF_Unreachable
+    unreachable0 = unreachableF
 
 instance SmtenHS0 IntegerF where
     ite0 = ite_IntegerF
