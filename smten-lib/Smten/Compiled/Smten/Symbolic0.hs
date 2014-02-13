@@ -1,6 +1,5 @@
 
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Compiled.Smten.Symbolic0 (
@@ -15,6 +14,7 @@ import Data.Functor
 
 import Smten.Runtime.FreeID
 import Smten.Runtime.Formula
+import Smten.Runtime.Formula.Finite
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
 import Smten.Runtime.Model
@@ -121,16 +121,16 @@ free_Bit w = Symbolic {
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
   case ({-# SCC "RunS" #-} runFresh $ runS q) of
-     (BoolF a b x_, x) -> do
-       -- Try to find a solution in 'a', a finite part of the formula.
-       ares <- {-# SCC "Solve" #-} solve s a
+     (p, x) | (pp, pa, pb) <- deBoolF p -> do
+       -- Try to find a solution in the finite part of the formula.
+       ares <- {-# SCC "Solve" #-} solve s (pp `andFF` pa)
        case ares of
          Just m -> return (S.__Just ({-# SCC "Realize" #-} runFresh $ relS q m))
          Nothing -> do
-            -- There was no solution found in 'a'.
-            -- Check if we have to evaluate b*x_
-            bres <- {-# SCC "SolveApprox" #-} solve s b
+            -- There was no solution found in the finite part.
+            -- Check if we have to evaluate the other part.
+            bres <- {-# SCC "SolveApprox" #-} solve s (notFF pp)
             case bres of
                Nothing -> return S.__Nothing
-               Just _ -> run_symbolic s (q { runS = return (b *. x_, x)})
+               Just _ -> run_symbolic s (q { runS = return ((notFF pp) *. pb, x)})
 

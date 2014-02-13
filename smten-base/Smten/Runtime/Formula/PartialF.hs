@@ -1,4 +1,6 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Smten.Runtime.Formula.PartialF (
     PartialF(..), IsFinite(..), pfiniteF, ite_PartialF,
     unarypF, binarypF, unaryoF, binaryoF,
@@ -79,13 +81,15 @@ ite_PartialF p a b
   | isTrueF p = a
   | isFalseF p = b
   | isUnreachableF p = PartialF_Unreachable
-ite_PartialF (BoolF pa pb pc_) x_ y_ = 
-  case pselectF x_ y_ of
-    (PartialF xp xa xb_, PartialF yp ya yb_) ->
-       let p = iteFF pa xp (notFF pb * yp)
-           a = finite_iteFF pa xa ya
-           b_ = ite_PartialF (finiteF pa) xb_ (ite_PartialF (finiteF pb) (ite_PartialF pc_ x_ y_) yb_)
-       in PartialF p a b_
-    (PartialF_Unreachable, _) -> y_
-    (_, PartialF_Unreachable) -> x_
+ite_PartialF px x_ y_
+  | (pp, pa, pb) <- deBoolF px =
+      case pselectF x_ y_ of
+        (PartialF xp xa xb_, PartialF yp ya yb_) ->
+           let p = pp `andFF` (iteFF pa xp yp)
+               a = finite_iteFF pa xa ya
+               b_ = ite_PartialF (finiteF pp) (ite_PartialF (finiteF pa) x_ y_)
+                        (ite_PartialF pb x_ y_)
+           in PartialF p a b_
+        (PartialF_Unreachable, _) -> y_
+        (_, PartialF_Unreachable) -> x_
 
