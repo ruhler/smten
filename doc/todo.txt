@@ -92,6 +92,7 @@ Known Bugs::
     Implement it like we implement symapp for Integer
 * add support for integers to minisat.
 * add support for integers to 'smten' solver.
+* instance of Show for Tuple3.
 
 Suspected Bugs::
 * I suspect problems with using a function called 'main' as a normal function
