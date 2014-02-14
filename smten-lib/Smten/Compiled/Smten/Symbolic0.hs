@@ -132,5 +132,5 @@ run_symbolic s q = do
             bres <- {-# SCC "SolveApprox" #-} solve s (notFF pp)
             case bres of
                Nothing -> return S.__Nothing
-               Just _ -> run_symbolic s (q { runS = return ((notFF pp) *. pb, x)})
+               Just _ -> run_symbolic s (q { runS = return (andF_ (notFF pp) pb, x)})
 

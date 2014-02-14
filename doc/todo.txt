@@ -1,5 +1,7 @@
 Approx::
-* Getting rid of BoolF_Unreachable leads to blowup in sketch
+* Getting rid of Unreachable_PartialF leads to blowup in sketch
+    Why?
+* Have timeout for select
 
 Release to Public::
 * write up tutorials (github #3)

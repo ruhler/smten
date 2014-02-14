@@ -69,7 +69,7 @@ instance SymbolicOf P.Integer IntegerF where
     tosym = integerF
 
     symapp f x =
-      case parts_IntegerF x of
+      case deIntegerF x of
         (TrueFF, IntegerFF i, _) -> f i
         (p, a, b) -> ite (finiteF p) (symapp f a) (symapp f b)
 
