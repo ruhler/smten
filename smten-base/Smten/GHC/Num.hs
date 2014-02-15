@@ -1,5 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RebindableSyntax #-}
 module Smten.GHC.Num (
     Num(..)
@@ -8,6 +9,9 @@ module Smten.GHC.Num (
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Num instead of Smten.Compiled.Smten.GHC.Num
 
+import GHC.Prim
+import GHC.Classes
+import GHC.Types
 import Smten.Smten.Base
 import Smten.Data.Num0
 import Smten.GHC.Integer.Type
@@ -28,11 +32,17 @@ class Num a where
     negate x = 0 - x
 
 instance Num Int where
-    (+) = int_add
-    (-) = int_sub
-    (*) = int_mul
-    abs = int_abs
-    signum = int_signum
+    I# x + I# y = I# (x +# y)
+    I# x - I# y = I# (x -# y)
+    negate (I# x) = I# (negateInt# x)
+    I# x * I# y = I# (x *# y)
+    abs n  = case n `geInt` 0 of
+                True -> n 
+                False -> negate n
+
+    signum n | n `ltInt` 0 = negate 1
+             | n `eqInt` 0 = 0
+
     fromInteger = int_fromInteger
 
 instance Num Integer where

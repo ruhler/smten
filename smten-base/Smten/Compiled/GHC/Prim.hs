@@ -5,6 +5,7 @@ module Smten.Compiled.GHC.Prim (
     GHC.Prim.realWorld#, GHC.Prim.State#, GHC.Prim.RealWorld,
     GHC.Prim.Char#, GHC.Prim.Int#, GHC.Prim.Addr#,
     (/=#), (==#), (>=#), (<=#), (>#), (<#),
+    GHC.Prim.negateInt#, (GHC.Prim.-#), (GHC.Prim.*#), (GHC.Prim.+#),
     eqChar#, neChar#, gtChar#, geChar#, ltChar#, leChar#,
     ) where
 
