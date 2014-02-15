@@ -18,7 +18,7 @@ data SelectResult a b = Both a b | Left a | Right b
 --
 -- The values returned have been evaluated to weak head normal form.
 select :: a -> b -> SelectResult a b
-select x y = unsafePerformIO (selectIO x y)
+select x y = unsafeDupablePerformIO (selectIO x y)
 
 -- | Run select on the given arguments, returning the approximation of any
 -- argument which did not finish.

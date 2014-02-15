@@ -1,6 +1,5 @@
 Performance Status
 ==================
-revision: cf07164c4dbfbe0591406c2b7cf2b0024f9a01ce
 
 shampi::
    yices2, Bit: 5.315s
@@ -16,7 +15,7 @@ sudoku:
   yices2, Integer, 2 boards: 9.7s
 
 sketch:
-  passing tests: 19.17s
+  passing tests: 17.664
 
 arch-extract:
  Z3 FETDEC: 7.56s
