@@ -1,0 +1,94 @@
+
+Sat Feb 15 09:38:12 EST 2014
+
+Another performance bug from sketch, which for some reason we used to handle
+well, and now we don't?
+
+arrupd :: [a] -> Int -> a -> [a]
+arrupd [] _ _ = []
+arrupd (x:xs) 0 v = v : xs
+arrupd (x:xs) n v = x : arrupd xs (n-1) v
+
+freeInt :: Symbolic Int
+freeInt = msum (map return [0..31])
+
+query :: Symbolic [Int]
+query = do
+    a <- freeInt
+    b <- freeInt
+    c <- freeInt
+    d <- freeInt
+    x <- sequence $ replicate 4 free_Bool
+    let x1 = arrupd x a True
+        x2 = arrupd x1 b True
+        x3 = arrupd x2 c True
+        x4 = arrupd x3 d True
+    assert (x4 == replicate 4 True)
+    return [a, b, c, d]
+
+My gut feeling is it's just like perf7: we call arrupd and don't know what n
+is. Let me walk through the code manually and see what I find.
+
+The real question is, why is it not really easy given the list itself is
+concrete?
+
+Note: It blows up in the range for freeInt.
+
+Much easier: just a single call to arrupd:
+  a <- freeInt
+  assert $
+    arrupd [False, False, False, False] a True == [True, True, True, True]
+
+The number of calls to arrupd grows exponentially in the range of int values.
+Why?
+
+Sat Feb 15 14:07:27 EST 2014
+
+Hypothesis: The way arrupd is written, the structure of the returned list
+depends on the index. But we ought to know that the struct of the list is the
+same.
+
+We can change arrupd to avoid this: don't condition the list, just condition
+the elements.
+
+Questions:
+A. Will this actually help?
+I expect yes, it should solve the problem.
+
+B. Is there any way to automatically do this transformation, or must the
+programmer make it?
+
+
+A. Yes it solved the problem.
+B.
+Note: the program is subtly different.
+
+In the first version of arrupd, as soon as the index is reached, we stop
+traversing the rest of the list. In the second version, we always traverse the
+entire list, regardless of the index.
+
+Note: if the list were symbolic and the index concrete, then the first version
+of arrupd works better than the second. So there's not a clear better way to
+write things. My gut feeling is this is not something we can do for the
+programmer.
+
+But let me try anyway.
+
+Note: this was the problem with sketch. This fix makes everything go back to
+how it was before the RebindableSyntax change...
+
+Question: Can I apply something like this to solve the perf7 issue? Like I
+thought I should be able to, but didn't work? (Answer is: yes! it works)
+
+The difference from RebindableSyntax is:
+A: Int# case expression: calls a function for each possible
+   value of the argument.
+B: ite tree: calls a function for each possible result of the condition,
+   eg: equals 0 or doesn't.
+
+So now we've seen two cases where one performs better than the other.
+
+
+arrupd: better ite tree.
+insertvar: better case (which can avoid introducing false paths)
+

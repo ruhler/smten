@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RankNTypes #-}
-module Smten.Control.Monad0 (Monad(..)) where
+module Smten.GHC.Base (Monad(..)) where
 
 import Smten.Smten.Base
 import Smten.System.IO0

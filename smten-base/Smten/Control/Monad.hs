@@ -12,11 +12,11 @@ module Smten.Control.Monad (
 -- We use the prelude's definition of monad so that we can use Haskell's
 -- natural do notation.
 --
--- Smten.Control.Monad0 provides a local definition which we can compile
+-- Smten.GHC.Base provides a local definition which we can compile
 -- to Smten code and use. It's imported here to ensure it is compiled to
 -- Smten code.
 import Prelude (Monad(..))
-import Smten.Control.Monad0 ()
+import Smten.GHC.Base ()
 
 import Smten.Data.Bool
 import Smten.Data.Function

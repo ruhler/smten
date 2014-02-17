@@ -1,7 +1,7 @@
 Approx::
 * Getting rid of Unreachable_PartialF leads to blowup in sketch
     Why?
-* Have timeout for select
+* Have timeout for select (?)
 
 Release to Public::
 * write up tutorials (github #3)
@@ -15,7 +15,6 @@ Release to Public::
 
 Prelude::
 * make it so people can import Prelude instead of Smten.Prelude
- - Use GHC.Prim.+# and friends instead of int_add and friends.
 
 Runtime::
 * handle error and infinity correctly.
@@ -69,9 +68,6 @@ Performance::
 * make <, >, >= primitives?
 * implement or_bool on all the solvers rather than falling back to the default
 * Many possible optimizations removed to get decent implementation
-   - SPECIALIZE pragmas for
-       ** symapp of int,
-       ** use, unary, binary of Runtime.Assert
    - Don't call sat solver for assert False
       except that it's nice to have for debugging.
    - Don't call sat solver for assert True
