@@ -6,8 +6,8 @@ module Smten.Data.Bool (
     Bool(..), (&&), (||), not, otherwise,
   ) where
 
-import Prelude ((&&), (||), not)
-import Smten.Data.Bool0
+import GHC.Types (Bool(..))
+import GHC.Classes ((&&), (||), not)
 
 otherwise :: Bool
 otherwise = True

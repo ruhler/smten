@@ -10,7 +10,7 @@ module Smten.Compiled.GHC.Prim (
     ) where
 
 import qualified GHC.Prim
-import Smten.Compiled.Smten.Data.Bool0
+import Smten.Compiled.GHC.Types
 
 (/=#) :: GHC.Prim.Int# -> GHC.Prim.Int# -> Bool
 (/=#) a b = {-# SCC "PRIM_INT_NE" #-} if (a GHC.Prim./=# b) then __True else __False

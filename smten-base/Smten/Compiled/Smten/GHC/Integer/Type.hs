@@ -6,7 +6,7 @@ module Smten.Compiled.Smten.GHC.Integer.Type (
 
 import qualified Prelude as P
 import Smten.Compiled.Smten.Smten.Base
-import Smten.Compiled.Smten.Data.Bool0
+import Smten.Compiled.GHC.Types
 import Smten.Runtime.SymbolicOf
 import Smten.Runtime.Formula
 

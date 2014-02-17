@@ -14,7 +14,7 @@ import qualified Smten.Runtime.Bit as P
 import Smten.Runtime.SymbolicOf
 import Smten.Runtime.Formula
 import Smten.Runtime.Formula.Finite
-import Smten.Compiled.Smten.Data.Bool0
+import Smten.Compiled.GHC.Types
 import Smten.Compiled.Smten.Smten.Base
 import Smten.Compiled.GHC.TypeLits
 

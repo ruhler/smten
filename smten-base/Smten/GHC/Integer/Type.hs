@@ -6,9 +6,9 @@ module Smten.GHC.Integer.Type (
    leqInteger,
     ) where
 
+import GHC.Types(Bool(..))
 import qualified Prelude as P
 import Smten.Smten.Base
-import Smten.Data.Bool0
 import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}

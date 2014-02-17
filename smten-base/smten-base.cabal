@@ -24,7 +24,6 @@ library
     Smten.Prelude
     Smten.Control.Monad
     Smten.Data.Bool
-    Smten.Data.Bool0
     Smten.Data.Char
     Smten.Data.Char0
     Smten.Data.Function
@@ -85,7 +84,6 @@ library
     Smten.Compiled.Smten.Prelude
     Smten.Compiled.Smten.Control.Monad
     Smten.Compiled.Smten.Data.Bool
-    Smten.Compiled.Smten.Data.Bool0
     Smten.Compiled.Smten.Data.Char
     Smten.Compiled.Smten.Data.Char0
     Smten.Compiled.Smten.Data.Function
