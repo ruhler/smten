@@ -26,6 +26,7 @@ type CG = StateT CGS CoreM
 
 -- Given the source module, turn it into the generated module
 toGenMod :: String -> String
+toGenMod "Smten.GHC.Base" = "Smten.Compiled.GHC.Base"
 toGenMod "Smten.GHC.Classes" = "Smten.Compiled.GHC.Classes"
 toGenMod "Smten.GHC.Num" = "Smten.Compiled.GHC.Num"
 toGenMod "Smten.GHC.Show" = "Smten.Compiled.GHC.Show"

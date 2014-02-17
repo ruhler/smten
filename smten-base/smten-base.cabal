@@ -109,7 +109,6 @@ library
     Smten.Compiled.Smten.Data.Ordering
     Smten.Compiled.Smten.Data.Tuple
 
-    Smten.Compiled.Smten.GHC.Base
     Smten.Compiled.Smten.GHC.Integer.Type
 
     Smten.Compiled.Smten.Smten.Base
