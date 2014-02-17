@@ -4,7 +4,7 @@
 module Smten.GHC.Base (
     Functor(..),
     Monad(..),
-    (.), const, eqString,
+    (.), const, eqString, foldr, build,
     ) where
 
 import GHC.Types (Bool(..))
@@ -51,4 +51,17 @@ eqString :: String -> String -> Bool
 eqString [] [] = True
 eqString (c1:cs1) (c2:cs2) = c1 == c2 && cs1 `eqString` cs2
 eqString _ _ = False
+
+
+foldr            :: (a -> b -> b) -> b -> [a] -> b
+{-# INLINE [0] foldr #-}
+foldr k z = go
+          where
+            go []     = z
+            go (y:ys) = y `k` go ys
+
+build   :: forall a. (forall b. (a -> b -> b) -> b -> b) -> [a]
+{-# INLINE [1] build #-}
+build g = g (:) []
+
 
