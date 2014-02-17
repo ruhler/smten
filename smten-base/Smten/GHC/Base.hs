@@ -4,14 +4,17 @@
 module Smten.GHC.Base (
     Functor(..),
     Monad(..),
-    (.), const,
+    (.), const, eqString,
     ) where
 
+import GHC.Types (Bool(..))
+import GHC.Classes ((&&), (==))
 import Smten.Smten.Base
 import Smten.System.IO0
 
 infixr 9 .
 infixl 4  <$
+infixl 1  >>, >>=
 
 class  Functor f  where
     fmap        :: (a -> b) -> f a -> f b
@@ -19,8 +22,6 @@ class  Functor f  where
     (<$)        =  fmap . const
 
 
--- Note: this definition must match up with the definition from
--- GHC.Base
 class Monad m where
     (>>=) :: forall a b. m a -> (a -> m b) -> m b
     (>>) :: forall a b. m a -> m b -> m b
@@ -45,3 +46,9 @@ instance  Functor IO where
 instance Monad IO where
     return = return_io
     (>>=) = bind_io
+
+eqString :: String -> String -> Bool
+eqString [] [] = True
+eqString (c1:cs1) (c2:cs2) = c1 == c2 && cs1 `eqString` cs2
+eqString _ _ = False
+

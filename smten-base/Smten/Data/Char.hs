@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Char (
-    Char, isSpace, eqString, ord, chr,
+    Char, isSpace, ord, chr,
     digitToInt, isDigit, isUpper, isLower, isAlpha, isAlphaNum,
  ) where
 
@@ -12,12 +12,6 @@ import Smten.Data.Char0
 import Smten.Data.Eq
 import Smten.Data.Num
 import Smten.Data.Ord
-
--- used for string literal pattern matching.
-eqString :: String -> String -> Bool
-eqString [] [] = True
-eqString (c1:cs1) (c2:cs2) = c1 == c2 && cs1 `eqString` cs2
-eqString _ _ = False
 
 isSpace :: Char -> Bool
 isSpace c = c == ' '    
