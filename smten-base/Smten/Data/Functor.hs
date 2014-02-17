@@ -1,19 +1,11 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Functor (
-    Functor(..), (<$>),
+    Functor(fmap), (<$), (<$>),
     ) where
 
-import Smten.Data.Function
-
+import GHC.Base(Functor(..))
 infixl 4 <$>
-infixl 4 <$
-
-class Functor f where
-    fmap :: (a -> b) -> f a -> f b
-
-    (<$) :: a -> f b -> f a
-    (<$) = fmap . const
 
 (<$>) :: Functor f => (a -> b) -> f a -> f b
 (<$>) = fmap

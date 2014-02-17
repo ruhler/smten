@@ -6,18 +6,13 @@ module Smten.Data.Function (
     on,
     ) where
 
-infixr 9 .
+import GHC.Base(const, (.))
+
 infixl 0 `on`
 infixr 0 $
 
 id :: a -> a
 id x = x
-
-const :: a -> b -> a
-const x _ = x
-
-(.) :: (b -> c) -> (a -> b) -> a -> c
-(.) f g = \x -> f (g x)
 
 flip :: (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
