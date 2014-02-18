@@ -42,13 +42,16 @@ module Smten.Prelude (
     ) where
 
 import Prelude (Bool(..), (&&), (||), not, otherwise)
+import Prelude (Maybe(..), maybe)
 import Prelude (id, const, (.), flip, ($))
 import Prelude (Eq(..), Ordering(..), Ord(..))
 import Prelude (Num(..))
 import Prelude (Show(..), ShowS, shows, showChar, showString, showParen)
 
 -- Make sure these get compiled...
+import Smten.Data.Maybe_ ()
 import Smten.GHC.Num ()
+import Smten.GHC.Show ()
 
 -- TODO: Switch to GHC Prelude for these things instead of redefining them.
 import Smten.Control.Monad
@@ -58,7 +61,6 @@ import Smten.Data.Enum
 import Smten.Data.EnumInteger ()
 import Smten.Data.EnumInt ()
 import Smten.Data.List
-import Smten.Data.Maybe
 import Smten.Data.Integral
 import Smten.Data.Read
 import Smten.Data.Tuple

@@ -1,14 +1,18 @@
 
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.GHC.Show (
     ShowS, Show(..), showList__, shows, showChar, showString, showParen,
-    showSpace,
+    showSpace, appPrec, appPrec1,
     ) where
 
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Show instead of Smten.Compiled.Smten.GHC.Show
 
+import GHC.Types (Int(..))
+import GHC.Classes ((>))
 import GHC.Base ((++))
+import Data.Maybe
 import Smten.Smten.Base
 import Smten.Data.Bool
 import Smten.Data.Function
@@ -30,6 +34,10 @@ showList__ _ [] s = "[]" ++ s
 showList__ showx (x:xs) s = '[' : showx x (showl xs)
   where showl [] = ']' : s
         showl (y:ys) = ',' : showx y (showl ys)
+
+appPrec, appPrec1 :: Int
+appPrec = I# 10#
+appPrec1 = I# 11#
 
 shows :: (Show a) => a -> ShowS
 shows = showsPrec 0
@@ -58,6 +66,13 @@ instance Show Bool where
 
 instance Show Int where
     showsPrec = int_showsPrec
+
+instance Show a => Show (Maybe a) where
+    showsPrec _p Nothing s = showString "Nothing" s
+    showsPrec p (Just x) s
+                          = (showParen (p > appPrec) $
+                             showString "Just " .
+                             showsPrec appPrec1 x) s
 
 instance Show Char where
     showsPrec = char_showsPrec

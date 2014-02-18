@@ -47,6 +47,7 @@ library
     Smten.Data.Ordering
     Smten.Data.Tuple
 
+    Smten.Data.Maybe_
     Smten.GHC.Base
     Smten.GHC.Classes
     Smten.GHC.Integer.Type
@@ -98,7 +99,6 @@ library
     Smten.Compiled.Smten.Data.Maybe
     Smten.Compiled.Smten.Data.Num0
     Smten.Compiled.Smten.Data.Read
-    Smten.Compiled.Smten.Data.Show
     Smten.Compiled.Smten.Data.Show0
     Smten.Compiled.Smten.Data.Ord
     Smten.Compiled.Smten.Data.OrdInteger
@@ -118,6 +118,7 @@ library
     Smten.Compiled.Smten.System.IO0
 
     Smten.Compiled.Control.Exception.Base
+    Smten.Compiled.Data.Maybe
     Smten.Compiled.GHC.Base
     Smten.Compiled.GHC.Classes
     Smten.Compiled.GHC.CString

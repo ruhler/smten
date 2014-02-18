@@ -5,7 +5,7 @@ module Smten.Compiled.Smten.System.Timeout (timeout) where
 import qualified Prelude as P
 import qualified System.Timeout as P
 import Smten.Compiled.Smten.Smten.Base
-import Smten.Compiled.Smten.Data.Maybe
+import Smten.Compiled.Data.Maybe
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 

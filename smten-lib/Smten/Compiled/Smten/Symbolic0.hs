@@ -19,7 +19,7 @@ import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
 import Smten.Runtime.Model
 
-import qualified Smten.Compiled.Smten.Data.Maybe as S
+import qualified Smten.Compiled.Data.Maybe as S
 import Smten.Compiled.GHC.TypeLits
 
 data Symbolic a = Symbolic {
