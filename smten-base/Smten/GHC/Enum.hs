@@ -1,9 +1,11 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# OPTIONS_GHC -O #-}
 module Smten.GHC.Enum (Enum(..)) where
 
-import Smten.Smten.Base
+import GHC.Base
+import GHC.Num
+import GHC.Types
+import Smten.Data.Integral0 (int_toInteger)
 
 class Enum a where
     succ :: a -> a
@@ -16,3 +18,31 @@ class Enum a where
     enumFromTo :: a -> a -> [a]
     enumFromThenTo :: a -> a -> a -> [a]
 
+instance Enum Int where
+    succ x = x + 1
+    pred x = x - 1
+    toEnum = id
+    fromEnum = id
+
+    enumFrom i = i : enumFrom (i+1)
+    enumFromThen a b = a : enumFromThen b (b + b - a)
+    enumFromTo a b = if a > b then [] else a : enumFromTo (a+1) b
+    enumFromThenTo a b c =
+        if a > c
+            then []
+            else a : enumFromThenTo b (b + b - a) c
+    
+instance Enum Integer where
+    succ x = x + 1
+    pred x = x - 1
+    toEnum = int_toInteger
+    fromEnum = fromInteger
+
+    enumFrom i = i : enumFrom (i+1)
+    enumFromThen a b = a : enumFromThen b (b + b - a)
+    enumFromTo a b = if a > b then [] else a : enumFromTo (a+1) b
+    enumFromThenTo a b c =
+        if a > c
+            then []
+            else a : enumFromThenTo b (b + b - a) c
+    

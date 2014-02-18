@@ -29,8 +29,6 @@ library
     Smten.Data.Function
     Smten.Data.Functor
     Smten.Data.Either
-    Smten.Data.EnumInteger
-    Smten.Data.EnumInt
     Smten.Data.Eq
     Smten.Data.EqInteger
     Smten.Data.Integral
@@ -89,8 +87,6 @@ library
     Smten.Compiled.Smten.Data.Char0
     Smten.Compiled.Smten.Data.Function
     Smten.Compiled.Smten.Data.Functor
-    Smten.Compiled.Smten.Data.EnumInteger
-    Smten.Compiled.Smten.Data.EnumInt
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.EqInteger
     Smten.Compiled.Smten.Data.Integral

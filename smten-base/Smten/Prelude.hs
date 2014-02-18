@@ -62,8 +62,6 @@ import Smten.GHC.Show ()
 import Smten.Control.Monad
 import Smten.Data.Functor
 import Smten.GHC.Enum
-import Smten.Data.EnumInteger ()
-import Smten.Data.EnumInt ()
 import Smten.Data.List
 import Smten.Data.Integral
 import Smten.Data.Read

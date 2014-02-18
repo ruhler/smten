@@ -7,7 +7,6 @@ module Smten.Data.Integral (
 import Smten.Smten.Integer
 import Smten.Smten.Int
 import Smten.GHC.Enum
-import Smten.Data.EnumInt ()
 import Smten.Data.Integral0
 
 class (Enum a) => Integral a where
