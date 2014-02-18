@@ -17,7 +17,7 @@ module Smten.GHC.Base (
 import GHC.Prim (RealWorld, State#)
 import GHC.Types (Char, Bool(..), IO(..))
 import GHC.Classes ((&&), (==))
-import Smten.Smten.Base (error)
+import GHC.Err (error)
 
 infixr 9 .
 infixr 5 ++

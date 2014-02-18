@@ -2,7 +2,7 @@
 module Smten.Smten.Base (
     Char, String,
     Int, Integer,
-    error,
+    P.error,
     ) where
 
 import qualified Prelude as P
@@ -16,8 +16,4 @@ import Smten.Smten.Tuple ()
 import Smten.Smten.Unit ()
 
 {-# ANN module PrimitiveModule #-}
-
-{-# NOINLINE error #-}
-error :: String -> a
-error = {-# SCC "PRIM_ERROR" #-} P.error
 

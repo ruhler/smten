@@ -124,6 +124,7 @@ library
     Smten.Compiled.GHC.Classes
     Smten.Compiled.GHC.CString
     Smten.Compiled.GHC.Enum
+    Smten.Compiled.GHC.Err
     Smten.Compiled.GHC.Integer.Type
     Smten.Compiled.GHC.Num
     Smten.Compiled.GHC.Prim
