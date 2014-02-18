@@ -6,6 +6,7 @@ module Smten.GHC.Base (
     Monad(..),
     (.), const, eqString,
     foldr, build, map, (++),
+    otherwise,
     ) where
 
 -- Note: this module is hardwired in the smten plugin to generate code to
@@ -58,7 +59,8 @@ map f (x:xs) = f x : map f xs
 (++) []     ys = ys
 (++) (x:xs) ys = x : xs ++ ys
 
-
+otherwise :: Bool
+otherwise = True
 
 
 

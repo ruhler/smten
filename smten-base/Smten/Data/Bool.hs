@@ -1,14 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# OPTIONS_GHC -O #-}
 
-module Smten.Data.Bool (
-    Bool(..), (&&), (||), not, otherwise,
-  ) where
+module Smten.Data.Bool (module Data.Bool) where
 
-import GHC.Types (Bool(..))
-import GHC.Classes ((&&), (||), not)
-
-otherwise :: Bool
-otherwise = True
+import Data.Bool
 
