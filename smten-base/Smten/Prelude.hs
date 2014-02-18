@@ -61,7 +61,7 @@ import Smten.GHC.Show ()
 -- TODO: Switch to GHC Prelude for these things instead of redefining them.
 import Smten.Control.Monad
 import Smten.Data.Functor
-import Smten.Data.Enum
+import Smten.GHC.Enum
 import Smten.Data.EnumInteger ()
 import Smten.Data.EnumInt ()
 import Smten.Data.List

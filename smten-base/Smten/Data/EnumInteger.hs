@@ -3,7 +3,7 @@
 module Smten.Data.EnumInteger () where
 
 import Smten.Smten.Base
-import Smten.Data.Enum
+import Smten.GHC.Enum
 import Smten.Data.Ord
 import Smten.Data.Integral
 import GHC.Num(Num(..))
