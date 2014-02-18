@@ -7,7 +7,7 @@ module Smten.GHC.Base (
     foldr, build, map, (++),
     otherwise,
     String, eqString,
-    (.), const,
+    id, (.), const, flip, ($),
     ) where
 
 -- Note: this module is hardwired in the smten plugin to generate code to
@@ -20,8 +20,9 @@ import Smten.System.IO0
 
 infixr 9 .
 infixr 5 ++
-infixl 4  <$
-infixl 1  >>, >>=
+infixl 4 <$
+infixl 1 >>, >>=
+infixr 0 $
 
 class  Functor f  where
     fmap        :: (a -> b) -> f a -> f b
@@ -70,6 +71,8 @@ eqString [] [] = True
 eqString (c1:cs1) (c2:cs2) = c1 == c2 && cs1 `eqString` cs2
 eqString _ _ = False
 
+id                      :: a -> a
+id x                    =  x
 
 const                   :: a -> b -> a
 const x _               =  x
@@ -77,6 +80,13 @@ const x _               =  x
 {-# INLINE (.) #-}
 (.)    :: (b -> c) -> (a -> b) -> a -> c
 (.) f g = \x -> f (g x)
+
+flip                    :: (a -> b -> c) -> b -> a -> c
+flip f x y              =  f y x
+
+{-# INLINE ($) #-}
+($)                     :: (a -> b) -> a -> b
+f $ x                   =  f x
 
 
 instance  Functor IO where
