@@ -17,7 +17,8 @@ module Smten.Prelude (
     mapM, mapM_, sequence, sequence_,
     maybe, either,
     (&&), (||), not, otherwise,
-    fst, snd, curry, uncurry, id, const, (.), flip, ($),
+    fst, snd, curry, uncurry,
+    id, const, (.), flip, ($),
     error, undefined,
 
     -- PreludeList
@@ -47,9 +48,11 @@ import Prelude (id, const, (.), flip, ($))
 import Prelude (Eq(..), Ordering(..), Ord(..))
 import Prelude (Num(..))
 import Prelude (Show(..), ShowS, shows, showChar, showString, showParen)
+import Prelude (fst, snd, curry, uncurry)
 
 -- Make sure these get compiled...
 import Smten.Data.Maybe_ ()
+import Smten.Data.Tuple_ ()
 import Smten.GHC.Num ()
 import Smten.GHC.Show ()
 
@@ -63,7 +66,6 @@ import Smten.Data.EnumInt ()
 import Smten.Data.List
 import Smten.Data.Integral
 import Smten.Data.Read
-import Smten.Data.Tuple
 import Smten.Smten.Base
 import Smten.System.IO
 
