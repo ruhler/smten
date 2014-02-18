@@ -13,12 +13,6 @@ import Smten.Control.Monad
 import Smten.Control.Monad.Trans
 import Smten.Control.Monad.Error.Class
 
-instance (Error e) => Monad (Either e) where
-    return = Right
-    Left l >>= _ = Left l
-    Right r >>= k = k r
-    fail msg = Left (strMsg msg)
-
 instance (Error e) => MonadPlus (Either e) where
     mzero = Left noMsg
     Left _ `mplus` n = n

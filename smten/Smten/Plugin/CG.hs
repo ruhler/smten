@@ -26,6 +26,7 @@ type CG = StateT CGS CoreM
 
 -- Given the source module, turn it into the generated module
 toGenMod :: String -> String
+toGenMod "Smten.Data.Either_" = "Smten.Compiled.Data.Either"
 toGenMod "Smten.Data.Maybe_" = "Smten.Compiled.Data.Maybe"
 toGenMod "Smten.Data.Tuple_" = "Smten.Compiled.Data.Tuple"
 toGenMod "Smten.GHC.Base" = "Smten.Compiled.GHC.Base"
