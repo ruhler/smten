@@ -18,9 +18,9 @@ module Smten.Control.Monad (
 import Prelude (Monad(..))
 import Smten.GHC.Base ()
 
+import GHC.Base (foldr, build, map)
 import Smten.Data.Bool
 import Smten.Data.Function
-import Smten.Data.List0
 
 infixr 1 =<<, <=<, >=>
 

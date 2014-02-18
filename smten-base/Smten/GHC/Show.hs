@@ -8,10 +8,10 @@ module Smten.GHC.Show (
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Show instead of Smten.Compiled.Smten.GHC.Show
 
+import GHC.Base ((++))
 import Smten.Smten.Base
 import Smten.Data.Bool
 import Smten.Data.Function
-import Smten.Data.List0
 import Smten.Data.Show0
 
 type ShowS = String -> String

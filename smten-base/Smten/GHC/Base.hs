@@ -4,8 +4,12 @@
 module Smten.GHC.Base (
     Functor(..),
     Monad(..),
-    (.), const, eqString, foldr, build,
+    (.), const, eqString,
+    foldr, build, map, (++),
     ) where
+
+-- Note: this module is hardwired in the smten plugin to generate code to
+-- Smten.Compiled.GHC.Base instead of Smten.Compiled.Smten.GHC.Base
 
 import GHC.Types (Bool(..))
 import GHC.Classes ((&&), (==))
@@ -13,6 +17,7 @@ import Smten.Smten.Base
 import Smten.System.IO0
 
 infixr 9 .
+infixr 5 ++
 infixl 4  <$
 infixl 1  >>, >>=
 
@@ -31,6 +36,32 @@ class Monad m where
     {-# INLINE (>>) #-}
     m >> k = m >>= \_ -> k
     fail s = error s
+
+
+foldr            :: (a -> b -> b) -> b -> [a] -> b
+{-# INLINE [0] foldr #-}
+foldr k z = go
+          where
+            go []     = z
+            go (y:ys) = y `k` go ys
+
+
+build   :: forall a. (forall b. (a -> b -> b) -> b -> b) -> [a]
+{-# INLINE [1] build #-}
+build g = g (:) []
+
+map :: (a -> b) -> [a] -> [b]
+map _ []     = []
+map f (x:xs) = f x : map f xs
+
+(++) :: [a] -> [a] -> [a]
+(++) []     ys = ys
+(++) (x:xs) ys = x : xs ++ ys
+
+
+
+
+
 
 const                   :: a -> b -> a
 const x _               =  x
@@ -51,17 +82,5 @@ eqString :: String -> String -> Bool
 eqString [] [] = True
 eqString (c1:cs1) (c2:cs2) = c1 == c2 && cs1 `eqString` cs2
 eqString _ _ = False
-
-
-foldr            :: (a -> b -> b) -> b -> [a] -> b
-{-# INLINE [0] foldr #-}
-foldr k z = go
-          where
-            go []     = z
-            go (y:ys) = y `k` go ys
-
-build   :: forall a. (forall b. (a -> b -> b) -> b -> b) -> [a]
-{-# INLINE [1] build #-}
-build g = g (:) []
 
 

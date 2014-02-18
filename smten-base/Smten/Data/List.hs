@@ -15,6 +15,7 @@ module Smten.Data.List (
     sort, sortBy, tails, isPrefixOf, isInfixOf, nub,
  ) where
 
+import GHC.Base (foldr, map, (++))
 import Smten.Smten.Base
 import Smten.Data.Bool
 import qualified Smten.Data.Char as Char
@@ -23,7 +24,6 @@ import Smten.Data.Function
 import Smten.Data.Maybe
 import Smten.Data.Num
 import Smten.Data.Ord
-import Smten.Data.List0
 
 infixl 9 !!
 infix 4 `elem`, `notElem`
