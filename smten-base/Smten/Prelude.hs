@@ -41,22 +41,26 @@ module Smten.Prelude (
     primitive,
     ) where
 
+import Prelude (Bool(..), (&&), (||), not, otherwise)
+import Prelude (id, const, (.), flip, ($))
+import Prelude (Eq(..), Ordering(..), Ord(..))
+import Prelude (Num(..))
+import Prelude (Show(..), ShowS, shows, showChar, showString, showParen)
+
+-- Make sure these get compiled...
+import Smten.GHC.Num ()
+
+-- TODO: Switch to GHC Prelude for these things instead of redefining them.
 import Smten.Control.Monad
-import Smten.Data.Bool
-import Smten.Data.Function
 import Smten.Data.Functor
 import Smten.Data.Either
 import Smten.Data.Enum
 import Smten.Data.EnumInteger ()
 import Smten.Data.EnumInt ()
-import Smten.Data.Eq
-import Smten.Data.Ord
 import Smten.Data.List
 import Smten.Data.Maybe
-import Smten.Data.Num
 import Smten.Data.Integral
 import Smten.Data.Read
-import Smten.Data.Show
 import Smten.Data.Tuple
 import Smten.Smten.Base
 import Smten.System.IO

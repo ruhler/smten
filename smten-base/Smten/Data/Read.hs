@@ -4,11 +4,11 @@ module Smten.Data.Read (
     ReadS, Read(..), reads, read,
    ) where
 
+import GHC.Num(Num(..))
 import Smten.Smten.Base
 import Smten.Data.Char
 import Smten.Data.Function
 import Smten.Data.List
-import Smten.Data.Num
 
 type ReadS a = String -> [(a, String)]
 

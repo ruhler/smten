@@ -5,8 +5,8 @@ module Smten.Data.EnumInteger () where
 import Smten.Smten.Base
 import Smten.Data.Enum
 import Smten.Data.Ord
-import Smten.Data.Num
 import Smten.Data.Integral
+import GHC.Num(Num(..))
 
 instance Enum Integer where
     succ x = x + 1

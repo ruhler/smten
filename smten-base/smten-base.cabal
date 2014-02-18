@@ -38,7 +38,6 @@ library
     Smten.Data.Integral0
     Smten.Data.List
     Smten.Data.Maybe
-    Smten.Data.Num
     Smten.Data.Num0
     Smten.Data.Read
     Smten.Data.Show
@@ -97,7 +96,6 @@ library
     Smten.Compiled.Smten.Data.Integral0
     Smten.Compiled.Smten.Data.List
     Smten.Compiled.Smten.Data.Maybe
-    Smten.Compiled.Smten.Data.Num
     Smten.Compiled.Smten.Data.Num0
     Smten.Compiled.Smten.Data.Read
     Smten.Compiled.Smten.Data.Show

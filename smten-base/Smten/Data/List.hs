@@ -16,13 +16,13 @@ module Smten.Data.List (
  ) where
 
 import GHC.Base (foldr, map, (++))
+import GHC.Num(Num(..))
 import Smten.Smten.Base
 import Smten.Data.Bool
 import qualified Smten.Data.Char as Char
 import Smten.Data.Eq
 import Smten.Data.Function
 import Smten.Data.Maybe
-import Smten.Data.Num
 import Smten.Data.Ord
 
 infixl 9 !!

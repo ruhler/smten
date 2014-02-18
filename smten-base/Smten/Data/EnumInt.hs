@@ -6,7 +6,7 @@ import Smten.Smten.Base
 import Smten.Data.Enum
 import Smten.Data.Function
 import Smten.Data.Ord
-import Smten.Data.Num
+import GHC.Num(Num(..))
 
 instance Enum Int where
     succ x = x + 1
