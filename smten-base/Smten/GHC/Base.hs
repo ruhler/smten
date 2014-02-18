@@ -1,5 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE MagicHash, UnboxedTuples #-}
 {-# LANGUAGE RankNTypes #-}
 module Smten.GHC.Base (
     Functor(..),
@@ -13,10 +14,10 @@ module Smten.GHC.Base (
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Base instead of Smten.Compiled.Smten.GHC.Base
 
-import GHC.Types (Char, Bool(..))
+import GHC.Prim (RealWorld, State#)
+import GHC.Types (Char, Bool(..), IO(..))
 import GHC.Classes ((&&), (==))
 import Smten.Smten.Base (error)
-import Smten.System.IO0
 
 infixr 9 .
 infixr 5 ++
@@ -93,7 +94,20 @@ instance  Functor IO where
    fmap f x = x >>= (return . f)
 
 instance Monad IO where
-    return = return_io
-    (>>=) = bind_io
+    {-# INLINE return #-}
+    {-# INLINE (>>)   #-}
+    {-# INLINE (>>=)  #-}
+    m >> k    = m >>= \ _ -> k
+    return    = returnIO
+    (>>=)     = bindIO
+    --fail s    = failIO s
 
+returnIO :: a -> IO a
+returnIO x = IO $ \ s -> (# s, x #)
+
+bindIO :: IO a -> (a -> IO b) -> IO b
+bindIO (IO m) k = IO $ \ s -> case m s of (# new_s, a #) -> unIO (k a) new_s
+
+unIO :: IO a -> (State# RealWorld -> (# State# RealWorld, a #))
+unIO (IO a) = a
 
