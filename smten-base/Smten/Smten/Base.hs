@@ -6,7 +6,7 @@ module Smten.Smten.Base (
     ) where
 
 import qualified Prelude as P
-import Prelude (Integer)
+import Prelude (Integer, String)
 import Smten.Plugin.Annotations
 import Smten.Smten.Char
 import Smten.Smten.Int
@@ -16,8 +16,6 @@ import Smten.Smten.Tuple ()
 import Smten.Smten.Unit ()
 
 {-# ANN module PrimitiveModule #-}
-
-type String = [Char]
 
 {-# NOINLINE error #-}
 error :: String -> a

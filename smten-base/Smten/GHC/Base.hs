@@ -4,17 +4,18 @@
 module Smten.GHC.Base (
     Functor(..),
     Monad(..),
-    (.), const, eqString,
     foldr, build, map, (++),
     otherwise,
+    String, eqString,
+    (.), const,
     ) where
 
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Base instead of Smten.Compiled.Smten.GHC.Base
 
-import GHC.Types (Bool(..))
+import GHC.Types (Char, Bool(..))
 import GHC.Classes ((&&), (==))
-import Smten.Smten.Base
+import Smten.Smten.Base (error)
 import Smten.System.IO0
 
 infixr 9 .
@@ -62,7 +63,12 @@ map f (x:xs) = f x : map f xs
 otherwise :: Bool
 otherwise = True
 
+type String = [Char]
 
+eqString :: String -> String -> Bool
+eqString [] [] = True
+eqString (c1:cs1) (c2:cs2) = c1 == c2 && cs1 `eqString` cs2
+eqString _ _ = False
 
 
 const                   :: a -> b -> a
@@ -79,10 +85,5 @@ instance  Functor IO where
 instance Monad IO where
     return = return_io
     (>>=) = bind_io
-
-eqString :: String -> String -> Bool
-eqString [] [] = True
-eqString (c1:cs1) (c2:cs2) = c1 == c2 && cs1 `eqString` cs2
-eqString _ _ = False
 
 
