@@ -59,6 +59,7 @@ import Smten.Data.Either_ ()
 import Smten.Data.Maybe_ ()
 import Smten.Data.Tuple_ ()
 import Smten.GHC.Enum ()
+import Smten.GHC.List ()
 import Smten.GHC.Num ()
 import Smten.GHC.Show ()
 

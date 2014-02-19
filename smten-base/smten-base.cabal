@@ -52,6 +52,7 @@ library
     Smten.GHC.Classes
     Smten.GHC.Enum
     Smten.GHC.Integer.Type
+    Smten.GHC.List
     Smten.GHC.Num
     Smten.GHC.Show
 
@@ -123,6 +124,7 @@ library
     Smten.Compiled.GHC.Enum
     Smten.Compiled.GHC.Err
     Smten.Compiled.GHC.Integer.Type
+    Smten.Compiled.GHC.List
     Smten.Compiled.GHC.Num
     Smten.Compiled.GHC.Prim
     Smten.Compiled.GHC.Show
