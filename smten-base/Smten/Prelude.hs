@@ -44,7 +44,6 @@ module Smten.Prelude (
 
 import Prelude hiding (
   undefined,
-  Integral(..),
   ReadS, Read(..), reads, read,
  )
 
@@ -63,7 +62,7 @@ import Smten.GHC.Show ()
 import Smten.System.IO_ ()
 
 -- TODO: Switch to GHC Prelude for these things instead of redefining them.
-import Smten.Data.Integral
+import Smten.Data.Integral ()
 import Smten.Data.Read
 
 undefined :: a

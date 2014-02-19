@@ -131,6 +131,7 @@ library
     Smten.Compiled.GHC.List
     Smten.Compiled.GHC.Num
     Smten.Compiled.GHC.Prim
+    Smten.Compiled.GHC.Real
     Smten.Compiled.GHC.Show
     Smten.Compiled.GHC.TopHandler
     Smten.Compiled.GHC.Tuple
