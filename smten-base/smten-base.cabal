@@ -66,6 +66,7 @@ library
     Smten.Smten.Tuple
     Smten.Smten.Unit
     Smten.System.IO
+    Smten.System.IO_
     Smten.System.IO0
 
     Smten.Runtime.AnyMap
@@ -111,7 +112,7 @@ library
     Smten.Compiled.Smten.Smten.List
     Smten.Compiled.Smten.Smten.Tuple
     Smten.Compiled.Smten.Smten.Unit
-    Smten.Compiled.Smten.System.IO
+    Smten.Compiled.Smten.System.IO_
     Smten.Compiled.Smten.System.IO0
 
     Smten.Compiled.Control.Exception.Base
