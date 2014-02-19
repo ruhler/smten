@@ -2,7 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 module Smten.Compiled.Smten.GHC.Integer.Type (
    plusInteger, minusInteger, timesInteger,
-   absInteger, signumInteger, eqInteger, leqInteger,
+   absInteger, signumInteger, eqInteger, leInteger,
    smallInteger,
     ) where
 
@@ -32,8 +32,8 @@ signumInteger = {-# SCC "PRIM_SIGNUM_INTEGER" #-} symapp (tosym P.. (P.signum ::
 eqInteger :: Integer -> Integer -> Bool
 eqInteger = {-# SCC "PRIM_EQ_INTEGER" #-} eq_IntegerF
 
-leqInteger :: Integer -> Integer -> Bool
-leqInteger = {-# SCC "PRIM_LEQ_INTEGER" #-} leq_IntegerF
+leInteger :: Integer -> Integer -> Bool
+leInteger = {-# SCC "PRIM_LE_INTEGER" #-} leq_IntegerF
 
 smallInteger :: Int# -> Integer
 smallInteger i = integerF (P.smallInteger i)

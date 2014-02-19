@@ -4,13 +4,12 @@
 module Smten.GHC.Integer.Type (
    plusInteger, minusInteger, timesInteger,
    absInteger, signumInteger, eqInteger,
-   leqInteger, smallInteger,
+   leInteger, smallInteger,
     ) where
 
 import GHC.Prim
 import GHC.Types(Bool(..))
 import qualified GHC.Integer as P
-import qualified Prelude as P
 import Smten.Smten.Base
 import Smten.Plugin.Annotations
 
@@ -18,32 +17,33 @@ import Smten.Plugin.Annotations
 
 {-# NOINLINE plusInteger #-}
 plusInteger :: Integer -> Integer -> Integer
-plusInteger = {-# SCC "PRIM_PLUS_INTEGER" #-} (P.+)
+plusInteger = P.plusInteger
 
 {-# NOINLINE minusInteger #-}
 minusInteger :: Integer -> Integer -> Integer
-minusInteger = {-# SCC "PRIM_MINUS_INTEGER" #-} (P.-)
+minusInteger = P.minusInteger
 
 {-# NOINLINE timesInteger #-}
 timesInteger :: Integer -> Integer -> Integer
-timesInteger = {-# SCC "PRIM_TIMES_INTEGER" #-} (P.*)
+timesInteger = P.timesInteger
 
 {-# NOINLINE absInteger #-}
 absInteger :: Integer -> Integer
-absInteger = {-# SCC "PRIM_ABS_INTEGER" #-} P.abs
+absInteger = P.absInteger
 
 {-# NOINLINE signumInteger #-}
 signumInteger :: Integer -> Integer
-signumInteger = {-# SCC "PRIM_SIGNUM_INTEGER" #-} P.signum
+signumInteger = P.signumInteger
 
 {-# NOINLINE eqInteger #-}
 eqInteger :: Integer -> Integer -> Bool
-eqInteger = {-# SCC "PRIM_EQ_INTEGER" #-} (P.==)
+eqInteger = P.eqInteger
 
-{-# NOINLINE leqInteger #-}
-leqInteger :: Integer -> Integer -> Bool
-leqInteger = {-# SCC "PRIM_LEQ_INTEGER" #-} (P.<=)
+{-# NOINLINE leInteger #-}
+leInteger :: Integer -> Integer -> Bool
+leInteger = P.leInteger
 
+{-# NOINLINE smallInteger #-}
 smallInteger :: Int# -> Integer
 smallInteger = P.smallInteger
 

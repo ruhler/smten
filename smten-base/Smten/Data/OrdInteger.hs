@@ -10,5 +10,5 @@ import Smten.GHC.Classes
 import Smten.GHC.Integer.Type
 
 instance Ord Integer where
-    (<=) = leqInteger
+    (<=) = leInteger
 
