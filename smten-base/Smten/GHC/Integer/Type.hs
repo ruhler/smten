@@ -1,12 +1,15 @@
 
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.GHC.Integer.Type (
    plusInteger, minusInteger, timesInteger,
    absInteger, signumInteger, eqInteger,
-   leqInteger,
+   leqInteger, smallInteger,
     ) where
 
+import GHC.Prim
 import GHC.Types(Bool(..))
+import qualified GHC.Integer as P
 import qualified Prelude as P
 import Smten.Smten.Base
 import Smten.Plugin.Annotations
@@ -40,4 +43,7 @@ eqInteger = {-# SCC "PRIM_EQ_INTEGER" #-} (P.==)
 {-# NOINLINE leqInteger #-}
 leqInteger :: Integer -> Integer -> Bool
 leqInteger = {-# SCC "PRIM_LEQ_INTEGER" #-} (P.<=)
+
+smallInteger :: Int# -> Integer
+smallInteger = P.smallInteger
 

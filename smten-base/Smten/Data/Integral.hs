@@ -1,12 +1,14 @@
 
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Integral (
     Integral(..),
     ) where
 
 import GHC.Enum
+import GHC.Types
+import Smten.GHC.Integer.Type
 import Smten.Smten.Integer
-import Smten.Smten.Int
 import Smten.Data.Integral0
 
 class (Enum a) => Integral a where
@@ -20,8 +22,8 @@ class (Enum a) => Integral a where
     toInteger :: a -> Integer
 
 instance Integral Int where
+    toInteger (I# i) = smallInteger i
     quotRem a b = (quot a b, rem a b)
     quot = int_quot
     rem = int_rem
-    toInteger = int_toInteger
 

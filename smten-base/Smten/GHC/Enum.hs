@@ -1,4 +1,5 @@
 
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.GHC.Enum (Enum(..)) where
 
@@ -7,7 +8,6 @@ module Smten.GHC.Enum (Enum(..)) where
 
 import GHC.Base
 import GHC.Num
-import Smten.Data.Integral0 (int_toInteger)
 
 class Enum a where
     succ :: a -> a
@@ -37,7 +37,7 @@ instance Enum Int where
 instance Enum Integer where
     succ x = x + 1
     pred x = x - 1
-    toEnum = int_toInteger
+    toEnum (I# i) = smallInteger i
     fromEnum = fromInteger
 
     enumFrom i = i : enumFrom (i+1)
