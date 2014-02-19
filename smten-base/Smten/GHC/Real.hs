@@ -1,9 +1,12 @@
 
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Data.Integral (
+module Smten.GHC.Real (
     Integral(..),
     ) where
+
+-- Note: this module is hardwired in the smten plugin to generate code to
+-- Smten.Compiled.GHC.Real instead of Smten.Compiled.Smten.GHC.Real
 
 import GHC.Classes
 import GHC.Enum

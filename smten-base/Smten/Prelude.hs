@@ -58,11 +58,11 @@ import Smten.GHC.Base ()
 import Smten.GHC.Enum ()
 import Smten.GHC.List ()
 import Smten.GHC.Num ()
+import Smten.GHC.Real ()
 import Smten.GHC.Show ()
 import Smten.System.IO_ ()
 
 -- TODO: Switch to GHC Prelude for these things instead of redefining them.
-import Smten.Data.Integral ()
 import Smten.Data.Read
 
 undefined :: a

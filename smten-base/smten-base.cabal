@@ -31,7 +31,6 @@ library
     Smten.Data.Either
     Smten.Data.Eq
     Smten.Data.EqInteger
-    Smten.Data.Integral
     Smten.Data.Integral0
     Smten.Data.List
     Smten.Data.Maybe
@@ -56,6 +55,7 @@ library
     Smten.GHC.Integer.Type
     Smten.GHC.List
     Smten.GHC.Num
+    Smten.GHC.Real
     Smten.GHC.Show
 
     Smten.Smten.Base
@@ -93,7 +93,6 @@ library
     Smten.Compiled.Smten.Data.Function
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.EqInteger
-    Smten.Compiled.Smten.Data.Integral
     Smten.Compiled.Smten.Data.Integral0
     Smten.Compiled.Smten.Data.List
     Smten.Compiled.Smten.Data.Num0

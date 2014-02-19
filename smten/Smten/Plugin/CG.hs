@@ -37,6 +37,7 @@ toGenMod "Smten.GHC.Classes" = "Smten.Compiled.GHC.Classes"
 toGenMod "Smten.GHC.Enum" = "Smten.Compiled.GHC.Enum"
 toGenMod "Smten.GHC.List" = "Smten.Compiled.GHC.List"
 toGenMod "Smten.GHC.Num" = "Smten.Compiled.GHC.Num"
+toGenMod "Smten.GHC.Real" = "Smten.Compiled.GHC.Real"
 toGenMod "Smten.GHC.Show" = "Smten.Compiled.GHC.Show"
 toGenMod s = "Smten.Compiled." ++ s
 
