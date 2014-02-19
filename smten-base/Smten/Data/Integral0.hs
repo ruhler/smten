@@ -6,7 +6,6 @@ module Smten.Data.Integral0 (
 import qualified Prelude as P
 import Smten.Plugin.Annotations
 import Smten.Smten.Int
-import Smten.Smten.Integer
 
 {-# ANN module PrimitiveModule #-}
 

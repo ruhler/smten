@@ -41,6 +41,15 @@ class Monad m where
     m >> k = m >>= \_ -> k
     fail s = error s
 
+instance Functor [] where
+    fmap = map
+
+instance  Monad []  where
+    m >>= k             = foldr ((++) . k) [] m
+    m >> k              = foldr ((++) . (\ _ -> k)) [] m
+    return x            = [x]
+    fail _              = []
+
 
 foldr            :: (a -> b -> b) -> b -> [a] -> b
 {-# INLINE [0] foldr #-}

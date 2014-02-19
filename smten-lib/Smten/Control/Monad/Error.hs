@@ -13,11 +13,6 @@ import Smten.Control.Monad
 import Smten.Control.Monad.Trans
 import Smten.Control.Monad.Error.Class
 
-instance (Error e) => MonadPlus (Either e) where
-    mzero = Left noMsg
-    Left _ `mplus` n = n
-    m `mplus` _ = m
-
 instance (Error e) => MonadError e (Either e) where
     throwError = Left
     Left l `catchError` h = h l

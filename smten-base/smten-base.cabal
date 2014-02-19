@@ -44,6 +44,7 @@ library
     Smten.Data.Ordering
     Smten.Data.Tuple
 
+    Smten.Control.Monad_
     Smten.Data.Either_
     Smten.Data.Functor_
     Smten.Data.Maybe_
@@ -93,7 +94,6 @@ library
     Smten.Compiled.Smten.Data.Integral
     Smten.Compiled.Smten.Data.Integral0
     Smten.Compiled.Smten.Data.List
-    Smten.Compiled.Smten.Data.Maybe
     Smten.Compiled.Smten.Data.Num0
     Smten.Compiled.Smten.Data.Read
     Smten.Compiled.Smten.Data.Show0
@@ -114,6 +114,7 @@ library
     Smten.Compiled.Smten.System.IO0
 
     Smten.Compiled.Control.Exception.Base
+    Smten.Compiled.Control.Monad
     Smten.Compiled.Data.Either
     Smten.Compiled.Data.Functor
     Smten.Compiled.Data.Maybe
