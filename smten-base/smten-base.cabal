@@ -134,6 +134,7 @@ library
     Smten.Compiled.GHC.TopHandler
     Smten.Compiled.GHC.Tuple
     Smten.Compiled.GHC.Types
+    Smten.Compiled.System.IO
 
   build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten ==@VERSIONMAJOR@.*,
                  hashtables ==1.0.*, template-haskell ==2.8.*,
