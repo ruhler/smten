@@ -1,11 +1,16 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.GHC.List (
-    head, tail, last, init, null, filter, foldl, scanl, scanl1,
-    foldr1, scanr, scanr1, iterate, repeat, replicate, cycle,
-    takeWhile, dropWhile, take, drop, splitAt, span, break, reverse,
-    and, or, any, all, elem, notElem, lookup, concatMap, concat,
-
+    map, (++), filter, concat,
+    head, last, tail, init, null, length, (!!),
+    foldl, scanl, scanl1, foldr, foldr1, scanr, scanr1,
+    iterate, repeat, replicate, cycle,
+    take, drop, splitAt, takeWhile, dropWhile, span, break,
+    reverse, and, or,
+    any, all, elem, notElem, lookup,
+    concatMap,
+    zip, zip3, zipWith, zipWith3, unzip, unzip3,
+    errorEmptyList,
      ) where
 
 -- Note: this module is hardwired in the smten plugin to generate code to
@@ -14,6 +19,7 @@ import Data.Maybe
 import GHC.Base
 import GHC.Num
 
+infixl 9 !!
 infix 4 `elem`, `notElem`
 
 head                    :: [a] -> a
@@ -42,6 +48,10 @@ init (x:xs)             =  init' x xs
 null                    :: [a] -> Bool
 null []                 =  True
 null (_:_)              =  False
+
+length                  :: [a] -> Int
+length []               =  0
+length (x:xs) = 1 + length xs
 
 filter :: (a -> Bool) -> [a] -> [a]
 filter _pred []    = []
@@ -174,7 +184,37 @@ concatMap f             =  foldr ((++) . f) []
 concat :: [[a]] -> [a]
 concat = foldr (++) []
 
+(!!)                    :: [a] -> Int -> a
+xs     !! n | n < 0 =  error "Prelude.!!: negative index"
+[]     !! _         =  error "Prelude.!!: index too large"
+(x:_)  !! 0         =  x
+(_:xs) !! n         =  xs !! (n-1)
 
+zip :: [a] -> [b] -> [(a,b)]
+zip (a:as) (b:bs) = (a,b) : zip as bs
+zip _      _      = []
+
+zip3 :: [a] -> [b] -> [c] -> [(a,b,c)]
+zip3 (a:as) (b:bs) (c:cs) = (a,b,c) : zip3 as bs cs
+zip3 _      _      _      = []
+
+zipWith :: (a->b->c) -> [a]->[b]->[c]
+zipWith f (a:as) (b:bs) = f a b : zipWith f as bs
+zipWith _ _      _      = []
+
+zipWith3                :: (a->b->c->d) -> [a]->[b]->[c]->[d]
+zipWith3 z (a:as) (b:bs) (c:cs)
+                        =  z a b c : zipWith3 z as bs cs
+zipWith3 _ _ _ _        =  []
+
+unzip    :: [(a,b)] -> ([a],[b])
+{-# INLINE unzip #-}
+unzip    =  foldr (\(a,b) ~(as,bs) -> (a:as,b:bs)) ([],[])
+
+unzip3   :: [(a,b,c)] -> ([a],[b],[c])
+{-# INLINE unzip3 #-}
+unzip3   =  foldr (\(a,b,c) ~(as,bs,cs) -> (a:as,b:bs,c:cs))
+                  ([],[],[])
 
 
 errorEmptyList :: String -> a

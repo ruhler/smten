@@ -15,30 +15,15 @@ module Smten.Data.List (
     sort, sortBy, tails, isPrefixOf, isInfixOf, nub,
  ) where
 
-import GHC.Base (foldr, map, (++))
-import GHC.List (head, tail, last, init, null, filter, foldl, scanl, scanl1)
-import GHC.List (foldr1, scanr, scanr1, iterate, repeat, replicate, cycle)
-import GHC.List (takeWhile, dropWhile, take, drop, splitAt, span, break, reverse)
-import GHC.List (and, or, any, all, elem, notElem, lookup, concatMap, concat)
+import GHC.Classes (Ord(..))
+import GHC.List 
 import GHC.Num(Num(..))
+import GHC.Types(Ordering(..))
 import Smten.Smten.Base
 import Smten.Data.Bool
 import qualified Smten.Data.Char as Char
 import Smten.Data.Eq
 import Smten.Data.Function
-
-infixl 9 !!
-
-length :: [a] -> Int
-length [] = 0
-length (_:l) = 1 + length l
-
-(!!) :: [a] -> Int -> a
-(!!) xs n | n < 0 = error "Prelude.!!: negative index"
-(!!) [] _ = error "Prelude.!!: index too large"
-(!!) (x:_) n | n == 0 = x
-(!!) (_:xs) n = xs !! (n-1)
-
 
 foldl1 :: (a -> a -> a) -> [a] -> a
 foldl1 f (x:xs) = foldl f x xs
@@ -77,26 +62,6 @@ maximum xs = foldl1 max xs
 
 minimum [] = error "Prelude.minimum: empty list"
 minimum xs = foldl1 min xs
-
-zip :: [a] -> [b] -> [(a,b)]
-zip = zipWith (,)
-
-zip3 :: [a] -> [b] -> [c] -> [(a, b, c)]
-zip3 = zipWith3 (,,)
-
-zipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
-zipWith z (a:as) (b:bs) = z a b : zipWith z as bs
-zipWith _ _ _ = []
-
-zipWith3 :: (a -> b -> c -> d) -> [a] -> [b] -> [c] -> [d]
-zipWith3 z (a:as) (b:bs) (c:cs) = z a b c : zipWith3 z as bs cs
-zipWith3 _ _ _ _ = []
-
-unzip :: [(a,b)] -> ([a],[b])
-unzip = foldr (\(a,b) ~(as,bs) -> (a:as,b:bs)) ([], [])
-
-unzip3 :: [(a,b,c)] -> ([a],[b],[c])
-unzip3 = foldr (\(a,b,c) ~(as,bs,cs) -> (a:as,b:bs,c:cs)) ([],[],[])
 
 sort :: (Ord a) => [a] -> [a]
 sort = sortBy compare
