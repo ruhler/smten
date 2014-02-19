@@ -46,7 +46,7 @@ import Prelude hiding (
   undefined,
   Integral(..),
   ReadS, Read(..), reads, read,
-  putStr, putStrLn, getContents,
+  putStr, putStrLn,
  )
 
 -- These are imported to ensure they are compiled.

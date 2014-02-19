@@ -1,9 +1,14 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Tests.Prelude (tests) where
+module Smten.Tests.Prelude (tests, tgc) where
 
 import Smten.Prelude
 import Smten.Tests.Test
+
+-- Verify we can at least link to getContents
+tgc :: Bool -> IO String
+tgc True = return "hi"
+tgc False = getContents
 
 tests :: IO ()
 tests = do
@@ -19,6 +24,9 @@ tests = do
   test "p.read.Int" ((10 :: Int) == read "10")
   test "p.read.Integer" ((10 :: Integer) == read "10")
   test "p.Show.Maybe" ("Just (Just Nothing)" == show (Just (Just (Nothing :: Maybe Bool))))
+
+  x <- tgc True
+  test "p.tgc" (x == "hi")
 
   putStrLn "Prelude PASSED"
 
