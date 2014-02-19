@@ -45,6 +45,7 @@ library
     Smten.Data.Tuple
 
     Smten.Data.Either_
+    Smten.Data.Functor_
     Smten.Data.Maybe_
     Smten.Data.Tuple_
     Smten.GHC.Base
@@ -86,7 +87,6 @@ library
     Smten.Compiled.Smten.Data.Char
     Smten.Compiled.Smten.Data.Char0
     Smten.Compiled.Smten.Data.Function
-    Smten.Compiled.Smten.Data.Functor
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.EqInteger
     Smten.Compiled.Smten.Data.Integral
@@ -114,6 +114,7 @@ library
 
     Smten.Compiled.Control.Exception.Base
     Smten.Compiled.Data.Either
+    Smten.Compiled.Data.Functor
     Smten.Compiled.Data.Maybe
     Smten.Compiled.Data.Tuple
     Smten.Compiled.GHC.Base

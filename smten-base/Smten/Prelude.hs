@@ -49,10 +49,12 @@ import Prelude (id, const, (.), flip, ($))
 import Prelude (Eq(..), Ordering(..), Ord(..))
 import Prelude (Enum(..))
 import Prelude (Num(..))
+import Prelude (Functor(..))
 import Prelude (Show(..), ShowS, shows, showChar, showString, showParen)
 import Prelude (fst, snd, curry, uncurry)
 
 -- Make sure these get compiled...
+import Smten.Data.Functor_ ()
 import Smten.Data.Either_ ()
 import Smten.Data.Maybe_ ()
 import Smten.Data.Tuple_ ()
@@ -62,7 +64,6 @@ import Smten.GHC.Show ()
 
 -- TODO: Switch to GHC Prelude for these things instead of redefining them.
 import Smten.Control.Monad
-import Smten.Data.Functor
 import Smten.Data.List
 import Smten.Data.Integral
 import Smten.Data.Read
