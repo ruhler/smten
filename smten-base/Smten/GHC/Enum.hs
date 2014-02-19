@@ -2,9 +2,11 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.GHC.Enum (Enum(..)) where
 
+-- Note: this module is hardwired in the smten plugin to generate code to
+-- Smten.Compiled.GHC.Enum instead of Smten.Compiled.Smten.GHC.Enum
+
 import GHC.Base
 import GHC.Num
-import GHC.Types
 import Smten.Data.Integral0 (int_toInteger)
 
 class Enum a where

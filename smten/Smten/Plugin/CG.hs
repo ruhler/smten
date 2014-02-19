@@ -31,6 +31,7 @@ toGenMod "Smten.Data.Maybe_" = "Smten.Compiled.Data.Maybe"
 toGenMod "Smten.Data.Tuple_" = "Smten.Compiled.Data.Tuple"
 toGenMod "Smten.GHC.Base" = "Smten.Compiled.GHC.Base"
 toGenMod "Smten.GHC.Classes" = "Smten.Compiled.GHC.Classes"
+toGenMod "Smten.GHC.Enum" = "Smten.Compiled.GHC.Enum"
 toGenMod "Smten.GHC.Num" = "Smten.Compiled.GHC.Num"
 toGenMod "Smten.GHC.Show" = "Smten.Compiled.GHC.Show"
 toGenMod s = "Smten.Compiled." ++ s

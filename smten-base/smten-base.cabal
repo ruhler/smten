@@ -100,7 +100,6 @@ library
     Smten.Compiled.Smten.Data.OrdInteger
     Smten.Compiled.Smten.Data.Ordering
 
-    Smten.Compiled.Smten.GHC.Enum
     Smten.Compiled.Smten.GHC.Integer.Type
 
     Smten.Compiled.Smten.Smten.Base
