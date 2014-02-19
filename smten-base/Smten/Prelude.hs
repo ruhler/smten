@@ -46,7 +46,6 @@ import Prelude hiding (
   undefined,
   Integral(..),
   ReadS, Read(..), reads, read,
-  putStr, putStrLn,
  )
 
 -- These are imported to ensure they are compiled.
@@ -61,11 +60,11 @@ import Smten.GHC.Enum ()
 import Smten.GHC.List ()
 import Smten.GHC.Num ()
 import Smten.GHC.Show ()
+import Smten.System.IO ()
 
 -- TODO: Switch to GHC Prelude for these things instead of redefining them.
 import Smten.Data.Integral
 import Smten.Data.Read
-import Smten.System.IO
 
 undefined :: a
 undefined = error "Prelude.undefined"

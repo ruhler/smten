@@ -6,11 +6,11 @@ module Smten.System.IO (
     putChar, putStr, putStrLn, readFile, getContents,
  ) where
 
-import Prelude (FilePath, putChar, getContents)
+import Prelude (FilePath)
 
 import Smten.Smten.Base
 import Smten.Control.Monad
-import Smten.System.IO0 hiding (putChar, getContents)
+import Smten.System.IO0
 
 putStr :: String -> IO ()
 putStr s = mapM_ putChar s

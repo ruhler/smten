@@ -1,8 +1,10 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.System.IO (
-    putChar, getContents,
+    module Smten.Compiled.Smten.System.IO0,
+    module Smten.Compiled.Smten.System.IO,
   ) where
 
 import Smten.Compiled.Smten.System.IO0
+import Smten.Compiled.Smten.System.IO
 
