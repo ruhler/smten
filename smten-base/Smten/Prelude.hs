@@ -45,7 +45,6 @@ module Smten.Prelude (
 import Prelude hiding (
   undefined,
   Integral(..),
-  foldl1, lines, words, unlines, unwords, sum, product, maximum, minimum,
   ReadS, Read(..), reads, read,
   FilePath, putChar, putStr, putStrLn, getContents,
  )
@@ -54,6 +53,7 @@ import Prelude hiding (
 import Smten.Control.Monad_ ()
 import Smten.Data.Functor_ ()
 import Smten.Data.Either_ ()
+import Smten.Data.List_ ()
 import Smten.Data.Maybe_ ()
 import Smten.Data.Tuple_ ()
 import Smten.GHC.Base ()
@@ -63,7 +63,6 @@ import Smten.GHC.Num ()
 import Smten.GHC.Show ()
 
 -- TODO: Switch to GHC Prelude for these things instead of redefining them.
-import Smten.Data.List
 import Smten.Data.Integral
 import Smten.Data.Read
 import Smten.System.IO

@@ -47,6 +47,7 @@ library
     Smten.Control.Monad_
     Smten.Data.Either_
     Smten.Data.Functor_
+    Smten.Data.List_
     Smten.Data.Maybe_
     Smten.Data.Tuple_
     Smten.GHC.Base
@@ -117,6 +118,7 @@ library
     Smten.Compiled.Control.Monad
     Smten.Compiled.Data.Either
     Smten.Compiled.Data.Functor
+    Smten.Compiled.Data.List
     Smten.Compiled.Data.Maybe
     Smten.Compiled.Data.Tuple
     Smten.Compiled.GHC.Base

@@ -29,6 +29,7 @@ toGenMod :: String -> String
 toGenMod "Smten.Control.Monad_" = "Smten.Compiled.Control.Monad"
 toGenMod "Smten.Data.Either_" = "Smten.Compiled.Data.Either"
 toGenMod "Smten.Data.Functor_" = "Smten.Compiled.Data.Functor"
+toGenMod "Smten.Data.List_" = "Smten.Compiled.Data.List"
 toGenMod "Smten.Data.Maybe_" = "Smten.Compiled.Data.Maybe"
 toGenMod "Smten.Data.Tuple_" = "Smten.Compiled.Data.Tuple"
 toGenMod "Smten.GHC.Base" = "Smten.Compiled.GHC.Base"
