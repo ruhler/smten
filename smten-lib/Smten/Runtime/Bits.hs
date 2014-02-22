@@ -9,9 +9,12 @@
 module Smten.Runtime.Bits(addBits) where
 
 import Data.Functor
+import Data.Maybe
+import Data.IORef
 import Data.Typeable
 import qualified Data.HashTable.IO as H
 
+import Smten.Runtime.FreeID
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST
 
@@ -19,9 +22,16 @@ data Formula exp = Exp { expr :: exp }
              | BitF { bits :: [exp] }
     deriving (Typeable)
 
-type BitVarMap e = H.BasicHashTable String (Formula e)
+-- We remap FreeID's for each variable.
+--  Bit types get mapped to   m, m+1, m+2, ..., m+w-1
+--  Regular types get mapped to some m.
+data VarInfo = IsBit FreeID Integer    -- idmin, width
+             | IsOther FreeID          -- id
 
-data Bits s e = Bits s (BitVarMap e)
+type BitVarMap e = H.BasicHashTable String VarInfo
+type NextID = IORef Integer
+
+data Bits s e = Bits s (BitVarMap e) NextID
 
 bitstodo nm = error $ "TODO: Bits support for " ++ nm
 
@@ -29,94 +39,102 @@ bitstodo nm = error $ "TODO: Bits support for " ++ nm
 addBits :: s -> IO (Bits s exp)
 addBits s = do
     m <- H.new
-    return (Bits s m)
-
--- Get the name of the ith bit of bitvector with given name.
--- Bit 0 is the least significant bit.
-bitnm :: String -> Integer -> String
-bitnm x i = x ++ "~bit" ++ show i
-
--- Get all the bit names in order from lsb up to msb for a bitvector with
--- given name and width.
-bitnms :: Integer -> String -> [String]
-bitnms w x = [bitnm x i | i <- [0..w-1]]
+    nid <- newIORef 0
+    return (Bits s m nid)
 
 instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
-  declare (Bits s m) (BitT w) nm = do
-     mapM (declare s BoolT) (bitnms w nm)
-     bitv <- BitF <$> mapM (var s) (bitnms w nm)
-     H.insert m nm bitv
-  declare (Bits s _) t nm = declare s t nm
+  declare (Bits s m nid) (BitT w) nm = do
+     idmin <- readIORef nid
+     let idnext = idmin + w
+         idmax = idnext - 1
+     writeIORef nid $! idnext
+     mapM (declare s BoolT . freenm) [idmin .. idmax]
+     H.insert m nm (IsBit idmin w)
+  declare (Bits s m nid) t nm = do
+     id <- readIORef nid
+     writeIORef nid $! id+1
+     declare s t (freenm id)
+     H.insert m nm (IsOther id)
   
-  getBoolValue (Bits s _) nm = getBoolValue s nm
-  getIntegerValue (Bits s _) nm = getIntegerValue s nm
-  getBitVectorValue (Bits s _) w nm = do
-     bits <- mapM (getBoolValue s) (bitnms w nm)
+  getBoolValue (Bits s m _) nm = do
+     IsOther id <- fromJust <$> H.lookup m nm
+     getBoolValue s (freenm id)
+
+  getIntegerValue (Bits s m _) nm = do
+     IsOther id <- fromJust <$> H.lookup m nm
+     getIntegerValue s (freenm id)
+
+  getBitVectorValue (Bits s m _) w nm = do
+     IsBit idmin _ <- fromJust <$> H.lookup m nm
+     let idmax = idmin + w - 1
+     bits <- mapM (getBoolValue s . freenm) [idmin .. idmax]
      return (valB bits)
 
-  check (Bits s _) = check s
-  cleanup (Bits s _) = cleanup s
+  check (Bits s _ _) = check s
+  cleanup (Bits s _ _) = cleanup s
         
-  assert (Bits s _) e = assert s (expr e)
+  assert (Bits s _ _) e = assert s (expr e)
 
-  bool (Bits s _) b = Exp <$> bool s b
+  bool (Bits s _ _) b = Exp <$> bool s b
 
-  integer (Bits s _) i = Exp <$> integer s i
-  bit (Bits s _) w v = BitF <$> mapM (bool s) (intB w v)
+  integer (Bits s _ _) i = Exp <$> integer s i
+  bit (Bits s _ _) w v = BitF <$> mapM (bool s) (intB w v)
 
-  var (Bits s m) nm = do
-    mv <- H.lookup m nm
-    case mv of
-      Just v -> return v
-      _ -> Exp <$> var s nm
+  var (Bits s m _) nm = do
+    v <- fromJust <$> H.lookup m nm
+    case v of
+      IsBit idmin w -> do
+        let idmax = idmin + w - 1
+        BitF <$> mapM (var s . freenm) [idmin .. idmax]
+      IsOther id -> Exp <$> var s (freenm id)
 
   and_bool = bprim and_bool
   or_bool = bprim or_bool
   not_bool = uprim not_bool
     
-  ite_bool (Bits s _) p a b = Exp <$> ite_bool s (expr p) (expr a) (expr b)
-  ite_bit (Bits s _) p a b =
+  ite_bool (Bits s _ _) p a b = Exp <$> ite_bool s (expr p) (expr a) (expr b)
+  ite_bit (Bits s _ _) p a b =
     let ites = [ite_bool s (expr p) av bv | (av, bv) <- zip (bits a) (bits b)]
     in BitF <$> sequence ites
 
-  ite_integer (Bits s _) p a b = Exp <$> ite_integer s (expr p) (expr a) (expr b)
+  ite_integer (Bits s _ _) p a b = Exp <$> ite_integer s (expr p) (expr a) (expr b)
   eq_integer = bprim eq_integer
   leq_integer = bprim leq_integer
   add_integer = bprim add_integer
   sub_integer = bprim sub_integer
 
   -- all individual bits must be equal
-  eq_bit (Bits s _) a b = do
+  eq_bit (Bits s _ _) a b = do
     eqs <- sequence $ zipWith (eq_bool s) (bits a) (bits b)
     Exp <$> and_bools s eqs
 
-  leq_bit bs@(Bits s _) a b = do
+  leq_bit bs@(Bits s _ _) a b = do
     b_minus_a <- sub_bit bs b a
     Exp <$> not_bool s (last (bits b_minus_a))
 
-  add_bit (Bits s _) a b = do
+  add_bit (Bits s _ _) a b = do
     ff <- bool s False
     BitF <$> add s ff (bits a) (bits b)
     
-  sub_bit bs@(Bits s _) a b = do
+  sub_bit bs@(Bits s _ _) a b = do
     b_not <- not_bit bs b
     tt <- bool s True
     BitF <$> add s tt (bits a) (bits b_not)
 
   mul_bit = bitstodo "mul"
 
-  or_bit (Bits s _) a b = do
+  or_bit (Bits s _ _) a b = do
     BitF <$> sequence [or_bool s av bv | (av, bv) <- zip (bits a) (bits b)]
 
-  and_bit (Bits s _) a b = do
+  and_bit (Bits s _ _) a b = do
     BitF <$> sequence [and_bool s av bv | (av, bv) <- zip (bits a) (bits b)]
 
-  concat_bit (Bits s _) a b = return (BitF $ (bits b) ++ (bits a))
+  concat_bit (Bits s _ _) a b = return (BitF $ (bits b) ++ (bits a))
 
   shl_bit = bitstodo "shl"
   lshr_bit = bitstodo "lshr"
 
-  not_bit (Bits s _) x = BitF <$> mapM (not_bool s) (bits x)
+  not_bit (Bits s _ _) x = BitF <$> mapM (not_bool s) (bits x)
 
   sign_extend_bit _ fr to x = do
     let sign = last (bits x)
@@ -129,11 +147,11 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
 
 uprim :: (SolverAST s e) => (s -> e -> IO e)
       -> Bits s e -> Formula e -> IO (Formula e)
-uprim f (Bits s _) a = Exp <$> f s (expr a)
+uprim f (Bits s _ _) a = Exp <$> f s (expr a)
 
 bprim :: (SolverAST s e) => (s -> e -> e -> IO e)
       -> Bits s e -> Formula e -> Formula e -> IO (Formula e)
-bprim f (Bits s _) a b = Exp <$> f s (expr a) (expr b)
+bprim f (Bits s _ _) a b = Exp <$> f s (expr a) (expr b)
 
 -- Return the integer value of a bit vector.
 -- takes the bit vector with lsb first.

@@ -1,3 +1,8 @@
+Bugs::
+* minisat with Bit vectors is broken!
+   - nqueens doesn't work.
+   - sudoku doesn't work.
+
 Approx::
 * Getting rid of Unreachable_PartialF leads to blowup in sketch
     Why?
