@@ -18,11 +18,12 @@ import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.Z3.FFI
 import Smten.Runtime.Formula.Type
+import Smten.Runtime.FreeID
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
-type VarMap = H.BasicHashTable String Z3Decl
+type VarMap = H.BasicHashTable FreeID Z3Decl
 
 data Z3 = Z3 {
     z3_ctx :: Z3Context,
@@ -53,7 +54,7 @@ instance SolverAST Z3 Z3Expr where
                     BoolT -> c_Z3_mk_bool_sort ctx
                     IntegerT -> c_Z3_mk_int_sort ctx
                     BitT w -> c_Z3_mk_bv_sort ctx (fromInteger w)
-      snm <- withCString nm $ c_Z3_mk_string_symbol ctx
+      snm <- withCString (freenm nm) $ c_Z3_mk_string_symbol ctx
       decl <- c_Z3_mk_func_decl ctx snm 0 nullPtr sort
       H.insert (z3_vars z) nm decl
 

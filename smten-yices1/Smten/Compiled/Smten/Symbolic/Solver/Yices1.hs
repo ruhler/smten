@@ -17,10 +17,11 @@ import Foreign.C.Types
 
 import Smten.Runtime.Yices1.FFI
 import Smten.Runtime.Formula.Type
+import Smten.Runtime.FreeID
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
-type VarMap = H.BasicHashTable String YDecl
+type VarMap = H.BasicHashTable FreeID YDecl
 
 data Yices1 = Yices1 {
     y1_ctx :: YContext,
@@ -30,12 +31,12 @@ data Yices1 = Yices1 {
 withy1 :: Yices1 -> (YContext -> IO a) -> IO a
 withy1 y f = f (y1_ctx y)
 
-getdecl :: Yices1 -> String -> IO YDecl
+getdecl :: Yices1 -> FreeID -> IO YDecl
 getdecl y nm = do
     r <- H.lookup (y1_vars y) nm
     case r of
         Just v -> return v
-        Nothing -> error $"Yices1: unknown var: " ++ nm
+        Nothing -> error $"Yices1: unknown var: " ++ freenm nm
 
 bvInteger :: [CInt] -> Integer
 bvInteger [] = 0
@@ -91,7 +92,7 @@ instance SolverAST Yices1 YExpr where
                IntegerT -> withCString "int" $ \tynm ->
                             withy1 y $ \ctx -> c_yices_mk_type ctx tynm
                BitT w -> withy1 y $ \ctx -> c_yices_mk_bitvector_type ctx (fromInteger w)
-      decl <- withCString nm $ \str ->
+      decl <- withCString (freenm nm) $ \str ->
                 withy1 y $ \yctx ->
                   c_yices_mk_var_decl yctx str y1ty
       H.insert (y1_vars y) nm decl

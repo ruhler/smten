@@ -63,10 +63,10 @@ uservar ctx id ty = do
     m <- H.lookup vars id
     case m of
         Nothing -> do
-           declare ctx ty (freenm id)
+           declare ctx ty id
            H.insert vars id ty
         Just _ -> return ()
-    var ctx (freenm id)
+    var ctx id
        
 instance Supported BoolFF where
     build x = do

@@ -41,7 +41,7 @@ op o _ a b = return $ dbgOp o (sh a) (sh b)
 
 instance SolverAST DebugLL Debug where
     declare dbg ty nm = do
-        dbgPutStrLn dbg $ "declare " ++ nm ++ " :: " ++ show ty
+        dbgPutStrLn dbg $ "declare " ++ freenm nm ++ " :: " ++ show ty
 
     getBoolValue = error $ "Debug.getBoolValue: not implemented"
     getIntegerValue = error $ "Debug.getIntegerValue: not implemented"
@@ -56,7 +56,7 @@ instance SolverAST DebugLL Debug where
     bool dbg b = return $ dbgLit b
     integer dbg i = return $ dbgLit i
     bit dbg w v = return $ dbgLit (bv_make w v)
-    var dbg n = return $ dbgVar n
+    var dbg n = return $ dbgVar (freenm n)
 
     and_bool = op "&&"
     or_bool = op "||"

@@ -17,12 +17,13 @@ import Data.IORef
 
 import Smten.Runtime.STPFFI
 import Smten.Runtime.Formula.Type
+import Smten.Runtime.FreeID
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 import Smten.Runtime.Integers
 
-type VarMap = H.BasicHashTable String STP_Expr
+type VarMap = H.BasicHashTable FreeID STP_Expr
 
 data STP = STP {
     stp_ctx :: STP_VC,
@@ -72,7 +73,7 @@ instance SolverAST STP STP_Expr where
   declare s BoolT nm = do
     st <- gceM s $ withvc s c_vc_boolType
     v <- withvc s $ \vc ->
-           withCString nm $ \cnm ->
+           withCString (freenm nm) $ \cnm ->
              gceM s $ c_vc_varExpr vc cnm st
     H.insert (stp_vars s) nm v
 
@@ -85,7 +86,7 @@ instance SolverAST STP STP_Expr where
             c_vc_bvType vc (fromInteger w)
 
     v <- withvc s $ \vc -> 
-           withCString nm $ \cnm ->
+           withCString (freenm nm) $ \cnm ->
               gceM s $ c_vc_varExpr vc cnm st
     H.insert (stp_vars s) nm v
   
@@ -97,7 +98,7 @@ instance SolverAST STP STP_Expr where
     case b of
         0 -> return False
         1 -> return True
-        x -> error $ "STP.getBoolValue got value " ++ show x ++ " for " ++ nm
+        x -> error $ "STP.getBoolValue got value " ++ show x ++ " for " ++ freenm nm
 
   getIntegerValue = nointegers
 
@@ -144,7 +145,7 @@ instance SolverAST STP STP_Expr where
     vars <- H.lookup (stp_vars s) nm
     case vars of
         Just v -> return v
-        Nothing -> error $ "STP: unknown var: " ++ nm
+        Nothing -> error $ "STP: unknown var: " ++ freenm nm
 
   and_bool = bprim c_vc_andExpr
   not_bool = uprim c_vc_notExpr

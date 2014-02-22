@@ -51,9 +51,9 @@ solverFromAST mksolver = Solver $ \formula -> do
 
 
 getValue :: (AST.SolverAST ctx exp) => ctx -> (FreeID, Type) -> IO Any
-getValue s (f, BoolT) = BoolA <$> AST.getBoolValue s (freenm f)
-getValue s (f, IntegerT) = IntegerA <$> AST.getIntegerValue s (freenm f)
+getValue s (f, BoolT) = BoolA <$> AST.getBoolValue s f
+getValue s (f, IntegerT) = IntegerA <$> AST.getIntegerValue s f
 getValue s (f, BitT w) = do
-   b <- AST.getBitVectorValue s w (freenm f)
+   b <- AST.getBitVectorValue s w f
    return (BitA $ bv_make w b)
 

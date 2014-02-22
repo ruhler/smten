@@ -9,14 +9,15 @@ module Smten.Runtime.SolverAST (
 
 import Data.Typeable
 import Smten.Runtime.Formula.Type
+import Smten.Runtime.FreeID
 import Smten.Runtime.Result
 
 class (Typeable exp) => SolverAST ctx exp | ctx -> exp where
-  declare :: ctx -> Type -> String -> IO ()
+  declare :: ctx -> Type -> FreeID -> IO ()
 
-  getBoolValue :: ctx -> String -> IO Bool
-  getIntegerValue :: ctx -> String -> IO Integer
-  getBitVectorValue :: ctx -> Integer -> String -> IO Integer
+  getBoolValue :: ctx -> FreeID -> IO Bool
+  getIntegerValue :: ctx -> FreeID -> IO Integer
+  getBitVectorValue :: ctx -> Integer -> FreeID -> IO Integer
 
   check :: ctx -> IO Result
 
@@ -27,7 +28,7 @@ class (Typeable exp) => SolverAST ctx exp | ctx -> exp where
   bool :: ctx -> Bool -> IO exp
   integer :: ctx -> Integer -> IO exp
   bit :: ctx -> Integer -> Integer -> IO exp
-  var :: ctx -> String -> IO exp
+  var :: ctx -> FreeID -> IO exp
 
   not_bool :: ctx -> exp -> IO exp
 

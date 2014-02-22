@@ -28,7 +28,7 @@ data Formula exp = Exp { expr :: exp }
 data VarInfo = IsBit FreeID Integer    -- idmin, width
              | IsOther FreeID          -- id
 
-type BitVarMap e = H.BasicHashTable String VarInfo
+type BitVarMap e = H.BasicHashTable FreeID VarInfo
 type NextID = IORef Integer
 
 data Bits s e = Bits s (BitVarMap e) NextID
@@ -48,26 +48,26 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
      let idnext = idmin + w
          idmax = idnext - 1
      writeIORef nid $! idnext
-     mapM (declare s BoolT . freenm) [idmin .. idmax]
+     mapM (declare s BoolT) [idmin .. idmax]
      H.insert m nm (IsBit idmin w)
   declare (Bits s m nid) t nm = do
      id <- readIORef nid
      writeIORef nid $! id+1
-     declare s t (freenm id)
+     declare s t id
      H.insert m nm (IsOther id)
   
   getBoolValue (Bits s m _) nm = do
      IsOther id <- fromJust <$> H.lookup m nm
-     getBoolValue s (freenm id)
+     getBoolValue s id
 
   getIntegerValue (Bits s m _) nm = do
      IsOther id <- fromJust <$> H.lookup m nm
-     getIntegerValue s (freenm id)
+     getIntegerValue s id
 
   getBitVectorValue (Bits s m _) w nm = do
      IsBit idmin _ <- fromJust <$> H.lookup m nm
      let idmax = idmin + w - 1
-     bits <- mapM (getBoolValue s . freenm) [idmin .. idmax]
+     bits <- mapM (getBoolValue s) [idmin .. idmax]
      return (valB bits)
 
   check (Bits s _ _) = check s
@@ -85,8 +85,8 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
     case v of
       IsBit idmin w -> do
         let idmax = idmin + w - 1
-        BitF <$> mapM (var s . freenm) [idmin .. idmax]
-      IsOther id -> Exp <$> var s (freenm id)
+        BitF <$> mapM (var s) [idmin .. idmax]
+      IsOther id -> Exp <$> var s id
 
   and_bool = bprim and_bool
   or_bool = bprim or_bool

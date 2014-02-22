@@ -15,6 +15,7 @@ import Numeric
 
 import Smten.Runtime.Yices2.FFI
 import Smten.Runtime.Formula.Type
+import Smten.Runtime.FreeID
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
@@ -44,22 +45,22 @@ instance SolverAST Yices2 YTerm where
   declare y BoolT nm = do
     ty <- c_yices_bool_type
     term <- c_yices_new_uninterpreted_term ty
-    withCString nm $ c_yices_set_term_name term
+    withCString (freenm nm) $ c_yices_set_term_name term
 
   declare y IntegerT nm = do
     ty <- c_yices_int_type
     term <- c_yices_new_uninterpreted_term ty
-    withCString nm $ c_yices_set_term_name term
+    withCString (freenm nm) $ c_yices_set_term_name term
 
   declare y (BitT w) nm = do
     ty <- c_yices_bv_type (fromInteger w)
     term <- c_yices_new_uninterpreted_term ty
-    withCString nm $ c_yices_set_term_name term
+    withCString (freenm nm) $ c_yices_set_term_name term
   
   getBoolValue y nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
-            term <- withCString nm c_yices_get_term_by_name
+            term <- withCString (freenm nm) c_yices_get_term_by_name
             ir <- c_yices_get_bool_value model term ptr
             case ir of
                _ | ir == (-1) -> do
@@ -81,7 +82,7 @@ instance SolverAST Yices2 YTerm where
   getIntegerValue y nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
-            term <- withCString nm c_yices_get_term_by_name
+            term <- withCString (freenm nm) c_yices_get_term_by_name
             ir <- c_yices_get_int64_value model term ptr
             if ir == 0
                then do 
@@ -94,7 +95,7 @@ instance SolverAST Yices2 YTerm where
   getBitVectorValue y w nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
     bits <- allocaArray (fromInteger w) $ \ptr -> do
-        term <- withCString nm c_yices_get_term_by_name
+        term <- withCString (freenm nm) c_yices_get_term_by_name
         ir <- c_yices_get_bv_value model term ptr
         if ir == 0
             then peekArray (fromInteger w) ptr
@@ -123,7 +124,7 @@ instance SolverAST Yices2 YTerm where
         then c_yices_bvconst_uint64 w' v'
         else withCString binstr $ \str -> c_yices_parse_bvbin str
 
-  var _ nm = withCString nm c_yices_get_term_by_name
+  var _ nm = withCString (freenm nm) c_yices_get_term_by_name
 
   and_bool _ = c_yices_and2
   not_bool _ = c_yices_not

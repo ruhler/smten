@@ -12,6 +12,7 @@ import qualified Data.HashTable.IO as H
 import Data.Typeable
 
 import Smten.Runtime.Formula.Type
+import Smten.Runtime.FreeID
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 import Smten.Runtime.MiniSatFFI
@@ -46,7 +47,7 @@ addclause s [Literal v1 s1,
              Literal v3 s3] = c_minisat_addclause3 s v1 s1 v2 s2 v3 s3
 
 
-type VarMap = H.BasicHashTable String MSVar
+type VarMap = H.BasicHashTable FreeID MSVar
 
 data MiniSat = MiniSat {
     s_ctx :: MSSolver,
@@ -81,7 +82,7 @@ instance SolverAST MiniSat Literal where
             0 -> return False
             1 -> return True
             _ -> error $ "unexpected result from getvar: " ++ show r
-       Nothing -> error $ "var " ++ nm ++ " not found"
+       Nothing -> error $ "var " ++ freenm nm ++ " not found"
 
   getIntegerValue = nointegers
   getBitVectorValue = nobits
@@ -107,7 +108,7 @@ instance SolverAST MiniSat Literal where
     r <- H.lookup (s_vars s) nm
     case r of
       Just v -> return (posL v)
-      Nothing -> error $ "var " ++ nm ++ " not found"
+      Nothing -> error $ "var " ++ freenm nm ++ " not found"
     
   and_bool s a b = do
     x <- c_minisat_mkvar (s_ctx s)

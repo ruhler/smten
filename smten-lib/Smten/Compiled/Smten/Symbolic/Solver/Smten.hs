@@ -12,6 +12,7 @@ import Data.Functor
 import Data.Typeable
 
 import Smten.Runtime.Formula.Type
+import Smten.Runtime.FreeID
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
@@ -24,7 +25,7 @@ import Smten.Runtime.Integers
 data BDD = None     -- ^ unsatisfiable
          | Done     -- ^ valid (all assignments satisfy)
          | Var {
-    _nm :: String,  -- ^ The variable name
+    _nm :: FreeID,  -- ^ The variable name
     _tt :: BDD,     -- ^ If the variable is true
     _ff :: BDD      -- ^ If the variable is false
   }  -- ^ Split on a variable
@@ -105,7 +106,7 @@ trueExp = Exp trueBDD falseBDD
 falseExp :: Exp
 falseExp = Exp falseBDD trueBDD
 
-varExp :: String -> Exp
+varExp :: FreeID -> Exp
 varExp nm = Exp {
     pos = Var nm Done None,
     neg = Var nm None Done
@@ -161,8 +162,8 @@ andBDD xa@(Var x xt xf) ya@(Var y yt yf)
                (None, None) -> None
                (t, f) -> Var y t f
 
-lookupBDD :: String -> BDD -> Bool
-lookupBDD nm None = error $ "no possible assignment for " ++ nm
+lookupBDD :: FreeID -> BDD -> Bool
+lookupBDD nm None = error $ "no possible assignment for " ++ freenm nm
 lookupBDD nm Done = False    -- Doesn't matter, just pick false.
 lookupBDD nm (Var x None f)
   | nm <= x = False
