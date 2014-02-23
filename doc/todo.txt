@@ -88,7 +88,7 @@ Documentation
 
 Known Bugs::
 * yices1 seg faults on arch-extract
-* trouble with bit blasting (try minisat on arch-extract to see)
+* support shl in bit blaster (for minisat on arch-extract)
 * see problems with -O optimization above
 * symapp for variable bit-vector
     Implement it like we implement symapp for Integer

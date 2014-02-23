@@ -36,26 +36,26 @@ sudoku:
     # boards in 30 seconds:
     yices2 Bit: 728
     yices2 Enum: 476
-    yices2 BitOneHot: 13
+    yices2 BitOneHot: 19
     yices2 Int: 305
     yices2 Integer: 4
     yices1 Bit: 261
     yices1 Enum: 448
-    yices1 BitOneHot: 0
+    yices1 BitOneHot: 22
     yices1 Int: 196
     yices1 Integer: 171
     z3 Bit: 466
     z3 Enum: 339
-    z3 BitOneHot: 32
+    z3 BitOneHot: 45
     z3 Int: 228
     z3 Integer: 62
     stp Bit: 266
     stp Enum: 87
-    stp BitOneHot: 39
+    stp BitOneHot: 43
     stp Int: 40
     minisat Bit: 135
     minisat Enum: 331
-    minisat BitOneHot: 4
+    minisat BitOneHot: 9
     minisat Int: 88
 
 sketch:
@@ -66,4 +66,9 @@ sketch:
   minisat: 42.95
 
 arch-extract:
+  yices2 FETDEC: 21.37
+  z3 FETDEC: 7.44
+  stp FETDEC: 16.28
+  yices1 FETDEC: CRASH
+  minisat FETDEC: CRASH
   

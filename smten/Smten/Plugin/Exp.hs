@@ -208,9 +208,7 @@ mkDefault (Just b) = do
 -- For "Smten" primitive types: Char and Int
 --   let casef __vnm =
 --         case __vnm of
---              X# ... -> ...
---              X# ... -> ...
---              X# _ -> default
+--              X# v -> ...
 --              Ite p a b -> ite0 p (casef a) (casef b)
 --              Unreachable -> unreachable
 --   in casef vnm

@@ -82,6 +82,14 @@ smttests = do
         assert (bv_extract i 4 == (0xA :: Bit 4))
         return (i :: Bit 8)
 
+    -- this was a bug in the Bits wrapper
+    symtesteq "SMT.Bit.Extract2" (Just 0xAB) $ do
+        i <- free_Bit
+        assert (bv_extract i 0 == (0xB :: Bit 4))
+        assert (bv_extract i 4 == (0xA :: Bit 4))
+        assert (bv_extract i 4 <= (0xF :: Bit 4))
+        return (i :: Bit 8)
+
     symtesteq "SMT.Bit.Truncate" (Just 0xAB) $ do
         i <- free_Bit
         assert (bv_truncate i == (0xB :: Bit 4))

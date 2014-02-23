@@ -129,10 +129,10 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
   mul_bit = bitstodo "mul"
 
   or_bit (Bits s _ _) a b = do
-    BitF <$> sequence [or_bool s av bv | (av, bv) <- zip (bits a) (bits b)]
+    BitF <$> sequence (zipWith (or_bool s) (bits a) (bits b))
 
   and_bit (Bits s _ _) a b = do
-    BitF <$> sequence [and_bool s av bv | (av, bv) <- zip (bits a) (bits b)]
+    BitF <$> sequence (zipWith (and_bool s) (bits a) (bits b))
 
   concat_bit (Bits s _ _) a b = return (BitF $ (bits b) ++ (bits a))
 
@@ -148,7 +148,7 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
   extract_bit _ hi lo x =
     let loi = fromInteger lo
         hii = fromInteger hi
-    in return (BitF (drop loi (take hii (bits x))))
+    in return (BitF (drop loi (take (hii + 1) (bits x))))
 
 uprim :: (SolverAST s e) => (s -> e -> IO e)
       -> Bits s e -> Formula e -> IO (Formula e)
