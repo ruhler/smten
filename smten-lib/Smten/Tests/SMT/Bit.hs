@@ -92,6 +92,13 @@ smttests = do
         i <- free_Bit
         assert (i == (0x123456789ABCDEFEDCBA9876543210123 :: Bit 132))
         return i
+
+    -- This test case failed for the Bits wrapper
+    symtesteq "SMT.Bit.BitsBug" Nothing $ do
+        x <- free_Bit
+        assert (x < (4 :: Bit 12))
+        assert (all (/= x) [0..3])
+        return x
         
 
 --    symtesteq "SMT.Bit.Cases" (Just True) [Yices1, Yices2, STP] $ do

@@ -19,7 +19,7 @@ import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST
 
 data Formula exp = Exp { expr :: exp }
-             | BitF { bits :: [exp] }
+             | BitF { bits :: [exp] }   -- LSB first
     deriving (Typeable)
 
 -- We remap FreeID's for each variable.
@@ -109,8 +109,13 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
     Exp <$> and_bools s eqs
 
   leq_bit bs@(Bits s _ _) a b = do
-    b_minus_a <- sub_bit bs b a
-    Exp <$> not_bool s (last (bits b_minus_a))
+    let -- leq with MSB first
+        msbleq [] [] = bool s True
+        msbleq (a:as) (b:bs) = do
+            a_eq_b <- eq_bool s a b
+            as_leq_bs <- msbleq as bs
+            ite_bool s a_eq_b as_leq_bs b
+    Exp <$> msbleq (reverse (bits a)) (reverse (bits b))
 
   add_bit (Bits s _ _) a b = do
     ff <- bool s False
