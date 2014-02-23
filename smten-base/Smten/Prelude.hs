@@ -37,7 +37,7 @@ module Smten.Prelude (
     ReadS, Read(..), reads, read,
 
     -- PreludeIO
-    FilePath, putChar, putStr, putStrLn, getContents,
+    FilePath, putChar, putStr, putStrLn, print, getContents,
 
     primitive,
     ) where

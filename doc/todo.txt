@@ -1,8 +1,3 @@
-Bugs::
-* minisat with Bit vectors is broken!
-   - nqueens doesn't work.
-   - sudoku doesn't work.
-
 Approx::
 * Getting rid of Unreachable_PartialF leads to blowup in sketch
     Why?
@@ -84,6 +79,7 @@ Front End::
 * Auto-derive Ix
   Use the same approach as we did for Eq.
 * Auto-deriving of Eq doesn't work on Enums.
+* Get rid of nobuffer, and support general IO operations instead
 
 Documentation
 * Generated code should have a comment saying it was automatically generated.

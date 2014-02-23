@@ -3,9 +3,10 @@
 
 module Smten.System.IO_ (
     IO, FilePath, putChar, putStr, putStrLn, readFile, getContents,
+    print,
  ) where
 
-import Prelude (FilePath)
+import Prelude (FilePath, Show(..))
 
 import Smten.Smten.Base
 import Smten.Control.Monad
@@ -17,4 +18,7 @@ putStr s = mapM_ putChar s
 putStrLn :: String -> IO ()
 putStrLn s = do putStr s
                 putStr "\n"
+
+print :: Show a => a -> IO ()
+print x = putStrLn (show x)
 

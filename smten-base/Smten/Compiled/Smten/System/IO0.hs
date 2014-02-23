@@ -1,10 +1,11 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.System.IO0 (
-    P.IO, putChar, readFile, getContents,
+    P.IO, putChar, readFile, getContents, linebuffer,
   ) where
 
 import qualified Prelude as P
+import qualified System.IO as P
 import Smten.Compiled.Smten.Smten.Base
 import Smten.Runtime.SymbolicOf
 
@@ -21,3 +22,7 @@ getContents :: P.IO (List__ Char)
 getContents = {-# SCC "PRIM_GET_CONTENTS" #-} do
     txt <- P.getContents
     P.return (tosym txt)
+
+linebuffer :: P.IO Unit__
+linebuffer = P.hSetBuffering P.stdout P.LineBuffering P.>> P.return __Unit__
+
