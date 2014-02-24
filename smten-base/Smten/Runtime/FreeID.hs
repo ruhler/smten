@@ -9,7 +9,7 @@ type FreeID = Integer
 -- TODO: Maybe we could use a more compact representation, like base 52, to
 -- make shorter variable names? Would it be prettier? More efficient?
 freenm :: FreeID -> String
-freenm x = "f~" ++ show x
+freenm x = {-# SCC "FreeName" #-} "f~" ++ show x
 
 -- A FreePool represents the (infinite) set of FreeIDs:
 --    [fp_base + i*fp_incr | i <- [0..]]

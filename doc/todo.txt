@@ -6,8 +6,6 @@ Approx::
 Release to Public::
 * write up tutorials (github #3)
     T5-BitVectors
-      Requires Enum instance for Bit. (github #10)
-      Requires GHC.Enum.Enum instance for Bit??
     T6-Datatypes
     T7-SMTMonad
     T8-Profiling
@@ -49,6 +47,14 @@ Smten Executable::
 * Add a flag for generating a cabal package?
 
 Performance::
+* FreeID size grows very quickly
+  Could we change how we allocate them to avoid such large numbers?
+  This may help with hashes and reduce cost of converting to strings.
+
+* Make >, >=, <, /= primitives for bit vectors, integers
+  Because it seems silly to have: ! (a == b) && ! (a <= b)
+    when we really want to say (a > b)
+
 * Concrete Performance
    ** Special case pattern matching on concrete objects with a tag?
         Except, this doesn't improve symbolic performance any, which is sad.
@@ -79,7 +85,7 @@ Front End::
 * Auto-derive Ix
   Use the same approach as we did for Eq.
 * Auto-deriving of Eq doesn't work on Enums.
-* Get rid of nobuffer, and support general IO operations instead
+* Get rid of linebuffer, and support general IO operations instead
 
 Documentation
 * Generated code should have a comment saying it was automatically generated.
@@ -92,8 +98,8 @@ Known Bugs::
 * see problems with -O optimization above
 * symapp for variable bit-vector
     Implement it like we implement symapp for Integer
-* add support for integers to minisat.
-* add support for integers to 'smten' solver.
+* add support for free integers to minisat.
+* add support for free integers to 'smten' solver.
 * instance of Show for Tuple3.
 
 Suspected Bugs::
