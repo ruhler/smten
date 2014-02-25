@@ -148,6 +148,7 @@ instance SolverAST STP STP_Expr where
         Nothing -> error $ "STP: unknown var: " ++ freenm nm
 
   and_bool = bprim c_vc_andExpr
+  or_bool = bprim c_vc_orExpr
   not_bool = uprim c_vc_notExpr
     
   ite_bool s p a b = withvc s $ \vc -> gceM s $ c_vc_iteExpr vc p a b

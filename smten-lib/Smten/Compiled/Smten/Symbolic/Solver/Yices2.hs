@@ -127,6 +127,7 @@ instance SolverAST Yices2 YTerm where
   var _ nm = withCString (freenm nm) c_yices_get_term_by_name
 
   and_bool _ = c_yices_and2
+  or_bool _ = c_yices_or2
   not_bool _ = c_yices_not
 
   ite_bool _ = c_yices_ite 

@@ -115,6 +115,7 @@ instance SolverAST Z3 Z3Expr where
      withz3c z $ \ctx -> c_Z3_mk_app ctx decl 0 nullPtr
 
   and_bool = baprim c_Z3_mk_and
+  or_bool = baprim c_Z3_mk_or
   not_bool = uprim c_Z3_mk_not
 
   ite_bool z p a b = withz3c z $ \ctx -> c_Z3_mk_ite ctx p a b

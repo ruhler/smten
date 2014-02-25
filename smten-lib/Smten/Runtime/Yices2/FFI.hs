@@ -27,6 +27,7 @@ module Smten.Runtime.Yices2.FFI (
     c_yices_add,
     c_yices_sub,
     c_yices_and2,
+    c_yices_or2,
 
     c_yices_bvconst_uint64,
     c_yices_parse_bvbin,
@@ -131,6 +132,8 @@ foreign import ccall unsafe "y2_sub"
 foreign import ccall unsafe "y2_and2"
     c_yices_and2 :: YTerm -> YTerm -> IO YTerm
 
+foreign import ccall unsafe "y2_or2"
+    c_yices_or2 :: YTerm -> YTerm -> IO YTerm
 
 foreign import ccall unsafe "y2_bvconst_uint64"
     c_yices_bvconst_uint64 :: Word32 -> Word64 -> IO YTerm

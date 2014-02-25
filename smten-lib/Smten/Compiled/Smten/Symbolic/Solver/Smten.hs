@@ -68,6 +68,7 @@ instance SolverAST SmtenSolver Exp where
   var _ nm = return $ varExp nm
 
   and_bool _ a b = return $ andExp a b
+  or_bool _ a b = return $ orExp a b
   not_bool _ a = return $ notExp a
   ite_bool _ p a b = return $ iteExp p a b
 

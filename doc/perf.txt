@@ -2,14 +2,14 @@ Performance Status
 ==================
 
 shampi::
-   stp.Bit: 14.74
-   yices2.Bit: 5.29
-   yices2.Integer: 5.35
-   yices1.Bit: 7.13
-   yices1.Integer: 7.17
-   z3.Bit: 7.97
-   z3.Integer: 19.44
-   minisat.Bit: 12.03
+   stp.Bit: 13.31
+   yices2.Bit: 5.31
+   yices2.Integer: 5.42
+   yices1.Bit: 6.97
+   yices1.Integer: 7.09
+   z3.Bit: 7.90
+   z3.Integer: 19.39
+   minisat.Bit: 8.78
 
 nqueens::
   # number solved in 30 seconds:
@@ -17,58 +17,63 @@ nqueens::
   yices2 Integer: 31
   yices2 Bit: 81
   yices2 Bool: 69
-  yices1 Int: 29
-  yices1 Ingeger: 42
-  yices1 Bit: 66
-  yices1 Bool: 81
-  z3 Int: 36
+  yices2 Bool2: 51
+  yices1 Int: 30
+  yices1 Integer: 42
+  yices1 Bit: 67
+  yices1 Bool: 82
+  yices1 Bool2: 49
+  z3 Int: 37
   z3 Integer: 37
-  z3 Bit: 53
-  z3 Bool: 80
-  stp Int: 25
-  stp bit: 63
-  stp bool: 53
-  minisat Int: 27
-  minisat Bit: 48
-  minisat Bool: 102
+  z3 Bit: 54
+  z3 Bool: 71
+  z3 Bool2: 50
+  stp Int: 28
+  stp bit: 65
+  stp bool: 56
+  stp bool2: 32
+  minisat Int: 34
+  minisat Bit: 50
+  minisat Bool: 117
+  minisat Bool2: 54
 
 sudoku:
     # boards in 30 seconds:
-    yices2 Bit: 746
-    yices2 Enum: 476
+    yices2 Bit: 749
+    yices2 Enum: 506
     yices2 BitOneHot: 19
-    yices2 Int: 305
+    yices2 Int: 324
     yices2 Integer: 4
     yices1 Bit: 249
-    yices1 Enum: 448
-    yices1 BitOneHot: 22
-    yices1 Int: 196
-    yices1 Integer: 171
-    z3 Bit: 534
-    z3 Enum: 339
+    yices1 Enum: 469
+    yices1 BitOneHot: 21
+    yices1 Int: 231
+    yices1 Integer: 180
+    z3 Bit: 533
+    z3 Enum: 349
     z3 BitOneHot: 45
-    z3 Int: 228
+    z3 Int: 234
     z3 Integer: 62
-    stp Bit: 295
-    stp Enum: 87
-    stp BitOneHot: 43
-    stp Int: 40
+    stp Bit: 292
+    stp Enum: 90
+    stp BitOneHot: 42
+    stp Int: 56
     minisat Bit: 144
-    minisat Enum: 331
-    minisat BitOneHot: 9
-    minisat Int: 88
+    minisat Enum: 355
+    minisat BitOneHot: 16
+    minisat Int: 329
 
 sketch:
-  yices2: 15.84
-  yices1: 19.57
-  z3: 21.85
-  stp: 54.09
-  minisat: 42.95
+  yices2: 15.87
+  yices1: 19.30
+  z3: 21.68
+  stp: 53.17
+  minisat: 34.96
 
 arch-extract:
-  yices2 FETDEC: 21.37
-  z3 FETDEC: 7.44
-  stp FETDEC: 16.28
+  yices2 FETDEC: 21.22
+  z3 FETDEC: 7.37
+  stp FETDEC: 14.70
   yices1 FETDEC: CRASH
   minisat FETDEC: CRASH
   

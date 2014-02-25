@@ -95,6 +95,9 @@ foreign import ccall "yices_mk_bv_not"
 foreign import ccall "yices_mk_and"
     c_yices_mk_and :: YContext -> Ptr YExpr -> CUInt -> IO YExpr
 
+foreign import ccall "yices_mk_or"
+    c_yices_mk_or :: YContext -> Ptr YExpr -> CUInt -> IO YExpr
+
 foreign import ccall "yices_mk_sum"
     c_yices_mk_sum :: YContext -> Ptr YExpr -> CUInt -> IO YExpr
 

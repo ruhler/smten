@@ -46,6 +46,7 @@ instance (SolverAST s exp) => SolverAST (Integers s) (Formula exp) where
   var (Integers s) nm = Exp <$> var s nm
 
   and_bool = bprim and_bool
+  or_bool = bprim or_bool
   not_bool = uprim not_bool
     
   ite_bool (Integers s) p a b = Exp <$> ite_bool s (expr p) (expr a) (expr b)

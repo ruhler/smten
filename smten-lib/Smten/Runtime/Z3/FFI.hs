@@ -108,6 +108,9 @@ foreign import ccall "z3_mk_false"
 foreign import ccall "z3_mk_and"
     c_Z3_mk_and :: Z3Context -> CUInt -> Ptr Z3Expr -> IO Z3Expr
 
+foreign import ccall "z3_mk_or"
+    c_Z3_mk_or :: Z3Context -> CUInt -> Ptr Z3Expr -> IO Z3Expr
+
 foreign import ccall "z3_mk_not"
     c_Z3_mk_not :: Z3Context -> Z3Expr -> IO Z3Expr
 

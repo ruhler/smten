@@ -150,6 +150,7 @@ instance SolverAST Yices1 YExpr where
      c_yices_mk_var_from_decl ctx decl
 
   and_bool = baprim c_yices_mk_and
+  or_bool = baprim c_yices_mk_or
   not_bool = uprim c_yices_mk_not
 
   ite_bool y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b

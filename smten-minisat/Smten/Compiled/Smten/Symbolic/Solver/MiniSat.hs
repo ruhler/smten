@@ -97,37 +97,37 @@ instance SolverAST MiniSat Literal where
 
   assert s e = addclause (s_ctx s) [e]
 
-  bool s p = do
+  bool s p = {-# SCC "MiniSat_bool" #-} do
     v <- c_minisat_mkvar (s_ctx s)
     addclause (s_ctx s) [Literal v p]
     return (posL v)
 
   integer = nointegers
   bit = nobits
-  var s nm = do
+  var s nm = {-# SCC "MiniSat_var" #-} do
     r <- H.lookup (s_vars s) nm
     case r of
       Just v -> return (posL v)
       Nothing -> error $ "var " ++ freenm nm ++ " not found"
     
-  and_bool s a b = do
+  and_bool s a b = {-# SCC "MiniSat_and" #-} do
     x <- c_minisat_mkvar (s_ctx s)
     addclause (s_ctx s) [negL x, a]   -- x ==> a
     addclause (s_ctx s) [negL x, b]   -- x ==> b
     addclause (s_ctx s) [notL a, notL b, posL x]  -- a & b ==> x
     return (posL x)
 
-  or_bool s a b = do
+  or_bool s a b = {-# SCC "MiniSat_or" #-} do
     x <- c_minisat_mkvar (s_ctx s)
     addclause (s_ctx s) [notL a, posL x]  -- a ==> x
     addclause (s_ctx s) [notL b, posL x]  -- b ==> x
     addclause (s_ctx s) [negL x, a, b]    -- x ==> a | b
     return (posL x)
 
-  not_bool s a = return $ notL a
+  not_bool s a = {-# SCC "MiniSat_not" #-} return $ notL a
 
   -- ite p a b      ===>   (p & a) | (~p & b)
-  ite_bool s p a b = do
+  ite_bool s p a b = {-# SCC "MiniSat_ite" #-} do
     pa <- and_bool s p a
     npb <- and_bool s (notL p) b
     or_bool s pa npb

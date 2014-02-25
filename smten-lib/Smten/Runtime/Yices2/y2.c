@@ -25,6 +25,7 @@ int32_t (*y2_arith_leq_atom_f)(int32_t, int32_t) = NULL;
 int32_t (*y2_add_f)(int32_t, int32_t) = NULL;
 int32_t (*y2_sub_f)(int32_t, int32_t) = NULL;
 int32_t (*y2_and2_f)(int32_t, int32_t) = NULL;
+int32_t (*y2_or2_f)(int32_t, int32_t) = NULL;
 
 int32_t (*y2_bvconst_uint64_f)(uint32_t, uint64_t) = NULL;
 int32_t (*y2_parse_bvbin_f)(const char*) = NULL;
@@ -83,6 +84,7 @@ int y2_load()
     y2_add_f = dlsym(y2h, "yices_add");
     y2_sub_f = dlsym(y2h, "yices_sub");
     y2_and2_f = dlsym(y2h, "yices_and2");
+    y2_or2_f = dlsym(y2h, "yices_or2");
 
     y2_bvconst_uint64_f = dlsym(y2h, "yices_bvconst_uint64");
     y2_parse_bvbin_f = dlsym(y2h, "yices_parse_bvbin");
@@ -129,6 +131,7 @@ int32_t y2_arith_leq_atom(int32_t a, int32_t b) { return y2_arith_leq_atom_f(a, 
 int32_t y2_add(int32_t a, int32_t b) { return y2_add_f(a, b); }
 int32_t y2_sub(int32_t a, int32_t b) { return y2_sub_f(a, b); }
 int32_t y2_and2(int32_t a, int32_t b) { return y2_and2_f(a, b); }
+int32_t y2_or2(int32_t a, int32_t b) { return y2_or2_f(a, b); }
 
 int32_t y2_bvconst_uint64(uint32_t a, uint64_t b) { return y2_bvconst_uint64_f(a, b); }
 int32_t y2_parse_bvbin(const char* a) { return y2_parse_bvbin_f(a); }

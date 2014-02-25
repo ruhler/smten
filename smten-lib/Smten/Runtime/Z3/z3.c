@@ -34,6 +34,7 @@ void (*z3_solver_assert_f)(z3ctx, z3solver, z3expr) = NULL;
 z3expr (*z3_mk_true_f)(z3ctx) = NULL;
 z3expr (*z3_mk_false_f)(z3ctx) = NULL;
 z3expr (*z3_mk_and_f)(z3ctx, unsigned int, z3expr*) = NULL;
+z3expr (*z3_mk_or_f)(z3ctx, unsigned int, z3expr*) = NULL;
 z3expr (*z3_mk_not_f)(z3ctx, z3expr) = NULL;
 z3expr (*z3_mk_ite_f)(z3ctx, z3expr, z3expr, z3expr) = NULL;
 z3expr (*z3_mk_eq_f)(z3ctx, z3expr, z3expr) = NULL;
@@ -94,6 +95,7 @@ int z3_load()
     z3_mk_true_f = dlsym(z3h, "Z3_mk_true");
     z3_mk_false_f = dlsym(z3h, "Z3_mk_false");
     z3_mk_and_f = dlsym(z3h, "Z3_mk_and");
+    z3_mk_or_f = dlsym(z3h, "Z3_mk_or");
     z3_mk_not_f = dlsym(z3h, "Z3_mk_not");
     z3_mk_ite_f = dlsym(z3h, "Z3_mk_ite");
     z3_mk_eq_f = dlsym(z3h, "Z3_mk_eq");
@@ -142,6 +144,7 @@ void z3_solver_assert(z3ctx a, z3solver b, z3expr c) { z3_solver_assert_f(a, b, 
 z3expr z3_mk_true(z3ctx a) { return z3_mk_true_f(a); }
 z3expr z3_mk_false(z3ctx a) { return z3_mk_false_f(a); }
 z3expr z3_mk_and(z3ctx a, unsigned int b, z3expr* c) { return z3_mk_and_f(a, b, c); }
+z3expr z3_mk_or(z3ctx a, unsigned int b, z3expr* c) { return z3_mk_or_f(a, b, c); }
 z3expr z3_mk_not(z3ctx b, z3expr c) { return z3_mk_not_f(b, c); }
 z3expr z3_mk_ite(z3ctx a, z3expr b, z3expr c, z3expr d) { return z3_mk_ite_f(a, b, c, d); }
 z3expr z3_mk_eq(z3ctx a, z3expr b, z3expr c) { return z3_mk_eq_f(a, b, c); }
