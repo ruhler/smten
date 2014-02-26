@@ -2,14 +2,14 @@ Performance Status
 ==================
 
 shampi::
-   stp.Bit: 12.91
-   yices2.Bit: 4.87
-   yices2.Integer: 4.90
+   stp.Bit: 12.88
+   yices2.Bit: 4.91
+   yices2.Integer: 4.88
    yices1.Bit: 6.56
-   yices1.Integer: 6.64
-   z3.Bit: 7.43
-   z3.Integer: 18.91
-   minisat.Bit: 8.34
+   yices1.Integer: 6.65
+   z3.Bit: 7.46
+   z3.Integer: 19.60
+   minisat.Bit: 8.36
 
 nqueens::
   # number solved in 30 seconds:
@@ -39,36 +39,36 @@ nqueens::
 
 sudoku:
     # boards in 30 seconds:
-    yices2 Bit: 766
-    yices2 Enum: 801
+    yices2 Bit: 804
+    yices2 Enum: 1037
     yices2 BitOneHot: 19
-    yices2 Int: 430
+    yices2 Int: 611
     yices2 Integer: 4
-    yices1 Bit: 250
-    yices1 Enum: 478
-    yices1 BitOneHot: 22
-    yices1 Int: 233
-    yices1 Integer: 179
-    z3 Bit: 533
-    z3 Enum: 345
-    z3 BitOneHot: 45
-    z3 Int: 233
+    yices1 Bit: 255
+    yices1 Enum: 563
+    yices1 BitOneHot: 21
+    yices1 Int: 288
+    yices1 Integer: 182
+    z3 Bit: 557
+    z3 Enum: 397
+    z3 BitOneHot: 44
+    z3 Int: 292
     z3 Integer: 62
-    stp Bit: 291
-    stp Enum: 90
+    stp Bit: 305
+    stp Enum: 93
     stp BitOneHot: 42
-    stp Int: 57
-    minisat Bit: 142
-    minisat Enum: 352
-    minisat BitOneHot: 16
-    minisat Int: 329
+    stp Int: 60
+    minisat Bit: 144
+    minisat Enum: 403
+    minisat BitOneHot: 15
+    minisat Int: 385
 
 sketch:
-  yices2: 12.69
-  yices1: 16.41
-  z3: 18.57
-  stp: 52.44
-  minisat: 32.05
+  yices2: 12.53
+  yices1: 16.44
+  z3: 18.38
+  stp: 50.67
+  minisat: 32.02
 
 arch-extract:
   yices2 FETDEC: 20.66
