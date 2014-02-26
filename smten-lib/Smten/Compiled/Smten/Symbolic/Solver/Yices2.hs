@@ -9,6 +9,8 @@ module Smten.Compiled.Smten.Symbolic.Solver.Yices2 (yices2) where
 
 import Foreign
 
+import qualified Data.HashTable.IO as H
+
 import Smten.Runtime.Yices2.FFI
 import Smten.Runtime.Yices2.AST
 import Smten.Runtime.Solver
@@ -21,5 +23,6 @@ yices2 = solverFromAST $ do
     _ -> error "yices2 smten backend: unable to load libyices.so.2.1"
   c_yices_init
   ptr <- c_yices_new_context nullPtr
-  return $ Yices2 ptr
+  vars <- H.new
+  return $ Yices2 ptr vars
 

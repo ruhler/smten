@@ -3,8 +3,8 @@ Performance Status
 
 shampi::
    stp.Bit: 13.31
-   yices2.Bit: 5.26
-   yices2.Integer: 5.20
+   yices2.Bit: 5.31
+   yices2.Integer: 5.24
    yices1.Bit: 6.97
    yices1.Integer: 7.09
    z3.Bit: 7.90
@@ -16,8 +16,8 @@ nqueens::
   yices2 Int: 41
   yices2 Integer: 31
   yices2 Bit: 81
-  yices2 Bool: 101
-  yices2 Bool2: 57
+  yices2 Bool: 104
+  yices2 Bool2: 58
   yices1 Int: 30
   yices1 Integer: 42
   yices1 Bit: 67
@@ -39,10 +39,10 @@ nqueens::
 
 sudoku:
     # boards in 30 seconds:
-    yices2 Bit: 762
-    yices2 Enum: 754
-    yices2 BitOneHot: 20
-    yices2 Int: 413
+    yices2 Bit: 767
+    yices2 Enum: 801
+    yices2 BitOneHot: 19
+    yices2 Int: 430
     yices2 Integer: 4
     yices1 Bit: 249
     yices1 Enum: 469
@@ -64,14 +64,14 @@ sudoku:
     minisat Int: 329
 
 sketch:
-  yices2: 15.71
+  yices2: 15.42
   yices1: 19.30
   z3: 21.68
   stp: 53.17
   minisat: 34.96
 
 arch-extract:
-  yices2 FETDEC: 21.30
+  yices2 FETDEC: 21.33
   z3 FETDEC: 7.37
   stp FETDEC: 14.70
   yices1 FETDEC: CRASH

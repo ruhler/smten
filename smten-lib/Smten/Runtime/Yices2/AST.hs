@@ -4,11 +4,14 @@
 
 module Smten.Runtime.Yices2.AST (Yices2(..)) where
 
+
 import Foreign
 import Foreign.C.String
 
 import Data.Char
 import Data.Functor
+import Data.Maybe
+import qualified Data.HashTable.IO as H
 import Numeric
 
 import Smten.Runtime.Bit
@@ -18,8 +21,11 @@ import Smten.Runtime.FreeID
 import Smten.Runtime.Model
 import Smten.Runtime.SolverAST
 
+type VarMap = H.BasicHashTable FreeID YTerm
+
 data Yices2 = Yices2 {
-    y2_ctx :: Ptr YContext
+    y2_ctx :: Ptr YContext,
+    y2_vars :: VarMap
 }
 
 withy2 :: Yices2 -> (Ptr YContext -> IO a) -> IO a
@@ -34,42 +40,42 @@ instance SolverAST Yices2 YTerm where
   declare y BoolT nm = do
     ty <- c_yices_bool_type
     term <- c_yices_new_uninterpreted_term ty
-    withCString (freenm nm) $ c_yices_set_term_name term
+    H.insert (y2_vars y) nm term
 
   declare y IntegerT nm = do
     ty <- c_yices_int_type
     term <- c_yices_new_uninterpreted_term ty
-    withCString (freenm nm) $ c_yices_set_term_name term
+    H.insert (y2_vars y) nm term
 
   declare y (BitT w) nm = do
     ty <- c_yices_bv_type (fromInteger w)
     term <- c_yices_new_uninterpreted_term ty
-    withCString (freenm nm) $ c_yices_set_term_name term
+    H.insert (y2_vars y) nm term
 
-  getBoolValue y nm = withy2 y $ \yctx -> do
-    model <- c_yices_get_model yctx 1
-    r <- getboolval yctx nm model
+  getBoolValue y nm = do
+    model <- c_yices_get_model (y2_ctx y) 1
+    r <- getboolval y nm model
     c_yices_free_model model
     return r
 
-  getIntegerValue y nm = withy2 y $ \yctx -> do
-    model <- c_yices_get_model yctx 1
-    r <- getintegerval yctx nm model
+  getIntegerValue y nm = do
+    model <- c_yices_get_model (y2_ctx y) 1
+    r <- getintegerval y nm model
     c_yices_free_model model
     return r
 
-  getBitVectorValue y w nm = withy2 y $ \yctx -> do
-    model <- c_yices_get_model yctx 1
-    r <- getbitvectorval yctx w nm model
+  getBitVectorValue y w nm = do
+    model <- c_yices_get_model (y2_ctx y) 1
+    r <- getbitvectorval y w nm model
     c_yices_free_model model
     return r
 
-  getValues y vars = withy2 y $ \yctx -> do
-    model <- c_yices_get_model yctx 1
-    let getv (nm, BoolT) = BoolA <$> getboolval yctx nm model
-        getv (nm, IntegerT) = IntegerA <$> getintegerval yctx nm model
+  getValues y vars = do
+    model <- c_yices_get_model (y2_ctx y) 1
+    let getv (nm, BoolT) = BoolA <$> getboolval y nm model
+        getv (nm, IntegerT) = IntegerA <$> getintegerval y nm model
         getv (nm, BitT w) = do
-           b <- getbitvectorval yctx w nm model
+           b <- getbitvectorval y w nm model
            return (BitA $ bv_make w b)
     r <- mapM getv vars
     c_yices_free_model model
@@ -96,7 +102,7 @@ instance SolverAST Yices2 YTerm where
         then c_yices_bvconst_uint64 w' v'
         else withCString binstr $ \str -> c_yices_parse_bvbin str
 
-  var _ nm = withCString (freenm nm) c_yices_get_term_by_name
+  var y nm = fromJust <$> H.lookup (y2_vars y) nm
 
   and_bool _ = c_yices_and2
   or_bool _ = c_yices_or2
@@ -125,9 +131,9 @@ instance SolverAST Yices2 YTerm where
   sign_extend_bit _ fr to a = c_yices_sign_extend a (fromInteger $ to - fr)
   extract_bit _ hi lo x = c_yices_bvextract x (fromInteger lo) (fromInteger hi)
 
-getboolval yctx nm model = do
+getboolval y nm model = do
   x <- alloca $ \ptr -> do
-          term <- withCString (freenm nm) c_yices_get_term_by_name
+          term <- fromJust <$> H.lookup (y2_vars y) nm
           ir <- c_yices_get_bool_value model term ptr
           case ir of
              _ | ir == (-1) -> do
@@ -145,9 +151,9 @@ getboolval yctx nm model = do
       1 -> return True
       _ -> error $ "yices2 get bool value got: " ++ show x
 
-getintegerval yctx nm model = do
+getintegerval y nm model = do
   x <- alloca $ \ptr -> do
-          term <- withCString (freenm nm) c_yices_get_term_by_name
+          term <- fromJust <$> H.lookup (y2_vars y) nm
           ir <- c_yices_get_int64_value model term ptr
           if ir == 0
              then do 
@@ -156,9 +162,9 @@ getintegerval yctx nm model = do
              else error $ "yices2 get int64 value returned: " ++ show ir
   return $! toInteger x
 
-getbitvectorval ytcx w nm model = do
+getbitvectorval y w nm model = do
   bits <- allocaArray (fromInteger w) $ \ptr -> do
-      term <- withCString (freenm nm) c_yices_get_term_by_name
+      term <- fromJust <$> H.lookup (y2_vars y) nm
       ir <- c_yices_get_bv_value model term ptr
       if ir == 0
           then peekArray (fromInteger w) ptr
