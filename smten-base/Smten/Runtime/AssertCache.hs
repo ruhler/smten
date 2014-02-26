@@ -7,7 +7,6 @@ module Smten.Runtime.AssertCache (
     ) where
 
 import Control.Monad
-import Control.Monad.IO.Class
 import Data.Dynamic
 import Data.IORef
 import Data.Unique
@@ -35,9 +34,9 @@ newKey = newUnique
 
 -- Perform the IO operation and cache the result, but only if the
 -- result isn't already in the cache.
-cached :: (MonadIO m, Typeable a) => AssertCache -> AssertCacheKey -> m a -> m a
+cached :: (Typeable a) => AssertCache -> AssertCacheKey -> IO a -> IO a
 cached (AssertCache cache) key action = do
-  incache <- liftIO $ readIORef cache
+  incache <- readIORef cache
   let iscached = {-# SCC "IsCached" #-} do
         (oldkey, dynamic) <- incache
         guard (key == oldkey)
@@ -46,6 +45,6 @@ cached (AssertCache cache) key action = do
     Just v -> return v
     Nothing -> do
         value <- action
-        liftIO $ {-# SCC "Cache_update" #-} writeIORef cache (Just (key, toDyn value))
+        {-# SCC "Cache_update" #-} writeIORef cache (Just (key, toDyn value))
         return value
 

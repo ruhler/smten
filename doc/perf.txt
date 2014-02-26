@@ -2,78 +2,78 @@ Performance Status
 ==================
 
 shampi::
-   stp.Bit: 13.31
-   yices2.Bit: 5.31
-   yices2.Integer: 5.24
-   yices1.Bit: 6.97
-   yices1.Integer: 7.09
-   z3.Bit: 7.90
-   z3.Integer: 19.39
-   minisat.Bit: 8.78
+   stp.Bit: 12.91
+   yices2.Bit: 4.87
+   yices2.Integer: 4.90
+   yices1.Bit: 6.56
+   yices1.Integer: 6.64
+   z3.Bit: 7.43
+   z3.Integer: 18.91
+   minisat.Bit: 8.34
 
 nqueens::
   # number solved in 30 seconds:
-  yices2 Int: 41
+  yices2 Int: 44
   yices2 Integer: 31
   yices2 Bit: 81
-  yices2 Bool: 104
-  yices2 Bool2: 58
+  yices2 Bool: 108
+  yices2 Bool2: 65
   yices1 Int: 30
   yices1 Integer: 42
   yices1 Bit: 67
-  yices1 Bool: 82
-  yices1 Bool2: 49
-  z3 Int: 37
+  yices1 Bool: 83
+  yices1 Bool2: 51
+  z3 Int: 38
   z3 Integer: 37
   z3 Bit: 54
-  z3 Bool: 71
-  z3 Bool2: 50
+  z3 Bool: 72
+  z3 Bool2: 53
   stp Int: 28
   stp bit: 65
   stp bool: 56
   stp bool2: 32
   minisat Int: 34
   minisat Bit: 50
-  minisat Bool: 117
-  minisat Bool2: 54
+  minisat Bool: 125
+  minisat Bool2: 59
 
 sudoku:
     # boards in 30 seconds:
-    yices2 Bit: 767
+    yices2 Bit: 766
     yices2 Enum: 801
     yices2 BitOneHot: 19
     yices2 Int: 430
     yices2 Integer: 4
-    yices1 Bit: 249
-    yices1 Enum: 469
-    yices1 BitOneHot: 21
-    yices1 Int: 231
-    yices1 Integer: 180
+    yices1 Bit: 250
+    yices1 Enum: 478
+    yices1 BitOneHot: 22
+    yices1 Int: 233
+    yices1 Integer: 179
     z3 Bit: 533
-    z3 Enum: 349
+    z3 Enum: 345
     z3 BitOneHot: 45
-    z3 Int: 234
+    z3 Int: 233
     z3 Integer: 62
-    stp Bit: 292
+    stp Bit: 291
     stp Enum: 90
     stp BitOneHot: 42
-    stp Int: 56
-    minisat Bit: 144
-    minisat Enum: 355
+    stp Int: 57
+    minisat Bit: 142
+    minisat Enum: 352
     minisat BitOneHot: 16
     minisat Int: 329
 
 sketch:
-  yices2: 15.42
-  yices1: 19.30
-  z3: 21.68
-  stp: 53.17
-  minisat: 34.96
+  yices2: 12.69
+  yices1: 16.41
+  z3: 18.57
+  stp: 52.44
+  minisat: 32.05
 
 arch-extract:
-  yices2 FETDEC: 21.33
-  z3 FETDEC: 7.37
-  stp FETDEC: 14.70
+  yices2 FETDEC: 20.66
+  z3 FETDEC: 6.51
+  stp FETDEC: 13.92
   yices1 FETDEC: CRASH
   minisat FETDEC: CRASH
   
