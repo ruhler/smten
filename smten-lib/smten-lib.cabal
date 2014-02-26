@@ -131,6 +131,7 @@ library
     Smten.Runtime.Assert
     Smten.Runtime.Debug
     Smten.Runtime.HashTable
+    Smten.Runtime.Yices2.AST
     Smten.Runtime.Yices2.FFI
     Smten.Runtime.Z3.FFI
     Smten.Smten.TypeLitsTH
