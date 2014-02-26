@@ -7,9 +7,12 @@ module Smten.Runtime.SolverAST (
     eq_bool, xor_bool, and_bools, or_bools,
     ) where
 
+import Data.Functor
 import Data.Typeable
+import Smten.Runtime.Bit
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
+import Smten.Runtime.Model
 import Smten.Runtime.Result
 
 class (Typeable exp) => SolverAST ctx exp | ctx -> exp where
@@ -18,6 +21,18 @@ class (Typeable exp) => SolverAST ctx exp | ctx -> exp where
   getBoolValue :: ctx -> FreeID -> IO Bool
   getIntegerValue :: ctx -> FreeID -> IO Integer
   getBitVectorValue :: ctx -> Integer -> FreeID -> IO Integer
+
+  -- Read a bunch of values all in one go
+  -- TODO: probably all the solvers should implement this instead of
+  -- using the default.
+  getValues :: ctx -> [(FreeID, Type)] -> IO [Any]
+  getValues s vars =
+    let getValue (f, BoolT) = BoolA <$> getBoolValue s f
+        getValue (f, IntegerT) = IntegerA <$> getIntegerValue s f
+        getValue (f, BitT w) = do
+           b <- getBitVectorValue s w f
+           return (BitA $ bv_make w b)
+    in mapM getValue vars
 
   check :: ctx -> IO Result
 

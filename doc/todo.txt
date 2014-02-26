@@ -20,6 +20,8 @@ Runtime::
     they should be bounded in size somehow to allow for incremental queries
                 
 Cleanup::
+* Switch all solvers to use getValues instead of getFooValue
+  Then clean up Yices2 solver
 * Use GHC.Prim for primitive char equality and other ops.
 * Understand the interface between Smten.Prelude and GHC.Prelude, and clean
   it up, because I have a feely things are getting sloppy there.

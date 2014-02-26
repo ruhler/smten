@@ -4,14 +4,9 @@ module Smten.Runtime.Solver (
     solverFromAST,
     ) where
 
-import Data.Functor
-
-import Smten.Runtime.Bit
 import Smten.Runtime.Model
 import Smten.Runtime.Result
-import Smten.Runtime.FreeID
 import Smten.Runtime.Formula.Finite
-import Smten.Runtime.Formula.Type
 import Smten.Runtime.SmtenHS
 import qualified Smten.Runtime.SolverAST as AST
 import qualified Smten.Runtime.Assert as A
@@ -34,6 +29,7 @@ instance SmtenHS0 Solver where
   unreachable0 = error "TODO: Solver.unreachable0"
   
 
+{-# INLINEABLE solverFromAST #-}
 solverFromAST :: (AST.SolverAST ctx exp) => IO ctx -> Solver
 solverFromAST mksolver = Solver $ \formula -> do
     solver <- mksolver
@@ -41,19 +37,11 @@ solverFromAST mksolver = Solver $ \formula -> do
     res <- AST.check solver
     case res of 
         Sat -> do
-            vals <- {-# SCC "ReadModel" #-} mapM (getValue solver) vars
+            vals <- {-# SCC "ReadModel" #-} AST.getValues solver vars
             m <- model $ zip (map fst vars) vals
             {-# SCC "Cleanup" #-} AST.cleanup solver
             return (Just m)
         Unsat -> do
             {-# SCC "Cleanup" #-} AST.cleanup solver
             return Nothing
-
-
-getValue :: (AST.SolverAST ctx exp) => ctx -> (FreeID, Type) -> IO Any
-getValue s (f, BoolT) = BoolA <$> AST.getBoolValue s f
-getValue s (f, IntegerT) = IntegerA <$> AST.getIntegerValue s f
-getValue s (f, BitT w) = do
-   b <- AST.getBitVectorValue s w f
-   return (BitA $ bv_make w b)
 

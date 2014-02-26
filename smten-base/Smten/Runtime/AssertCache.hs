@@ -6,6 +6,7 @@ module Smten.Runtime.AssertCache (
     AssertCache, AssertCacheKey, new, newKey, cached,
     ) where
 
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.Dynamic
 import Data.IORef
@@ -22,7 +23,7 @@ instance Show AssertCache where
 -- You supply the constructor function, and it is called with a new cache
 -- to compute the result.
 new :: (AssertCache -> a) -> a
-new f = unsafePerformIO $ do
+new f = {-# SCC "AssertCache_new" #-} unsafePerformIO $ do
           c <- newIORef Nothing
           return (f (AssertCache c))
 
@@ -37,11 +38,14 @@ newKey = newUnique
 cached :: (MonadIO m, Typeable a) => AssertCache -> AssertCacheKey -> m a -> m a
 cached (AssertCache cache) key action = do
   incache <- liftIO $ readIORef cache
-  case incache of
-    Just (oldkey, dynamic)
-     | key == oldkey, Just value <- fromDynamic dynamic -> return value
-    _ -> do
+  let iscached = {-# SCC "IsCached" #-} do
+        (oldkey, dynamic) <- incache
+        guard (key == oldkey)
+        fromDynamic dynamic
+  case iscached of
+    Just v -> return v
+    Nothing -> do
         value <- action
-        liftIO $ writeIORef cache (Just (key, toDyn value))
+        liftIO $ {-# SCC "Cache_update" #-} writeIORef cache (Just (key, toDyn value))
         return value
 

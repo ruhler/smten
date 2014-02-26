@@ -11,17 +11,22 @@ import Foreign
 import Foreign.C.String
 
 import Data.Char
+import Data.Functor
 import Numeric
 
+import Smten.Runtime.Bit
 import Smten.Runtime.Yices2.FFI
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
+import Smten.Runtime.Model
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
 data Yices2 = Yices2 {
     y2_ctx :: Ptr YContext
 }
+
+{-# SPECIALIZE solverFromAST :: IO Yices2 -> Solver #-}
 
 yices2 :: Solver
 yices2 = solverFromAST $ do
@@ -56,53 +61,36 @@ instance SolverAST Yices2 YTerm where
     ty <- c_yices_bv_type (fromInteger w)
     term <- c_yices_new_uninterpreted_term ty
     withCString (freenm nm) $ c_yices_set_term_name term
-  
+
   getBoolValue y nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
-    x <- alloca $ \ptr -> do
-            term <- withCString (freenm nm) c_yices_get_term_by_name
-            ir <- c_yices_get_bool_value model term ptr
-            case ir of
-               _ | ir == (-1) -> do
-                  -- -1 means we don't care, so just return the equivalent
-                  -- of False.
-                  return 0
-
-               0 -> do 
-                  v <- peek ptr
-                  return v
-
-               _ -> error $ "yices2 get bool value returned: " ++ show ir
+    r <- getboolval yctx nm model
     c_yices_free_model model
-    case x of
-        0 -> return False
-        1 -> return True
-        _ -> error $ "yices2 get bool value got: " ++ show x
+    return r
 
   getIntegerValue y nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
-    x <- alloca $ \ptr -> do
-            term <- withCString (freenm nm) c_yices_get_term_by_name
-            ir <- c_yices_get_int64_value model term ptr
-            if ir == 0
-               then do 
-                  v <- peek ptr
-                  return $! v
-               else error $ "yices2 get int64 value returned: " ++ show ir
+    r <- getintegerval yctx nm model
     c_yices_free_model model
-    return $! toInteger x
+    return r
 
   getBitVectorValue y w nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
-    bits <- allocaArray (fromInteger w) $ \ptr -> do
-        term <- withCString (freenm nm) c_yices_get_term_by_name
-        ir <- c_yices_get_bv_value model term ptr
-        if ir == 0
-            then peekArray (fromInteger w) ptr
-            else error $ "yices2 get bit vector value returned: " ++ show ir
+    r <- getbitvectorval yctx w nm model
     c_yices_free_model model
-    return $! bvInteger bits
+    return r
 
+  getValues y vars = withy2 y $ \yctx -> do
+    model <- c_yices_get_model yctx 1
+    let getv (nm, BoolT) = BoolA <$> getboolval yctx nm model
+        getv (nm, IntegerT) = IntegerA <$> getintegerval yctx nm model
+        getv (nm, BitT w) = do
+           b <- getbitvectorval yctx w nm model
+           return (BitA $ bv_make w b)
+    r <- mapM getv vars
+    c_yices_free_model model
+    return r
+    
   check y = {-# SCC "Yices2Check" #-} withy2 y $ \ctx -> do
     st <- c_yices_check_context ctx nullPtr
     return $! fromYSMTStatus st
@@ -152,4 +140,44 @@ instance SolverAST Yices2 YTerm where
   not_bit _ = c_yices_bvnot
   sign_extend_bit _ fr to a = c_yices_sign_extend a (fromInteger $ to - fr)
   extract_bit _ hi lo x = c_yices_bvextract x (fromInteger lo) (fromInteger hi)
+
+getboolval yctx nm model = do
+  x <- alloca $ \ptr -> do
+          term <- withCString (freenm nm) c_yices_get_term_by_name
+          ir <- c_yices_get_bool_value model term ptr
+          case ir of
+             _ | ir == (-1) -> do
+                -- -1 means we don't care, so just return the equivalent
+                -- of False.
+                return 0
+
+             0 -> do 
+                v <- peek ptr
+                return v
+
+             _ -> error $ "yices2 get bool value returned: " ++ show ir
+  case x of
+      0 -> return False
+      1 -> return True
+      _ -> error $ "yices2 get bool value got: " ++ show x
+
+getintegerval yctx nm model = do
+  x <- alloca $ \ptr -> do
+          term <- withCString (freenm nm) c_yices_get_term_by_name
+          ir <- c_yices_get_int64_value model term ptr
+          if ir == 0
+             then do 
+                v <- peek ptr
+                return $! v
+             else error $ "yices2 get int64 value returned: " ++ show ir
+  return $! toInteger x
+
+getbitvectorval ytcx w nm model = do
+  bits <- allocaArray (fromInteger w) $ \ptr -> do
+      term <- withCString (freenm nm) c_yices_get_term_by_name
+      ir <- c_yices_get_bv_value model term ptr
+      if ir == 0
+          then peekArray (fromInteger w) ptr
+          else error $ "yices2 get bit vector value returned: " ++ show ir
+  return $! bvInteger bits
 
