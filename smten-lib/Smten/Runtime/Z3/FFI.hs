@@ -1,12 +1,10 @@
 
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 
 -- | Raw FFI interface to z3.
 module Smten.Runtime.Z3.FFI where
 
-import Data.Typeable
 import Foreign
 import Foreign.C.String
 import Foreign.C.Types
@@ -26,7 +24,7 @@ type Z3Symbol = Ptr Z3Symbol_
 data Z3Solver_
 type Z3Solver = Ptr Z3Solver_
 
-data Z3Expr_ deriving (Typeable)
+data Z3Expr_
 type Z3Expr = Ptr Z3Expr_
 
 data Z3Model_

@@ -1,5 +1,4 @@
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -11,7 +10,6 @@ module Smten.Runtime.Bits(addBits) where
 import Data.Functor
 import Data.Maybe
 import Data.IORef
-import Data.Typeable
 import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.FreeID
@@ -20,7 +18,6 @@ import Smten.Runtime.SolverAST
 
 data Formula exp = Exp { expr :: exp }
              | BitF { bits :: [exp] }   -- LSB first
-    deriving (Typeable)
 
 -- We remap FreeID's for each variable.
 --  Bit types get mapped to   m, m+1, m+2, ..., m+w-1

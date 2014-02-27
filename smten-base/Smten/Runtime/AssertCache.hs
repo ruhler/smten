@@ -7,13 +7,14 @@ module Smten.Runtime.AssertCache (
     ) where
 
 import Control.Monad
-import Data.Dynamic
 import Data.IORef
 import Data.Unique
+import GHC.Base (Any)
 import System.IO.Unsafe
+import Unsafe.Coerce
 
 type AssertCacheKey = Unique
-newtype AssertCache = AssertCache (IORef (Maybe (AssertCacheKey, Dynamic)))
+newtype AssertCache = AssertCache (IORef (Maybe (AssertCacheKey, Any)))
 
 instance Show AssertCache where
     show _ = "?AssertCache?"
@@ -34,17 +35,20 @@ newKey = newUnique
 
 -- Perform the IO operation and cache the result, but only if the
 -- result isn't already in the cache.
-cached :: (Typeable a) => AssertCache -> AssertCacheKey -> IO a -> IO a
+--
+-- It is up to the user to ensure the type 'a' is fixed for a given
+-- cache and key.
+cached :: AssertCache -> AssertCacheKey -> IO a -> IO a
 cached (AssertCache cache) key action = do
   incache <- readIORef cache
   let iscached = {-# SCC "IsCached" #-} do
-        (oldkey, dynamic) <- incache
+        (oldkey, x) <- incache
         guard (key == oldkey)
-        fromDynamic dynamic
+        return $! unsafeCoerce x
   case iscached of
     Just v -> return v
     Nothing -> do
         value <- action
-        {-# SCC "Cache_update" #-} writeIORef cache (Just (key, toDyn value))
+        {-# SCC "Cache_update" #-} writeIORef cache (Just (key, unsafeCoerce value))
         return value
 

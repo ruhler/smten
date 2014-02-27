@@ -2,27 +2,27 @@ Performance Status
 ==================
 
 shampi::
-   stp.Bit: 12.72
-   yices2.Bit: 4.92
-   yices2.Integer: 4.91
-   yices1.Bit: 6.57
-   yices1.Integer: 6.62
-   z3.Bit: 7.52
-   z3.Integer: 19.17
-   minisat.Bit: 8.38
+   stp.Bit: 12.90
+   yices2.Bit: 4.89
+   yices2.Integer: 4.89
+   yices1.Bit: 6.53
+   yices1.Integer: 6.60
+   z3.Bit: 7.48
+   z3.Integer: 19.16
+   minisat.Bit: 8.30
 
 nqueens::
   # number solved in 30 seconds:
   yices2 Int: 44
   yices2 Integer: 31
   yices2 Bit: 81
-  yices2 Bool: 109
-  yices2 Bool2: 65
+  yices2 Bool: 110
+  yices2 Bool2: 66
   yices1 Int: 30
-  yices1 Integer: 42
-  yices1 Bit: 67
-  yices1 Bool: 84
-  yices1 Bool2: 49
+  yices1 Integer: 41
+  yices1 Bit: 65
+  yices1 Bool: 82
+  yices1 Bool2: 48
   z3 Int: 38
   z3 Integer: 37
   z3 Bit: 54
@@ -34,13 +34,13 @@ nqueens::
   stp bool2: 32
   minisat Int: 35
   minisat Bit: 51
-  minisat Bool: 130
+  minisat Bool: 131
   minisat Bool2: 60
 
 sudoku:
     # boards in 30 seconds:
-    yices2 Bit: 810
-    yices2 Enum: 1062
+    yices2 Bit: 812
+    yices2 Enum: 1106
     yices2 BitOneHot: 20
     yices2 Int: 611
     yices2 Integer: 4
@@ -61,14 +61,14 @@ sudoku:
     minisat Bit: 144
     minisat Enum: 410
     minisat BitOneHot: 15
-    minisat Int: 387
+    minisat Int: 387/2
 
 sketch:
-  yices2: 12.56
-  yices1: 16.25
-  z3: 18.82
-  stp: 52.07
-  minisat: 32.12
+  yices2: 12.01
+  yices1: 15.75
+  z3: 17.82
+  stp: 50.16
+  minisat: 31.67
 
 arch-extract:
   yices2 FETDEC: 20.72

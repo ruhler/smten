@@ -1,5 +1,5 @@
 
-{-# OPTIONS_GHC -fprof-auto-top #-}
+{-# OPTIONS_GHC -auto-all #-}
 
 -- | Representation of a finite SMT Formula
 module Smten.Runtime.Formula.Finite (

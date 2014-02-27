@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_GHC -auto-all #-}
 
 module Smten.Compiled.Smten.Symbolic.Solver.STP (stp) where
 
@@ -125,7 +126,7 @@ instance SolverAST STP STP_Expr where
      mapM c_vc_DeleteExpr exprs
      withvc s c_vc_Destroy
         
-  assert s e = {-# SCC "STPAssert" #-} withvc s $ \vc ->
+  assert s e = {-# SCC "STPAssert" #-} withvc s $ \vc -> do
       c_vc_assertFormula vc e
 
   bool s True = gceM s $ withvc s c_vc_trueExpr

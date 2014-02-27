@@ -8,14 +8,13 @@ module Smten.Runtime.SolverAST (
     ) where
 
 import Data.Functor
-import Data.Typeable
 import Smten.Runtime.Bit
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
 import Smten.Runtime.Model
 import Smten.Runtime.Result
 
-class (Typeable exp) => SolverAST ctx exp | ctx -> exp where
+class SolverAST ctx exp | ctx -> exp where
   declare :: ctx -> Type -> FreeID -> IO ()
 
   getBoolValue :: ctx -> FreeID -> IO Bool

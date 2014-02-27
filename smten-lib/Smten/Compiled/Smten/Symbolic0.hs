@@ -1,6 +1,5 @@
 
 {-# LANGUAGE PatternGuards #-}
-{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Compiled.Smten.Symbolic0 (
     Symbolic, Solver,
@@ -37,10 +36,8 @@ data Symbolic a = Symbolic {
 
 instance Functor Symbolic where
     fmap f x = Symbolic {
-        runS = \u -> 
-            let (p, v, t) = runS x u
-            in (p, f v, t),
-
+        runS = \u -> case runS x u of
+                        (p, v, t) -> (p, f v, t),
         relS = \m t -> f (relS x m t)
     }
     
@@ -56,13 +53,13 @@ instance SmtenHS1 Symbolic where
       }
 
     unreachable1 = Symbolic {
-        runS = \_ -> (unreachable, unreachable, DTEmpty),
+        runS = const (unreachable, unreachable, DTEmpty),
         relS = error "Symbolic.unreachable reached"
     }
 
 return_symbolic :: a -> Symbolic a
 return_symbolic x = Symbolic {
-    runS = \_ -> (trueF, x, DTEmpty),
+    runS = {-# SCC "returnS" #-} const (trueF, x, DTEmpty),
     relS = \m _ -> x
 }
 
@@ -78,7 +75,7 @@ bind_symbolic x f = Symbolic {
 
 mzero_symbolic :: (SmtenHS0 a) => Symbolic a
 mzero_symbolic = Symbolic {
-    runS = const (falseF, unreachable, DTEmpty),
+    runS = {-# SCC "mzeroS" #-} const (falseF, unreachable, DTEmpty),
     relS = \m _ -> error "Symbolic.relS.mzero reached"
  }
 
@@ -98,7 +95,7 @@ mplus_symbolic a b = Symbolic {
 
 free_Integer :: Symbolic IntegerF
 free_Integer = Symbolic {
-    runS = \u -> withfresh $ \nm -> 
+    runS = \u -> {-# SCC "freeIntegerS" #-} withfresh $ \nm -> 
         u `seq` (trueF, var_IntegerF nm, DTSingle nm),
     relS = \m (DTSingle nm) -> integerF $ lookupInteger m nm
  }
@@ -106,7 +103,7 @@ free_Integer = Symbolic {
 
 free_Bit :: SingI Nat n -> Symbolic (BitF n)
 free_Bit w = Symbolic {
-    runS = \u -> withfresh $ \nm ->
+    runS = \u -> {-# SCC "freeBitS" #-} withfresh $ \nm ->
             u `seq` (trueF, var_BitF (__deNewTyDGSingI w) nm, DTSingle nm),
 
     relS = \m (DTSingle nm) ->

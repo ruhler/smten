@@ -1,5 +1,4 @@
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE PatternGuards #-}
@@ -9,7 +8,6 @@
 module Smten.Compiled.Smten.Symbolic.Solver.MiniSat (minisat) where
 
 import qualified Data.HashTable.IO as H
-import Data.Typeable
 
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
@@ -23,7 +21,7 @@ import Smten.Runtime.Integers
 data Literal = Literal {
   _variable :: MSVar,
   _positive :: Bool
-} deriving (Typeable)
+}
 
 -- Positive literal
 posL :: MSVar -> Literal

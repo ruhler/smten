@@ -1,7 +1,7 @@
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Runtime.STPFFI (
     STP_VC, STP_Type, STP_Expr,
@@ -48,7 +48,6 @@ module Smten.Runtime.STPFFI (
     c_vc_bvGeExpr,
     ) where
 
-import Data.Typeable
 import Foreign
 import Foreign.C.String
 import Foreign.C.Types
@@ -57,7 +56,7 @@ data STP_VC_
 type STP_VC = Ptr STP_VC_
 
 
-data STP_Expr_ deriving (Typeable)
+data STP_Expr_
 type STP_Expr = Ptr STP_Expr_
 type STP_Type = STP_Expr
 

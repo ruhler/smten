@@ -1,5 +1,4 @@
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -9,7 +8,6 @@ module Smten.Compiled.Smten.Symbolic.Solver.Smten (smten) where
 
 import Data.IORef
 import Data.Functor
-import Data.Typeable
 
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
@@ -33,7 +31,7 @@ data BDD = None     -- ^ unsatisfiable
 data Exp = Exp {
     pos :: BDD, -- BDD describing how to make this expression true.
     neg :: BDD  -- BDD describing how to make this expression false.
-} deriving (Typeable)
+}
 
 data SmtenSolver = SmtenSolver (IORef Exp)
 

@@ -1,5 +1,5 @@
 
-{-# OPTIONS_GHC -fprof-auto-top #-}
+{-# OPTIONS_GHC -auto-all #-}
 
 module Smten.Runtime.Select(
     SelectResult(..), select, approximate,

@@ -1,6 +1,4 @@
 
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module Smten.Runtime.Debug (
     Debug, dbgRender,
     dbgOp, dbgCase, dbgText, dbgError, dbgVar, dbgCon, dbgApp, dbgApps,
@@ -9,7 +7,6 @@ module Smten.Runtime.Debug (
 
 import Control.Monad.Reader
 import Data.Functor ((<$>))
-import Data.Typeable
 import Data.IORef
 import Text.PrettyPrint.HughesPJ
 import qualified Smten.Runtime.AnyKeyMap as A
@@ -44,7 +41,7 @@ data Debug = Debug {
     -- Generates the actual document, using the result of sharing analysis
     -- from the first pass to figure out which expressions to annotate.
     _db_go :: ReaderT GR IO Doc
-} deriving (Typeable)
+}
 
 
 dbgShare :: (a -> Debug) -> a -> Debug

@@ -49,9 +49,13 @@ Smten Executable::
 * Add a flag for generating a cabal package?
 
 Performance::
-* FreeID size grows very quickly
-  Could we change how we allocate them to avoid such large numbers?
-  This may help with hashes and reduce cost of converting to strings.
+* specialize solverFromAst and Assert for all solvers?
+* do cnf conversion for minisat in c instead of haskell?
+* use dupablePerformIO in select?
+* use dupablePerformIO in withfresh?
+* bit blast directly in minisat instead of using a separate Bits wrapper?
+* implement approximate directly instead of calling selectIO
+* switch to using getValues method for all solvers (and rename it getModel)
 
 * Make >, >=, <, /= primitives for bit vectors, integers
   Because it seems silly to have: ! (a == b) && ! (a <= b)
@@ -74,7 +78,6 @@ Performance::
 * for yices1: having a shl_n function, which shifts by a constant amount,
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?
-* implement or_bool on all the solvers rather than falling back to the default
 * Many possible optimizations removed to get decent implementation
    - Don't call sat solver for assert False
       except that it's nice to have for debugging.

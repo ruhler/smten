@@ -1,5 +1,4 @@
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -9,13 +8,11 @@
 module Smten.Runtime.Integers (addIntegers) where
 
 import Data.Functor
-import Data.Typeable
 
 import Smten.Runtime.SolverAST
 
 data Formula exp = Exp { expr :: exp }
              | IntegerF { ints :: [(exp, Integer)] }
-    deriving (Typeable)
 
 newtype Integers s = Integers s
 
