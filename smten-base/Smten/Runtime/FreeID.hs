@@ -2,7 +2,11 @@
 module Smten.Runtime.FreeID (
     FreeID, freenm,
     Fresh, runFresh, fresh,
+    withfresh,
     ) where
+
+import Data.IORef
+import System.IO.Unsafe
 
 type FreeID = Integer
 
@@ -43,4 +47,19 @@ runFresh x = runFresh_ x (FreePool 0 1)
 -- | Allocate a fresh id.
 fresh :: Fresh FreeID
 fresh = Fresh fp_base
+
+-- Return a globally fresh variable.
+withfresh :: (FreeID -> a) -> a
+withfresh f = unsafePerformIO $ do
+    nm <- newFresh
+    return (f nm) 
+
+freshSource :: IORef FreeID
+freshSource = unsafePerformIO (newIORef 0)
+{-# NOINLINE freshSource #-}
+
+newFresh :: IO FreeID
+newFresh = do
+  r <- atomicModifyIORef freshSource $ \x -> let z = x+1 in (z,z)
+  r `seq` return r
 

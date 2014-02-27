@@ -14,10 +14,10 @@ import Smten.Symbolic.Solver.Yices2
 
 main :: IO ()
 main = do
-    runtest (SMTTestCfg yices2 [] []) Core.smttests
+    runtest (SMTTestCfg yices2 [] ["SMT.Core.Or"]) Core.smttests
     putStrLn "Yices2.SMT.Core PASSED"
 
-    runtest (SMTTestCfg yices2 [] ["Datatype.Enum"]) Datatype.smttests
+    runtest (SMTTestCfg yices2 [] []) Datatype.smttests
     putStrLn "Yices2.SMT.Datatype PASSED"
 
     runtest (SMTTestCfg yices2 [] []) Integer.smttests

@@ -26,7 +26,9 @@ data DT = DTEmpty | DTSingle FreeID | DTSplit DT DT | DTChoice FreeID DT DT
 data Symbolic a = Symbolic {
     -- Run the symbolic computation, producing an SMT formula and symbolic
     -- representation of the result.
-    runS :: Fresh (BoolF, a, DT),
+    -- This takes a unit argument to ensure each time it is run, different
+    -- fresh id's are allocated.
+    runS :: () -> (BoolF, a, DT),
 
     -- Realize the symbolic computation given a model determining which
     -- branches to take.
@@ -35,9 +37,9 @@ data Symbolic a = Symbolic {
 
 instance Functor Symbolic where
     fmap f x = Symbolic {
-        runS = do
-            (p, v, t) <- runS x
-            return (p, f v, t),
+        runS = \u -> 
+            let (p, v, t) = runS x u
+            in (p, f v, t),
 
         relS = \m t -> f (relS x m t)
     }
@@ -45,49 +47,48 @@ instance Functor Symbolic where
 
 instance SmtenHS1 Symbolic where
     ite1 p a b = Symbolic {
-        runS = do
-          ~(pa, va, ta) <- runS a
-          ~(pb, vb, tb) <- runS b
-          return (ite p pa pb, ite p va vb, DTSplit ta tb),
+        runS = \u -> 
+          let (pa, va, ta) = runS a u
+              (pb, vb, tb) = runS b u
+          in (ite p pa pb, ite p va vb, DTSplit ta tb),
 
         relS = \m (DTSplit ta tb) -> ite p (relS a m ta) (relS b m tb)
       }
 
     unreachable1 = Symbolic {
-        runS = return (unreachable, unreachable, DTEmpty),
+        runS = \_ -> (unreachable, unreachable, DTEmpty),
         relS = error "Symbolic.unreachable reached"
     }
 
 return_symbolic :: a -> Symbolic a
 return_symbolic x = Symbolic {
-    runS = return (trueF, x, DTEmpty),
+    runS = \_ -> (trueF, x, DTEmpty),
     relS = \m _ -> x
 }
 
 bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
 bind_symbolic x f = Symbolic {
-    runS = do
-       (px, vx, tx) <- runS x
-       (pf, vf, tf) <- runS (f vx)
-       return (px `andF` pf, vf, DTSplit tx tf),
+    runS = \u ->
+       let (px, vx, tx) = runS x u
+           (pf, vf, tf) = runS (f vx) u
+       in (px `andF` pf, vf, DTSplit tx tf),
     relS = \m (DTSplit tx tf) -> relS (f (relS x m tx)) m tf
  }
        
 
 mzero_symbolic :: (SmtenHS0 a) => Symbolic a
 mzero_symbolic = Symbolic {
-    runS = return (falseF, unreachable, DTEmpty),
+    runS = const (falseF, unreachable, DTEmpty),
     relS = \m _ -> error "Symbolic.relS.mzero reached"
  }
 
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
 mplus_symbolic a b = Symbolic {
-    runS = do
-        nm <- fresh
+    runS = \u -> withfresh $ \nm ->
         let p = varF nm
-        ~(pa, va, ta) <- runS a
-        ~(pb, vb, tb) <- runS b
-        return (ite p pa pb, ite p va vb, DTChoice nm ta tb),
+            (pa, va, ta) = runS a u
+            (pb, vb, tb) = runS b u
+        in (ite p pa pb, ite p va vb, DTChoice nm ta tb),
 
     relS = \m (DTChoice nm ta tb) ->
         if lookupBool m nm
@@ -97,19 +98,16 @@ mplus_symbolic a b = Symbolic {
 
 free_Integer :: Symbolic IntegerF
 free_Integer = Symbolic {
-    runS = do
-        nm <- fresh
-        return (trueF, var_IntegerF nm, DTSingle nm),
-
+    runS = \u -> withfresh $ \nm -> 
+        u `seq` (trueF, var_IntegerF nm, DTSingle nm),
     relS = \m (DTSingle nm) -> integerF $ lookupInteger m nm
  }
 
 
 free_Bit :: SingI Nat n -> Symbolic (BitF n)
 free_Bit w = Symbolic {
-    runS = do
-        nm <- fresh
-        return (trueF, var_BitF (__deNewTyDGSingI w) nm, DTSingle nm),
+    runS = \u -> withfresh $ \nm ->
+            u `seq` (trueF, var_BitF (__deNewTyDGSingI w) nm, DTSingle nm),
 
     relS = \m (DTSingle nm) ->
         bitF $ lookupBit m (__deNewTyDGSingI w) nm
@@ -118,7 +116,7 @@ free_Bit w = Symbolic {
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
-  case ({-# SCC "RunS" #-} runFresh $ runS q) of
+  case ({-# SCC "RunS" #-} runS q ()) of
      (p, x, t) | (pp, pa, pb) <- deBoolF p -> do
        -- Try to find a solution in the finite part of the formula.
        ares <- {-# SCC "Solve" #-} solve s (pp `andFF` pa)
@@ -130,5 +128,5 @@ run_symbolic s q = do
             bres <- {-# SCC "SolveApprox" #-} solve s (notFF pp)
             case bres of
                Nothing -> return S.__Nothing
-               Just _ -> run_symbolic s (q { runS = return (andF_ (notFF pp) pb, x, t)})
+               Just _ -> run_symbolic s (q { runS = const (andF_ (notFF pp) pb, x, t)})
 
