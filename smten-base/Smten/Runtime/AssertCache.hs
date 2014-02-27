@@ -6,7 +6,6 @@ module Smten.Runtime.AssertCache (
     AssertCache, AssertCacheKey, new, newKey, cached,
     ) where
 
-import Control.Monad
 import Data.IORef
 import Data.Unique
 import GHC.Base (Any)
@@ -14,7 +13,8 @@ import System.IO.Unsafe
 import Unsafe.Coerce
 
 type AssertCacheKey = Unique
-newtype AssertCache = AssertCache (IORef (Maybe (AssertCacheKey, Any)))
+data CacheEntry = Empty | Cached AssertCacheKey Any
+newtype AssertCache = AssertCache (IORef CacheEntry)
 
 instance Show AssertCache where
     show _ = "?AssertCache?"
@@ -24,7 +24,7 @@ instance Show AssertCache where
 -- to compute the result.
 new :: (AssertCache -> a) -> a
 new f = {-# SCC "AssertCache_new" #-} unsafePerformIO $ do
-          c <- newIORef Nothing
+          c <- newIORef Empty
           return (f (AssertCache c))
 
 -- | Create a new cache key
@@ -40,15 +40,11 @@ newKey = newUnique
 -- cache and key.
 cached :: AssertCache -> AssertCacheKey -> IO a -> IO a
 cached (AssertCache cache) key action = do
-  incache <- readIORef cache
-  let iscached = {-# SCC "IsCached" #-} do
-        (oldkey, x) <- incache
-        guard (key == oldkey)
-        return $! unsafeCoerce x
-  case iscached of
-    Just v -> return v
-    Nothing -> do
-        value <- action
-        {-# SCC "Cache_update" #-} writeIORef cache (Just (key, unsafeCoerce value))
-        return value
+  entry <- readIORef cache
+  case entry of
+    Cached oldkey x | oldkey == key -> return $! unsafeCoerce x
+    _ -> do
+        v <- action
+        {-# SCC "Cache_update" #-} writeIORef cache (Cached key (unsafeCoerce v))
+        return v
 
