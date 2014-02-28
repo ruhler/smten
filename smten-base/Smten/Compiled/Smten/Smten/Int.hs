@@ -32,13 +32,13 @@ instance SymbolicOf P.Int Int where
 
 instance SmtenHS0 Int where
     ite0 p a b = 
-        case (select a b) of
-           Both (I# av) (I# bv) | av P.==# bv -> a
-           Both _ _ | a `stableNameEq` b -> a
-           Both Unreachable_Int _ -> b
-           Both _ Unreachable_Int -> a
-           Left Unreachable_Int -> b
-           Right Unreachable_Int -> a
+        case (select a b, a, b) of
+           (SRBoth, I# av, I# bv) | av P.==# bv -> a
+           (SRBoth, _, _) | a `stableNameEq` b -> a
+           (SRBoth, Unreachable_Int, _) -> b
+           (SRBoth, _, Unreachable_Int) -> a
+           (SRLeft, Unreachable_Int, _) -> b
+           (SRRight, _, Unreachable_Int) -> a
            _ -> Ite_Int p a b
     unreachable0 = Unreachable_Int
 

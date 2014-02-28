@@ -50,13 +50,10 @@ Smten Executable::
 
 Performance::
 * specialize solverFromAst and Assert for all solvers?
-* do cnf conversion for minisat in c instead of haskell?
-* use dupablePerformIO in select?
 * use dupablePerformIO in withfresh?
 * bit blast directly in minisat instead of using a separate Bits wrapper?
     Or change bit blaster to be reusable functions instead of something 
     you plug yourself into.
-* implement approximate directly instead of calling selectIO
 * switch to using getValues method for all solvers (and rename it getModel)
 * Look at generated code for each solver, see if there is anything stupid
     ex: Foo s _ -> foo s

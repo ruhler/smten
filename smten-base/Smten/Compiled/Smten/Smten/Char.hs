@@ -36,13 +36,13 @@ toHSChar (C# x) = P.C# x
 
 instance SmtenHS0 Char where
     ite0 p a b = 
-        case (select a b) of
-           Both (C# av) (C# bv) | av `P.eqChar#` bv -> a
-           Both _ _ | a `stableNameEq` b -> a
-           Both Unreachable_Char _ -> b
-           Both _ Unreachable_Char -> a
-           Left Unreachable_Char -> b
-           Right Unreachable_Char -> a
+        case (select a b, a, b) of
+           (SRBoth, C# av, C# bv) | av `P.eqChar#` bv -> a
+           (SRBoth, _, _) | a `stableNameEq` b -> a
+           (SRBoth, Unreachable_Char, _) -> b
+           (SRBoth, _, Unreachable_Char) -> a
+           (SRLeft, Unreachable_Char, _) -> b
+           (SRRight, _, Unreachable_Char) -> a
            _ -> Ite_Char p a b
     unreachable0 = Unreachable_Char
 
