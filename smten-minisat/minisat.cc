@@ -3,60 +3,92 @@
 
 using namespace SmtenMinisat;
 
-extern "C" Solver* minisat_mksolver()
+Lit lit(int x)
 {
-    Solver* s = new Solver();
-    return s;
+    Lit l;
+    l.x = x;
+    return l;
 }
 
-extern "C" void minisat_delsolver(Solver* s)
+int unlit(Lit x)
+{
+    return x.x;
+}
+
+extern "C" Solver* minisat_new()
+{
+    return new Solver();
+}
+
+extern "C" void minisat_delete(Solver* s)
 {
     delete s;
 }
 
-extern "C" Var minisat_mkvar(Solver* s)
+extern "C" int minisat_true(Solver* s)
 {
-    Var v = s->newVar();
-    //fprintf(stderr, "mkvar %i\n", v);
-    return v;
+    Var x = s->newVar();
+    s->addClause(mkLit(x, true));
+    return unlit(mkLit(x, true));
 }
 
-extern "C" int minisat_getvar(Solver* s, Var v)
+extern "C" int minisat_false(Solver* s)
 {
-    //fprintf(stderr, "getvar %i\n", v);
-    return (toInt(s->model[v]));
+    Var x = s->newVar();
+    s->addClause(mkLit(x, true));
+    return unlit(mkLit(x, false));
 }
 
-// Returns 1 for SAT, 0 for UNSAT
-extern "C" int minisat_issat(Solver* s)
+
+extern "C" int minisat_var(Solver* s)
+{
+    return unlit(mkLit(s->newVar(), true));
+}
+
+extern "C" int minisat_not(Solver* s, int x)
+{
+    return unlit(~lit(x));
+}
+
+extern "C" int minisat_and(Solver* s, int a, int b)
+{
+    Lit x = mkLit(s->newVar(), true);
+    s->addClause(~x, lit(a));               // x -> a
+    s->addClause(~x, lit(b));               // x -> b
+    s->addClause(~lit(a), ~lit(b), x);      // a & b ==> x
+    return unlit(x);
+}
+
+extern "C" int minisat_or(Solver* s, int a, int b)
+{
+    Lit x = mkLit(s->newVar(), true);
+    s->addClause(~lit(a), x);           // a -> x
+    s->addClause(~lit(b), x);           // b -> x
+    s->addClause(~x, lit(a), lit(b));   // x ==> a | b
+    return unlit(x);
+}
+
+extern "C" void minisat_assert(Solver* s, int x)
+{
+    s->addClause(lit(x));
+}
+
+
+// 0 if UNSAT
+// 1 if SAT
+extern "C" int minisat_check(Solver* s)
 {
     if (!s->simplify()) {
-        //printf("unsat by simplify\n");
         return 0;
     }
     bool r = s->solve();
-    //printf("issat: %s\n", r ? "SAT" : "UNSAT");
     return r ? 1 : 0;
 }
 
-extern "C" void minisat_addclause1(Solver* s, Var v1, bool s1)
+// 0 if False
+// 1 if True
+extern "C" int minisat_getvar(Solver* s, int v)
 {
-    //fprintf(stderr, "clause: %c%i\n", s1 ? '+' : '-', v1);
-    s->addClause(mkLit(v1, s1));
-}
-
-extern "C" void minisat_addclause2(Solver* s, Var v1, bool s1,
-                                   Var v2, bool s2)
-{
-    //fprintf(stderr, "clause: %c%i %c%i\n", s1 ? '+' : '-', v1, s2 ? '+' : '-', v2);
-    s->addClause(mkLit(v1, s1), mkLit(v2, s2));
-}
-
-extern "C" void minisat_addclause3(Solver* s, Var v1, bool s1,
-                                   Var v2, bool s2,
-                                   Var v3, bool s3)
-{
-    //fprintf(stderr, "clause: %c%i %c%i %c%i\n", s1 ? '+' : '-', v1, s2 ? '+' : '-', v2, s3 ? '+' : '-', v3);
-    s->addClause(mkLit(v1, s1), mkLit(v2, s2), mkLit(v3, s3));
+    return toInt(s->model[var(lit(v))]);
 }
 

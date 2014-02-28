@@ -9,6 +9,8 @@ module Smten.Compiled.Smten.Symbolic.Solver.MiniSat (minisat) where
 
 import qualified Data.HashTable.IO as H
 
+import Data.Functor
+import Data.Maybe
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
 import Smten.Runtime.SolverAST
@@ -18,34 +20,7 @@ import Smten.Runtime.Result
 import Smten.Runtime.Bits
 import Smten.Runtime.Integers
 
-data Literal = Literal {
-  _variable :: MSVar,
-  _positive :: Bool
-}
-
--- Positive literal
-posL :: MSVar -> Literal
-posL v = Literal v True
-
--- Negative literal
-negL :: MSVar -> Literal
-negL v = Literal v False
-
--- Invert a literal
-notL :: Literal -> Literal
-notL (Literal v p) = Literal v (not p)
-
--- Note: for now we only support clauses up to length 3.
-addclause :: MSSolver -> [Literal] -> IO ()
-addclause s [Literal v1 s1] = c_minisat_addclause1 s v1 s1
-addclause s [Literal v1 s1,
-             Literal v2 s2] = c_minisat_addclause2 s v1 s1 v2 s2
-addclause s [Literal v1 s1,
-             Literal v2 s2,
-             Literal v3 s3] = c_minisat_addclause3 s v1 s1 v2 s2 v3 s3
-
-
-type VarMap = H.BasicHashTable FreeID MSVar
+type VarMap = H.BasicHashTable FreeID MSExpr
 
 data MiniSat = MiniSat {
     s_ctx :: MSSolver,
@@ -57,15 +32,15 @@ nobits = error "There is no native support for bit vectors in MiniSat"
 
 minisat :: Solver
 minisat = solverFromAST $ do
-  ptr <- c_minisat_mksolver
+  ptr <- c_minisat_new
   vars <- H.new
   let base = MiniSat ptr vars
   withints <- addIntegers base
   addBits withints
 
-instance SolverAST MiniSat Literal where
+instance SolverAST MiniSat MSExpr where
   declare s BoolT nm = do 
-    v <- c_minisat_mkvar (s_ctx s)
+    v <- c_minisat_var (s_ctx s)
     H.insert (s_vars s) nm v
 
   declare y IntegerT nm = nointegers
@@ -86,49 +61,30 @@ instance SolverAST MiniSat Literal where
   getBitVectorValue = nobits
 
   check s = {-# SCC "MiniSatCheck" #-} do
-    r <- c_minisat_issat (s_ctx s)
+    r <- c_minisat_check (s_ctx s)
     case r of
        0 -> return Unsat
        1 -> return Sat
 
-  cleanup s = c_minisat_delsolver (s_ctx s)
+  cleanup s = c_minisat_delete (s_ctx s)
+  assert s e = c_minisat_assert (s_ctx s) e
 
-  assert s e = addclause (s_ctx s) [e]
-
-  bool s p = {-# SCC "MiniSat_bool" #-} do
-    v <- c_minisat_mkvar (s_ctx s)
-    addclause (s_ctx s) [Literal v p]
-    return (posL v)
+  bool s True = c_minisat_true (s_ctx s)
+  bool s False = c_minisat_false (s_ctx s)
 
   integer = nointegers
   bit = nobits
-  var s nm = {-# SCC "MiniSat_var" #-} do
-    r <- H.lookup (s_vars s) nm
-    case r of
-      Just v -> return (posL v)
-      Nothing -> error $ "var " ++ freenm nm ++ " not found"
+  var s nm = fromJust <$> H.lookup (s_vars s) nm
     
-  and_bool s a b = {-# SCC "MiniSat_and" #-} do
-    x <- c_minisat_mkvar (s_ctx s)
-    addclause (s_ctx s) [negL x, a]   -- x ==> a
-    addclause (s_ctx s) [negL x, b]   -- x ==> b
-    addclause (s_ctx s) [notL a, notL b, posL x]  -- a & b ==> x
-    return (posL x)
+  and_bool s a b = c_minisat_and (s_ctx s) a b
+  or_bool s a b = c_minisat_or (s_ctx s) a b
+  not_bool s a = c_minisat_not (s_ctx s) a
 
-  or_bool s a b = {-# SCC "MiniSat_or" #-} do
-    x <- c_minisat_mkvar (s_ctx s)
-    addclause (s_ctx s) [notL a, posL x]  -- a ==> x
-    addclause (s_ctx s) [notL b, posL x]  -- b ==> x
-    addclause (s_ctx s) [negL x, a, b]    -- x ==> a | b
-    return (posL x)
-
-  not_bool s a = {-# SCC "MiniSat_not" #-} return $ notL a
-
-  -- ite p a b      ===>   (p & a) | (~p & b)
-  ite_bool s p a b = {-# SCC "MiniSat_ite" #-} do
-    pa <- and_bool s p a
-    npb <- and_bool s (notL p) b
-    or_bool s pa npb
+  ite_bool s p a b = do
+    p_and_a <- and_bool s p a
+    notp <- not_bool s p
+    notp_and_b <- and_bool s notp b
+    or_bool s p_and_a notp_and_b
 
   ite_integer = nointegers
   ite_bit = nobits

@@ -11,31 +11,33 @@ shampi::
    z3.Integer: 19.16
    minisat.Bit: 8.30
 
-nqueens::
-  # number solved in 30 seconds:
-  yices2 Int: 44
-  yices2 Integer: 31
-  yices2 Bit: 81
-  yices2 Bool: 110
-  yices2 Bool2: 66
-  yices1 Int: 30
-  yices1 Integer: 41
-  yices1 Bit: 65
-  yices1 Bool: 82
-  yices1 Bool2: 48
-  z3 Int: 38
-  z3 Integer: 37
-  z3 Bit: 54
-  z3 Bool: 72
-  z3 Bool2: 54
-  stp Int: 28
-  stp bit: 65
-  stp bool: 57
-  stp bool2: 32
-  minisat Int: 35
-  minisat Bit: 51
-  minisat Bool: 131
-  minisat Bool2: 60
+nqueens
+-------
+yices2 Int 59: 14.086581
+yices2 Integer 31: 8.714128
+yices2 Bit 90: 1.21044
+yices2 Bool 150: 2.133047
+yices2 Bool2 70: 2.167136
+yices1 Int 30: 7.126278
+yices1 Integer 42: 3.48576
+yices1 Bit 65: 2.417467
+yices1 Bool 90: 1.471909
+yices1 Bool2 55: 3.987479
+z3 Int 38: 6.180944
+z3 Integer 36: 10.365519
+z3 Bit 60: 2.575656
+z3 Bool 80: 2.466904
+z3 Bool2 60: 3.441621
+stp Int 28: 5.016552
+stp Bit 70: 3.251257
+stp Bool 60: 2.300784
+stp Bool2 35: 5.352676
+
+
+minisat Int 42: 12.733785
+minisat Bit 68: 12.902523
+minisat Bool 450: 13.199545
+minisat Bool2 120: 14.553038
 
 sudoku:
     # boards in 30 seconds:
