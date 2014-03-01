@@ -62,7 +62,9 @@ instance SolverAST SmtenSolver Exp where
   integer = noints
   bit = nobits
 
-  var _ nm = return $ varExp nm
+  var_bool _ nm = return $ varExp nm
+  var_integer _ nm = return $ varExp nm
+  var_bit _ w nm = return $ varExp nm
 
   and_bool _ a b = return $ andExp a b
   or_bool _ a b = return $ orExp a b

@@ -77,7 +77,10 @@ instance SolverAST MiniSat MSExpr where
 
   integer = nointegers
   bit = nobits
-  var s nm = fromJust <$> H.lookup (s_vars s) nm
+
+  var_bool s nm = fromJust <$> H.lookup (s_vars s) nm
+  var_integer s nm = nointegers
+  var_bit s w nm = nobits
     
   and_bool s a b = c_minisat_and (s_ctx s) a b
   or_bool s a b = c_minisat_or (s_ctx s) a b

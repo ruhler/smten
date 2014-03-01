@@ -61,7 +61,10 @@ instance SolverAST DebugLL Debug where
     bool dbg b = return $ dbgLit b
     integer dbg i = return $ dbgLit i
     bit dbg w v = return $ dbgLit (bv_make w v)
-    var dbg n = return $ dbgVar (freenm n)
+
+    var_bool dbg n = return $ dbgVar (freenm n)
+    var_integer dbg n = return $ dbgVar (freenm n)
+    var_bit dbg w n = return $ dbgVar (freenm n)
 
     and_bool = op "&&"
     or_bool = op "||"

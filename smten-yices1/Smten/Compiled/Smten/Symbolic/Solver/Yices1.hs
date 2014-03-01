@@ -152,9 +152,18 @@ instance SolverAST Yices1 YExpr where
               r <- withArray bits $ c_yices_mk_bv_constant_from_array ctx w'
               return r
 
-  var y nm = withy1 y $ \ctx -> do
+  var_bool y nm = withy1 y $ \ctx -> do
      decl <- getdecl y nm
      c_yices_mk_var_from_decl ctx decl
+
+  var_integer y nm = withy1 y $ \ctx -> do
+     decl <- getdecl y nm
+     c_yices_mk_var_from_decl ctx decl
+
+  var_bit y w nm = withy1 y $ \ctx -> do
+     decl <- getdecl y nm
+     c_yices_mk_var_from_decl ctx decl
+
 
   and_bool = baprim c_yices_mk_and
   or_bool = baprim c_yices_mk_or

@@ -112,7 +112,15 @@ instance SolverAST Z3 Z3Expr where
     sort <- c_Z3_mk_bv_sort ctx (fromInteger w)
     withCString (show v) $ \cstr -> c_Z3_mk_numeral ctx cstr sort
 
-  var z nm = do
+  var_bool z nm = do
+     decl <- fromMaybe (error "Z3 var not found") <$> H.lookup (z3_vars z) nm
+     withz3c z $ \ctx -> c_Z3_mk_app ctx decl 0 nullPtr
+
+  var_integer z nm = do
+     decl <- fromMaybe (error "Z3 var not found") <$> H.lookup (z3_vars z) nm
+     withz3c z $ \ctx -> c_Z3_mk_app ctx decl 0 nullPtr
+
+  var_bit z _ nm = do
      decl <- fromMaybe (error "Z3 var not found") <$> H.lookup (z3_vars z) nm
      withz3c z $ \ctx -> c_Z3_mk_app ctx decl 0 nullPtr
 
@@ -162,7 +170,7 @@ z3 = solverFromAST $ do
 
 getBoolValueWithModel :: Z3 -> FreeID -> Z3Model -> IO Bool
 getBoolValueWithModel z nm model = do
-  v <- var z nm
+  v <- var_bool z nm
   alloca $ \pval -> do
     withz3c z $ \ctx -> c_Z3_model_eval ctx model v z3true pval
     val <- peek pval
@@ -171,7 +179,7 @@ getBoolValueWithModel z nm model = do
   
 getIntegerValueWithModel :: Z3 -> FreeID -> Z3Model -> IO Integer
 getIntegerValueWithModel z nm model = do
-  v <- var z nm
+  v <- var_integer z nm
   alloca $ \pval -> do
     withz3c z $ \ctx -> c_Z3_model_eval ctx model v z3true pval
     val <- peek pval
@@ -181,7 +189,7 @@ getIntegerValueWithModel z nm model = do
 
 getBitVectorValueWithModel :: Z3 -> Integer -> FreeID -> Z3Model -> IO Integer
 getBitVectorValueWithModel z w nm model = do
-  v <- var z nm
+  v <- var_bit z w nm
   alloca $ \pval -> do
     withz3c z $ \ctx -> c_Z3_model_eval ctx model v z3true pval
     val <- peek pval

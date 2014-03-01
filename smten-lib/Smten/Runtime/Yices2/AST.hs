@@ -94,7 +94,9 @@ instance SolverAST Yices2 YTerm where
         then c_yices_bvconst_uint64 w' v'
         else withCString binstr $ \str -> c_yices_parse_bvbin str
 
-  var y nm = fromJust <$> H.lookup (y2_vars y) nm
+  var_bool y nm = fromJust <$> H.lookup (y2_vars y) nm
+  var_integer y nm = fromJust <$> H.lookup (y2_vars y) nm
+  var_bit y w nm = fromJust <$> H.lookup (y2_vars y) nm
 
   and_bool _ = c_yices_and2
   or_bool _ = c_yices_or2

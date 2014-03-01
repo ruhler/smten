@@ -94,24 +94,29 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
   integer (Bits s _ _) i = Exp <$> integer s i
   bit (Bits s _ _) w v = BitF <$> mapM (bool s) (intB w v)
 
-  var (Bits s m _) nm = {-# SCC "Bits_var" #-} do
-    v <- fromJust <$> H.lookup m nm
-    case v of
-      IsBit idmin w -> do
-        let idmax = idmin + w - 1
-        BitF <$> mapM (var s) [idmin .. idmax]
-      IsOther id -> Exp <$> var s id
+  var_bool (Bits s m _) nm =  do
+    IsOther id <- fromJust <$> H.lookup m nm
+    Exp <$> var_bool s id
 
-  and_bool = {-# SCC "Bits_and" #-} bprim and_bool
-  or_bool = {-# SCC "Bits_or" #-} bprim or_bool
-  not_bool = {-# SCC "Bits_not" #-} uprim not_bool
+  var_integer (Bits s m _) nm =  do
+    IsOther id <- fromJust <$> H.lookup m nm
+    Exp <$> var_integer s id
+
+  var_bit (Bits s m _) w nm = do
+    IsBit idmin w <- fromJust <$> H.lookup m nm
+    let idmax = idmin + w - 1
+    BitF <$> mapM (var_bool s) [idmin .. idmax]
+
+  and_bool = bprim and_bool
+  or_bool = bprim or_bool
+  not_bool = uprim not_bool
     
-  ite_bool (Bits s _ _) p a b = {-# SCC "Bits_ite_bool" #-} Exp <$> ite_bool s (expr p) (expr a) (expr b)
-  ite_bit (Bits s _ _) p a b = {-# SCC "Bits_ite_bit" #-}
+  ite_bool (Bits s _ _) p a b = Exp <$> ite_bool s (expr p) (expr a) (expr b)
+  ite_bit (Bits s _ _) p a b = 
     let ites = [ite_bool s (expr p) av bv | (av, bv) <- zip (bits a) (bits b)]
     in BitF <$> sequence ites
 
-  ite_integer (Bits s _ _) p a b = {-# SCC "Bits_ite_integer" #-} Exp <$> ite_integer s (expr p) (expr a) (expr b)
+  ite_integer (Bits s _ _) p a b = Exp <$> ite_integer s (expr p) (expr a) (expr b)
   eq_integer = bprim eq_integer
   leq_integer = bprim leq_integer
   add_integer = bprim add_integer

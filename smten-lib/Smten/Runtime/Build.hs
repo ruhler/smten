@@ -44,7 +44,7 @@ build ctx p = do
                        declare_bool ctx id
                        H.insert vars id BoolT
                     Just _ -> return ()
-                var ctx id
+                var_bool ctx id
              Eq_IntegerFF a b c -> cached c key $ do
                 a' <- buildI a
                 b' <- buildI b
@@ -85,7 +85,7 @@ build ctx p = do
                        declare_integer ctx id
                        H.insert vars id IntegerT
                     Just _ -> return ()
-                var ctx id
+                var_integer ctx id
 
         buildV x = do
           case x of
@@ -143,7 +143,7 @@ build ctx p = do
                        declare_bit ctx w id
                        H.insert vars id (BitT w)
                     Just _ -> return ()
-                var ctx id
+                var_bit ctx w id
     e <- buildB p
     vs <- H.toList vars
     return (e, vs)

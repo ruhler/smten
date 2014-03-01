@@ -91,7 +91,7 @@ instance SolverAST STP STP_Expr where
     H.insert (stp_vars s) nm v
   
   getBoolValue s nm = do
-    v <- var s nm
+    v <- var_bool s nm
     val <- withvc s $ \vc ->
              gceM s $ c_vc_getCounterExample vc v
     b <- c_vc_isBool val
@@ -103,7 +103,7 @@ instance SolverAST STP STP_Expr where
   getIntegerValue = nointegers
 
   getBitVectorValue s w nm = do
-    v <- var s nm
+    v <- var_bit s w nm
     withvc s $ \vc -> do
       val <- gceM s $ c_vc_getCounterExample vc v
       getbits s w val
@@ -141,7 +141,17 @@ instance SolverAST STP STP_Expr where
         else withCString (show v) $ \str ->
                  gceM s $ c_vc_bvConstExprFromDecStr vc w' str
 
-  var s nm = do
+  var_bool s nm = do
+    vars <- H.lookup (stp_vars s) nm
+    case vars of
+        Just v -> return v
+        Nothing -> error $ "STP: unknown var: " ++ freenm nm
+  var_integer s nm = do
+    vars <- H.lookup (stp_vars s) nm
+    case vars of
+        Just v -> return v
+        Nothing -> error $ "STP: unknown var: " ++ freenm nm
+  var_bit s w nm = do
     vars <- H.lookup (stp_vars s) nm
     case vars of
         Just v -> return v

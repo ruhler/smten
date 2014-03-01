@@ -44,7 +44,10 @@ class SolverAST ctx exp | ctx -> exp where
   bool :: ctx -> Bool -> IO exp
   integer :: ctx -> Integer -> IO exp
   bit :: ctx -> Integer -> Integer -> IO exp
-  var :: ctx -> FreeID -> IO exp
+
+  var_bool :: ctx -> FreeID -> IO exp
+  var_integer :: ctx -> FreeID -> IO exp
+  var_bit :: ctx -> Integer -> FreeID -> IO exp
 
   not_bool :: ctx -> exp -> IO exp
   and_bool :: ctx -> exp -> exp -> IO exp

@@ -43,7 +43,9 @@ instance (SolverAST s exp) => SolverAST (Integers s) (Formula exp) where
 
   bit (Integers s) w v = Exp <$> bit s w v
 
-  var (Integers s) nm = Exp <$> var s nm
+  var_bool (Integers s) nm = Exp <$> var_bool s nm
+  var_bit (Integers s) w nm = Exp <$> var_bit s w nm
+  var_integer (Integers s) nm = Exp <$> var_integer s nm
 
   and_bool = bprim and_bool
   or_bool = bprim or_bool
