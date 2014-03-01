@@ -15,7 +15,9 @@ import Smten.Runtime.Model
 import Smten.Runtime.Result
 
 class SolverAST ctx exp | ctx -> exp where
-  declare :: ctx -> Type -> FreeID -> IO ()
+  declare_bool :: ctx -> FreeID -> IO ()
+  declare_integer :: ctx -> FreeID -> IO ()
+  declare_bit :: ctx -> Integer -> FreeID -> IO ()
 
   getBoolValue :: ctx -> FreeID -> IO Bool
   getIntegerValue :: ctx -> FreeID -> IO Integer

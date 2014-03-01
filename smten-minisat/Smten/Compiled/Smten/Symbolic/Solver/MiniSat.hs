@@ -40,12 +40,12 @@ minisat = solverFromAST $ do
   addBits withints
 
 instance SolverAST MiniSat MSExpr where
-  declare s BoolT nm = do 
+  declare_bool s nm = do 
     v <- c_minisat_var (s_ctx s)
     H.insert (s_vars s) nm v
 
-  declare y IntegerT nm = nointegers
-  declare y (BitT w) nm = nobits
+  declare_integer y nm = nointegers
+  declare_bit y w nm = nobits
   
   getBoolValue s nm = do
     r <- H.lookup (s_vars s) nm

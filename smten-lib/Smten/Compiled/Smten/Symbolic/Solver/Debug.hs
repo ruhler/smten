@@ -40,8 +40,12 @@ op :: String -> DebugLL -> Debug -> Debug -> IO Debug
 op o _ a b = return $ dbgOp o (sh a) (sh b)
 
 instance SolverAST DebugLL Debug where
-    declare dbg ty nm = do
-        dbgPutStrLn dbg $ "declare " ++ freenm nm ++ " :: " ++ show ty
+    declare_bool dbg nm = do
+        dbgPutStrLn dbg $ "declare " ++ freenm nm ++ " :: Bool"
+    declare_integer dbg nm = do
+        dbgPutStrLn dbg $ "declare " ++ freenm nm ++ " :: Integer"
+    declare_bit dbg w nm = do
+        dbgPutStrLn dbg $ "declare " ++ freenm nm ++ " :: Bit " ++ show w
 
     getBoolValue = error $ "Debug.getBoolValue: not implemented"
     getIntegerValue = error $ "Debug.getIntegerValue: not implemented"

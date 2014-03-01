@@ -21,7 +21,9 @@ addIntegers :: s -> IO (Integers s)
 addIntegers s = return (Integers s)
 
 instance (SolverAST s exp) => SolverAST (Integers s) (Formula exp) where
-  declare (Integers s) t nm = declare s t nm
+  declare_bool (Integers s) nm = declare_bool s nm
+  declare_integer (Integers s) nm = declare_integer s nm
+  declare_bit (Integers s) w nm = declare_bit s w nm
   
   getBoolValue (Integers s) nm = getBoolValue s nm
   getIntegerValue (Integers s) nm = getIntegerValue s nm

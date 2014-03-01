@@ -9,7 +9,6 @@ module Smten.Compiled.Smten.Symbolic.Solver.Smten (smten) where
 import Data.IORef
 import Data.Functor
 
-import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
@@ -39,9 +38,9 @@ nobits = error "SmtenSolver: bits not supported natively"
 noints = error "SmtenSolver: integers not supported natively"
 
 instance SolverAST SmtenSolver Exp where
-  declare (SmtenSolver mref) BoolT nm = return ()
-  declare (SmtenSolver mref) IntegerT nm = noints
-  declare (SmtenSolver mref) (BitT _) nm = nobits
+  declare_bool (SmtenSolver mref) nm = return ()
+  declare_integer (SmtenSolver mref) nm = noints
+  declare_bit (SmtenSolver mref) _ nm = nobits
 
   getBoolValue (SmtenSolver mref) nm = do
      ms <- readIORef mref

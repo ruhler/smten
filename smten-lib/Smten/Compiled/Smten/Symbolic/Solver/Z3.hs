@@ -51,11 +51,20 @@ baprim :: (Z3Context -> CUInt -> Ptr Z3Expr -> IO Z3Expr) ->
 baprim f z a b = withz3c z $ \ctx -> withArray [a, b] $ \arr -> f ctx 2 arr
 
 instance SolverAST Z3 Z3Expr where
-  declare z ty nm = withz3c z $ \ctx -> do
-      sort <- case ty of
-                    BoolT -> c_Z3_mk_bool_sort ctx
-                    IntegerT -> c_Z3_mk_int_sort ctx
-                    BitT w -> c_Z3_mk_bv_sort ctx (fromInteger w)
+  declare_bool z nm = withz3c z $ \ctx -> do
+      sort <- c_Z3_mk_bool_sort ctx
+      snm <- withCString (freenm nm) $ c_Z3_mk_string_symbol ctx
+      decl <- c_Z3_mk_func_decl ctx snm 0 nullPtr sort
+      H.insert (z3_vars z) nm decl
+
+  declare_integer z nm = withz3c z $ \ctx -> do
+      sort <- c_Z3_mk_int_sort ctx
+      snm <- withCString (freenm nm) $ c_Z3_mk_string_symbol ctx
+      decl <- c_Z3_mk_func_decl ctx snm 0 nullPtr sort
+      H.insert (z3_vars z) nm decl
+
+  declare_bit z w nm = withz3c z $ \ctx -> do
+      sort <- c_Z3_mk_bv_sort ctx (fromInteger w)
       snm <- withCString (freenm nm) $ c_Z3_mk_string_symbol ctx
       decl <- c_Z3_mk_func_decl ctx snm 0 nullPtr sort
       H.insert (z3_vars z) nm decl

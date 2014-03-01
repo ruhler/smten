@@ -17,7 +17,6 @@ import Data.Functor((<$>))
 import Data.IORef
 
 import Smten.Runtime.STPFFI
-import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
@@ -71,16 +70,16 @@ getbits s w e
       return $ shiftL hi 64 + lo
 
 instance SolverAST STP STP_Expr where
-  declare s BoolT nm = do
+  declare_bool s nm = do
     st <- gceM s $ withvc s c_vc_boolType
     v <- withvc s $ \vc ->
            withCString (freenm nm) $ \cnm ->
              gceM s $ c_vc_varExpr vc cnm st
     H.insert (stp_vars s) nm v
 
-  declare s IntegerT nm = nointegers
+  declare_integer s nm = nointegers
 
-  declare s (BitT w) nm = do
+  declare_bit s w nm = do
     st <- withvc s $ \vc -> 
             -- No need to gc the result of c_vc_bvType, because stp does it
             -- for us.

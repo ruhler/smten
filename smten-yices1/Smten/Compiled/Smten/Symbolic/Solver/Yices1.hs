@@ -87,13 +87,24 @@ lshr_bit_from y fr w a b
       ite_bit y eq sh rest
 
 instance SolverAST Yices1 YExpr where
-  declare y ty nm = do
-      y1ty <- case ty of
-               BoolT -> withCString "bool" $ \tynm ->
-                            withy1 y $ \ctx -> c_yices_mk_type ctx tynm
-               IntegerT -> withCString "int" $ \tynm ->
-                            withy1 y $ \ctx -> c_yices_mk_type ctx tynm
-               BitT w -> withy1 y $ \ctx -> c_yices_mk_bitvector_type ctx (fromInteger w)
+  declare_bool y nm = do
+      y1ty <- withCString "bool" $ \tynm ->
+                  withy1 y $ \ctx -> c_yices_mk_type ctx tynm
+      decl <- withCString (freenm nm) $ \str ->
+                withy1 y $ \yctx ->
+                  c_yices_mk_var_decl yctx str y1ty
+      H.insert (y1_vars y) nm decl
+
+  declare_integer y nm = do
+      y1ty <- withCString "int" $ \tynm ->
+                 withy1 y $ \ctx -> c_yices_mk_type ctx tynm
+      decl <- withCString (freenm nm) $ \str ->
+                withy1 y $ \yctx ->
+                  c_yices_mk_var_decl yctx str y1ty
+      H.insert (y1_vars y) nm decl
+
+  declare_bit y w nm = do
+      y1ty <- withy1 y $ \ctx -> c_yices_mk_bitvector_type ctx (fromInteger w)
       decl <- withCString (freenm nm) $ \str ->
                 withy1 y $ \yctx ->
                   c_yices_mk_var_decl yctx str y1ty

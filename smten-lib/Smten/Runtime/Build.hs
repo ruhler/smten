@@ -11,22 +11,13 @@ import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.SolverAST
 
-type Vars = H.BasicHashTable FreeID Type
+type VarMap = H.BasicHashTable FreeID Type
 
 build :: (SolverAST ctx exp) => ctx -> BoolFF -> IO (exp, [(FreeID, Type)])
 build ctx p = do
     key <- newKey
-    vars <- H.new :: IO Vars
-    let uservar id ty = do
-            m <- H.lookup vars id
-            case m of
-                Nothing -> do
-                   declare ctx ty id
-                   H.insert vars id ty
-                Just _ -> return ()
-            var ctx id
-
-        buildB x = do
+    vars <- H.new :: IO VarMap
+    let buildB x = do
            case x of
              TrueFF -> bool ctx True
              FalseFF -> bool ctx False
@@ -46,7 +37,14 @@ build ctx p = do
              NotFF a c -> cached c key $ do
                 a' <- buildB a
                 not_bool ctx a'
-             VarFF id c -> cached c key (uservar id BoolT)
+             VarFF id c -> cached c key $ do
+                m <- H.lookup vars id
+                case m of
+                    Nothing -> do
+                       declare_bool ctx id
+                       H.insert vars id BoolT
+                    Just _ -> return ()
+                var ctx id
              Eq_IntegerFF a b c -> cached c key $ do
                 a' <- buildI a
                 b' <- buildI b
@@ -80,7 +78,14 @@ build ctx p = do
                 a' <- buildI a
                 b' <- buildI b
                 ite_integer ctx p' a' b'
-             Var_IntegerFF id c -> cached c key (uservar id IntegerT)
+             Var_IntegerFF id c -> cached c key $ do
+                m <- H.lookup vars id
+                case m of
+                    Nothing -> do
+                       declare_integer ctx id
+                       H.insert vars id IntegerT
+                    Just _ -> return ()
+                var ctx id
 
         buildV x = do
           case x of
@@ -131,7 +136,14 @@ build ctx p = do
                 a' <- buildV a
                 b' <- buildV b
                 ite_bit ctx p' a' b'
-            Var_BitFF w id c -> cached c key (uservar id (BitT w))
+            Var_BitFF w id c -> cached c key $ do
+                m <- H.lookup vars id
+                case m of
+                    Nothing -> do
+                       declare_bit ctx w id
+                       H.insert vars id (BitT w)
+                    Just _ -> return ()
+                var ctx id
     e <- buildB p
     vs <- H.toList vars
     return (e, vs)

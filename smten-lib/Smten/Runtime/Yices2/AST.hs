@@ -29,17 +29,17 @@ data Yices2 = Yices2 {
 }
 
 instance SolverAST Yices2 YTerm where
-  declare y BoolT nm = do
+  declare_bool y nm = do
     ty <- c_yices_bool_type
     term <- c_yices_new_uninterpreted_term ty
     H.insert (y2_vars y) nm term
 
-  declare y IntegerT nm = do
+  declare_integer y nm = do
     ty <- c_yices_int_type
     term <- c_yices_new_uninterpreted_term ty
     H.insert (y2_vars y) nm term
 
-  declare y (BitT w) nm = do
+  declare_bit y w nm = do
     ty <- c_yices_bv_type (fromInteger w)
     term <- c_yices_new_uninterpreted_term ty
     H.insert (y2_vars y) nm term

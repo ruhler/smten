@@ -42,17 +42,24 @@ addBits s = do
     return (Bits s m nid)
 
 instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
-  declare (Bits s m nid) (BitT w) nm = {-# SCC "Bits_declare" #-} do
+  declare_bit (Bits s m nid) w nm = do
      idmin <- readIORef nid
      let idnext = idmin + w
          idmax = idnext - 1
      writeIORef nid $! idnext
-     mapM (declare s BoolT) [idmin .. idmax]
+     mapM (declare_bool s) [idmin .. idmax]
      H.insert m nm (IsBit idmin w)
-  declare (Bits s m nid) t nm = {-# SCC "Bits_declare" #-} do
+
+  declare_integer (Bits s m nid) nm = do
      id <- readIORef nid
      writeIORef nid $! id+1
-     declare s t id
+     declare_integer s id
+     H.insert m nm (IsOther id)
+
+  declare_bool (Bits s m nid) nm = do
+     id <- readIORef nid
+     writeIORef nid $! id+1
+     declare_bool s id
      H.insert m nm (IsOther id)
   
   getBoolValue (Bits s m _) nm = do
