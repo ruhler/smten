@@ -16,12 +16,14 @@ import Data.Functor
 import Data.Maybe
 import qualified Data.HashTable.IO as H
 
-import Smten.Runtime.Z3.FFI
+import Smten.Runtime.Bit
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
+import Smten.Runtime.Model
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
+import Smten.Runtime.Z3.FFI
 
 type VarMap = H.BasicHashTable FreeID Z3Decl
 
@@ -60,35 +62,26 @@ instance SolverAST Z3 Z3Expr where
 
   getBoolValue z nm = do
     model <- withz3s z c_Z3_solver_get_model
-    v <- var z nm
-    alloca $ \pval -> do
-      withz3c z $ \ctx -> c_Z3_model_eval ctx model v z3true pval
-      val <- peek pval
-      bval <- withz3c z $ \ctx -> c_Z3_get_bool_value ctx val
-      return (bval == z3ltrue)
+    getBoolValueWithModel z nm model
     
   getIntegerValue z nm = do
     model <- withz3s z c_Z3_solver_get_model
-    v <- var z nm
-    alloca $ \pval -> do
-      withz3c z $ \ctx -> c_Z3_model_eval ctx model v z3true pval
-      val <- peek pval
-      cstr <- withz3c z $ \ctx -> c_Z3_get_numeral_string ctx val
-      str <- peekCString cstr
-      return (read str)
+    getIntegerValueWithModel z nm model
 
   getBitVectorValue z w nm = do
     model <- withz3s z c_Z3_solver_get_model
-    v <- var z nm
-    alloca $ \pval -> do
-      withz3c z $ \ctx -> c_Z3_model_eval ctx model v z3true pval
-      val <- peek pval
-      cstr <- withz3c z $ \ctx -> c_Z3_get_numeral_string ctx val
-      str <- peekCString cstr
-      return (read str)
+    getBitVectorValueWithModel z w nm model
 
+  getModel z vars = do
+    model <- withz3s z c_Z3_solver_get_model
+    let getv (nm, BoolT) = BoolA <$> getBoolValueWithModel z nm model
+        getv (nm, IntegerT) = IntegerA <$> getIntegerValueWithModel z nm model
+        getv (nm, BitT w) = do
+           b <- getBitVectorValueWithModel z w nm model
+           return (BitA $ bv_make w b)
+    mapM getv vars
 
-  check z = {-# SCC "Z3Check" #-} do
+  check z = do
     res <- withz3s z c_Z3_solver_check
     case res of
         _ | res == z3lfalse -> return Unsat
@@ -99,7 +92,7 @@ instance SolverAST Z3 Z3Expr where
      c_Z3_solver_dec_ref ctx slv
      c_Z3_del_context ctx
 
-  assert z p = {-# SCC "Z3Assert" #-} withz3s z $ \ctx slv -> c_Z3_solver_assert ctx slv p
+  assert z p = withz3s z $ \ctx slv -> c_Z3_solver_assert ctx slv p
   bool z True = withz3c z c_Z3_mk_true
   bool z False = withz3c z c_Z3_mk_false
   integer z i = withz3c z $ \ctx -> do
@@ -157,4 +150,33 @@ z3 = solverFromAST $ do
   vars <- H.new
   c_Z3_del_config cfg
   return $ Z3 ctx slv vars
+
+getBoolValueWithModel :: Z3 -> FreeID -> Z3Model -> IO Bool
+getBoolValueWithModel z nm model = do
+  v <- var z nm
+  alloca $ \pval -> do
+    withz3c z $ \ctx -> c_Z3_model_eval ctx model v z3true pval
+    val <- peek pval
+    bval <- withz3c z $ \ctx -> c_Z3_get_bool_value ctx val
+    return (bval == z3ltrue)
+  
+getIntegerValueWithModel :: Z3 -> FreeID -> Z3Model -> IO Integer
+getIntegerValueWithModel z nm model = do
+  v <- var z nm
+  alloca $ \pval -> do
+    withz3c z $ \ctx -> c_Z3_model_eval ctx model v z3true pval
+    val <- peek pval
+    cstr <- withz3c z $ \ctx -> c_Z3_get_numeral_string ctx val
+    str <- peekCString cstr
+    return (read str)
+
+getBitVectorValueWithModel :: Z3 -> Integer -> FreeID -> Z3Model -> IO Integer
+getBitVectorValueWithModel z w nm model = do
+  v <- var z nm
+  alloca $ \pval -> do
+    withz3c z $ \ctx -> c_Z3_model_eval ctx model v z3true pval
+    val <- peek pval
+    cstr <- withz3c z $ \ctx -> c_Z3_get_numeral_string ctx val
+    str <- peekCString cstr
+    return (read str)
 
