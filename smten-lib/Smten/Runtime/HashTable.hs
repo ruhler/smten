@@ -1,7 +1,9 @@
 
 -- | A hash table which is used only for lookups.
 module Smten.Runtime.HashTable (
-    HashTable(), table, Smten.Runtime.HashTable.lookup,
+    HashTable(), table,
+    Smten.Runtime.HashTable.lookup,
+    Smten.Runtime.HashTable.assocs,
     ) where
 
 import Data.Array
@@ -38,4 +40,6 @@ lookup k (HashTable s es) = Prelude.lookup k (es ! indexof s k)
 indexof :: (Hashable k) => Int -> k -> Int
 indexof s k = hash k `mod` s
 
+assocs :: HashTable k v -> [(k, v)]
+assocs (HashTable _ es) = concat (Data.Array.elems es)
 

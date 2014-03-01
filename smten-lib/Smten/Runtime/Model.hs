@@ -10,18 +10,18 @@ import qualified Smten.Runtime.HashTable as HT
 
 data Any = BoolA Bool | IntegerA Integer | BitA Bit
 
--- TODO: Why not get rid of m_vars, make Model a newtype, and instead
--- reconstruct m_vars from the hash table?
-data Model = Model {
-    m_vars :: [(FreeID, Any)],
+newtype Model = Model {
     m_hashed :: HT.HashTable FreeID Any
 }
+
+m_vars :: Model -> [(FreeID, Any)]
+m_vars m = HT.assocs (m_hashed m)
 
 instance Show Model where
     show = show . map fst . m_vars
 
 model :: [(FreeID, Any)] -> IO Model
-model vars = return (Model vars (HT.table vars))
+model vars = return (Model (HT.table vars))
 
 -- | Look up the boolean value for the given free variable in the model.
 -- The given variable is assumed to have boolean type.
