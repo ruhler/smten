@@ -30,7 +30,7 @@ instance SmtenHS0 Solver where
   
 
 {-# INLINEABLE solverFromAST #-}
-solverFromAST :: (SolverAST ctx exp) => IO ctx -> Solver
+solverFromAST :: (SolverAST ctx b i v) => IO ctx -> Solver
 solverFromAST mksolver = Solver $ \formula -> do
     solver <- mksolver
     (p, vars) <- {-# SCC "Build" #-} build solver formula

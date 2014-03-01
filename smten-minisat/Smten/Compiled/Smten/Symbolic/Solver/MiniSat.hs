@@ -39,7 +39,7 @@ minisat = solverFromAST $ do
   withints <- addIntegers base
   addBits withints
 
-instance SolverAST MiniSat MSExpr where
+instance SolverAST MiniSat MSExpr MSExpr MSExpr where
   declare_bool s nm = do 
     v <- c_minisat_var (s_ctx s)
     H.insert (s_vars s) nm v

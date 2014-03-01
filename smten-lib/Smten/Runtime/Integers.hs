@@ -1,4 +1,5 @@
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -7,22 +8,17 @@
 -- already support integers.
 module Smten.Runtime.Integers (addIntegers) where
 
-import Data.Functor
-
 import Smten.Runtime.SolverAST
 
-data Formula exp = Exp { expr :: exp }
-             | IntegerF { ints :: [(exp, Integer)] }
-
-newtype Integers s = Integers s
+newtype Integers s b i v = Integers s
 
 -- | Add Integer support to an existing solver.
-addIntegers :: s -> IO (Integers s)
+addIntegers :: s -> IO (Integers s b i v)
 addIntegers s = return (Integers s)
 
-instance (SolverAST s exp) => SolverAST (Integers s) (Formula exp) where
+instance (SolverAST s b i v) => SolverAST (Integers s b i v) b [(b, Integer)] v  where
   declare_bool (Integers s) nm = declare_bool s nm
-  declare_integer (Integers s) nm = declare_integer s nm
+  declare_integer (Integers s) nm = error "TODO: support free integers in Integers wrapper"
   declare_bit (Integers s) w nm = declare_bit s w nm
   
   getBoolValue (Integers s) nm = getBoolValue s nm
@@ -33,36 +29,35 @@ instance (SolverAST s exp) => SolverAST (Integers s) (Formula exp) where
   check (Integers s) = check s
   cleanup (Integers s) = cleanup s
         
-  assert (Integers s) e = assert s (expr e)
+  assert (Integers s) e = assert s e
 
-  bool (Integers s) b = Exp <$> bool s b
+  bool (Integers s) b = bool s b
 
   integer (Integers s) i = do
     tt <- bool s True
-    return (IntegerF [(tt, i)])
+    return [(tt, i)]
 
-  bit (Integers s) w v = Exp <$> bit s w v
+  bit (Integers s) w v = bit s w v
 
-  var_bool (Integers s) nm = Exp <$> var_bool s nm
-  var_bit (Integers s) w nm = Exp <$> var_bit s w nm
-  var_integer (Integers s) nm = Exp <$> var_integer s nm
+  var_bool (Integers s) nm = var_bool s nm
+  var_bit (Integers s) w nm = var_bit s w nm
+  var_integer (Integers s) nm = error "TODO: support integer variables in Integers wrapper"
 
-  and_bool = bprim and_bool
-  or_bool = bprim or_bool
-  not_bool = uprim not_bool
+  and_bool (Integers s) a b = and_bool s a b
+  or_bool (Integers s) a b = or_bool s a b
+  not_bool (Integers s) a = not_bool s a
     
-  ite_bool (Integers s) p a b = Exp <$> ite_bool s (expr p) (expr a) (expr b)
-  ite_bit (Integers s) p a b = Exp <$> ite_bit s (expr p) (expr a) (expr b)
+  ite_bool (Integers s) p a b = ite_bool s p a b
+  ite_bit (Integers s) p a b = ite_bit s p a b
 
   ite_integer (Integers s) p a b = do
-    let --join :: exp -> (exp, Integer) -> IO (exp, Integer)
-        join p (a, v) = do
+    let join p (a, v) = do
           pa <- and_bool s p a
           return (pa, v)
-    not_p <- not_bool s (expr p)
-    a' <- mapM (join (expr p)) (ints a)
-    b' <- mapM (join not_p) (ints b)
-    return $ IntegerF (a' ++ b')
+    not_p <- not_bool s p
+    a' <- mapM (join p) a
+    b' <- mapM (join not_p) b
+    return (a' ++ b')
 
   eq_integer = ibprim (==)
   leq_integer = ibprim (<=)
@@ -79,37 +74,32 @@ instance (SolverAST s exp) => SolverAST (Integers s) (Formula exp) where
   concat_bit = bprim concat_bit
   shl_bit s x = bprim (\s' -> shl_bit s' x) s
   lshr_bit s x = bprim (\s' -> lshr_bit s' x) s
-  not_bit = uprim not_bit
-  sign_extend_bit (Integers s) fr to x = Exp <$> sign_extend_bit s fr to (expr x)
-  extract_bit (Integers s) hi lo x = Exp <$> extract_bit s hi lo (expr x)
+  not_bit (Integers s) a = not_bit s a
+  sign_extend_bit (Integers s) fr to x = sign_extend_bit s fr to x
+  extract_bit (Integers s) hi lo x = extract_bit s hi lo x
 
-uprim :: (SolverAST s e) => (s -> e -> IO e)
-      -> Integers s -> Formula e -> IO (Formula e)
-uprim f (Integers s) a = Exp <$> f s (expr a)
+bprim :: (s -> a -> b -> IO c) -> Integers s d i v -> a -> b -> IO c
+bprim f (Integers s) a b = f s a b
 
-bprim :: (SolverAST s e) => (s -> e -> e -> IO e)
-      -> Integers s -> Formula e -> Formula e -> IO (Formula e)
-bprim f (Integers s) a b = Exp <$> f s (expr a) (expr b)
-
-ibprim :: forall s e . (SolverAST s e) => (Integer -> Integer -> Bool) 
-       -> Integers s -> Formula e -> Formula e -> IO (Formula e)
+ibprim :: forall s b i v . (SolverAST s b i v) => (Integer -> Integer -> Bool) 
+       -> Integers s b i v -> [(b, Integer)] -> [(b, Integer)] -> IO b
 ibprim f (Integers s) a b = do
-  let join :: (e, Integer) -> (e, Integer) -> IO e
+  let join :: (b, Integer) -> (b, Integer) -> IO b
       join (pa, va) (pb, vb) = do
         pab <- and_bool s pa pb
         v <- bool s (f va vb)
         and_bool s pab v
 
-  vals <- sequence [join ax bx | ax <- ints a, bx <- ints b]
-  Exp <$> or_bools s vals
+  vals <- sequence [join ax bx | ax <- a, bx <- b]
+  or_bools s vals
 
-iiprim :: forall s e . (SolverAST s e) => (Integer -> Integer -> Integer) 
-       -> Integers s -> Formula e -> Formula e -> IO (Formula e)
+iiprim :: forall s b i v . (SolverAST s b i v) => (Integer -> Integer -> Integer) 
+       -> Integers s b i v -> [(b, Integer)] -> [(b, Integer)] -> IO [(b, Integer)]
 iiprim f (Integers s) a b = do
-  let join :: (e, Integer) -> (e, Integer) -> IO (e, Integer)
+  let join :: (b, Integer) -> (b, Integer) -> IO (b, Integer)
       join (pa, va) (pb, vb) = do
         pab <- and_bool s pa pb
         let vab = f va vb
         return (pab, vab)
-  IntegerF <$> sequence [join ax bx | ax <- ints a, bx <- ints b]
+  sequence [join ax bx | ax <- a, bx <- b]
 

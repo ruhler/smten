@@ -37,7 +37,7 @@ data SmtenSolver = SmtenSolver (IORef Exp)
 nobits = error "SmtenSolver: bits not supported natively"
 noints = error "SmtenSolver: integers not supported natively"
 
-instance SolverAST SmtenSolver Exp where
+instance SolverAST SmtenSolver Exp () () where
   declare_bool (SmtenSolver mref) nm = return ()
   declare_integer (SmtenSolver mref) nm = noints
   declare_bit (SmtenSolver mref) _ nm = nobits
@@ -63,8 +63,8 @@ instance SolverAST SmtenSolver Exp where
   bit = nobits
 
   var_bool _ nm = return $ varExp nm
-  var_integer _ nm = return $ varExp nm
-  var_bit _ w nm = return $ varExp nm
+  var_integer _ nm = noints
+  var_bit _ w nm = nobits
 
   and_bool _ a b = return $ andExp a b
   or_bool _ a b = return $ orExp a b

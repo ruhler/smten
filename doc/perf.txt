@@ -13,55 +13,55 @@ shampi::
 
 nqueens
 -------
-yices2 Int 59: 13.839533
-yices2 Integer 31: 8.679513
-yices2 Bit 92: 2.087092
-yices2 Bool 152: 1.880214
-yices2 Bool2 72: 2.36153
-yices1 Int 31: 9.692693
-yices1 Integer 44: 3.947611
-yices1 Bit 68: 1.58577
-yices1 Bool 100: 2.851231
-yices1 Bool2 55: 3.943081
-z3 Int 38: 6.003875
-z3 Integer 36: 10.435501
-z3 Bit 60: 2.5759
-z3 Bool 80: 2.430425
-z3 Bool2 60: 3.333108
-stp Int 28: 4.970656
-stp Bit 70: 3.261628
-stp Bool 60: 2.237138
-stp Bool2 35: 5.312848
-minisat Int 42: 12.725571
-minisat Bit 68: 12.70149
-minisat Bool 450: 13.009734
-minisat Bool2 120: 14.207518
+yices2 Int 59: 13.687913
+yices2 Integer 31: 8.66179
+yices2 Bit 92: 2.090971
+yices2 Bool 152: 1.887617
+yices2 Bool2 72: 2.365815
+yices1 Int 31: 9.768412
+yices1 Integer 44: 3.95604
+yices1 Bit 68: 1.589444
+yices1 Bool 100: 2.858661
+yices1 Bool2 55: 3.974431
+z3 Int 38: 6.001555
+z3 Integer 36: 10.421826
+z3 Bit 60: 2.578332
+z3 Bool 80: 2.436224
+z3 Bool2 60: 3.367355
+stp Int 28: 4.979058
+stp Bit 70: 3.245505
+stp Bool 60: 2.232629
+stp Bool2 35: 5.32915
+minisat Int 42: 12.597487
+minisat Bit 68: 12.832077
+minisat Bool 450: 12.869027
+minisat Bool2 120: 13.45749
 
 sudoku
 ------
-yices2 Bit 400: 14.967757
-yices2 Enum 500: 13.210988
-yices2 BitOneHot 10: 17.672085
-yices2 Int 300: 13.443597
-yices2 Integer 2: 12.630789
-yices1 Bit 125: 15.314974
-yices1 Enum 225: 11.264432
-yices1 BitOneHot 11: 16.061902
-yices1 Int 140: 13.940453
-yices1 Integer 90: 14.893697
-z3 Bit 225: 11.904213
-z3 Enum 200: 14.275194
-z3 BitOneHot 22: 15.154942
-z3 Int 150: 14.527307
-z3 Integer 30: 13.980934
-stp Bit 150: 14.459582
-stp Enum 45: 14.156374
-stp BitOneHot 21: 13.844434
-stp Int 29: 14.619039
-minisat Bit 72: 15.596999
-minisat Enum 205: 13.393388
-minisat BitOneHot 8: 16.85307
-minisat Int 120: 16.833081
+yices2 Bit 400: 14.732551
+yices2 Enum 500: 13.102987
+yices2 BitOneHot 10: 17.78018
+yices2 Int 300: 13.472973
+yices2 Integer 2: 12.613417
+yices1 Bit 125: 15.323762
+yices1 Enum 225: 11.232644
+yices1 BitOneHot 11: 16.227291
+yices1 Int 140: 13.834353
+yices1 Integer 90: 14.960063
+z3 Bit 225: 11.995166
+z3 Enum 200: 14.274579
+z3 BitOneHot 22: 15.013318
+z3 Int 150: 14.539761
+z3 Integer 30: 13.999104
+stp Bit 150: 14.5022
+stp Enum 45: 14.194021
+stp BitOneHot 21: 14.083639
+stp Int 29: 14.636913
+minisat Bit 72: 15.563372
+minisat Enum 205: 13.112889
+minisat BitOneHot 8: 16.792146
+minisat Int 120: 16.651108
 
 sketch:
   yices2: 11.54

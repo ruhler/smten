@@ -86,7 +86,7 @@ lshr_bit_from y fr w a b
       rest <- lshr_bit_from y (fr+1) w a b
       ite_bit y eq sh rest
 
-instance SolverAST Yices1 YExpr where
+instance SolverAST Yices1 YExpr YExpr YExpr where
   declare_bool y nm = do
       y1ty <- withCString "bool" $ \tynm ->
                   withy1 y $ \ctx -> c_yices_mk_type ctx tynm

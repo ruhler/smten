@@ -13,7 +13,7 @@ import Smten.Runtime.SolverAST
 
 type VarMap = H.BasicHashTable FreeID Type
 
-build :: (SolverAST ctx exp) => ctx -> BoolFF -> IO (exp, [(FreeID, Type)])
+build :: (SolverAST ctx b i v) => ctx -> BoolFF -> IO (b, [(FreeID, Type)])
 build ctx p = do
     key <- newKey
     vars <- H.new :: IO VarMap

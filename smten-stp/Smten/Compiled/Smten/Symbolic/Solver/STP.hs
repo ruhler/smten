@@ -69,7 +69,7 @@ getbits s w e
       hi <- getbits s (w-64) ehi
       return $ shiftL hi 64 + lo
 
-instance SolverAST STP STP_Expr where
+instance SolverAST STP STP_Expr STP_Expr STP_Expr where
   declare_bool s nm = do
     st <- gceM s $ withvc s c_vc_boolType
     v <- withvc s $ \vc ->

@@ -138,6 +138,6 @@ smttests = do
    
 tests :: IO ()
 tests = do
-   runtest (SMTTestCfg smten [] []) smttests
+   runtest (SMTTestCfg smten [] ["SMT.Core.Integer"]) smttests
    putStrLn "SMT.Core PASSED"
 

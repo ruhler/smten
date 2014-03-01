@@ -50,7 +50,7 @@ baprim :: (Z3Context -> CUInt -> Ptr Z3Expr -> IO Z3Expr) ->
           Z3 -> Z3Expr -> Z3Expr -> IO Z3Expr
 baprim f z a b = withz3c z $ \ctx -> withArray [a, b] $ \arr -> f ctx 2 arr
 
-instance SolverAST Z3 Z3Expr where
+instance SolverAST Z3 Z3Expr Z3Expr Z3Expr where
   declare_bool z nm = withz3c z $ \ctx -> do
       sort <- c_Z3_mk_bool_sort ctx
       snm <- withCString (freenm nm) $ c_Z3_mk_string_symbol ctx

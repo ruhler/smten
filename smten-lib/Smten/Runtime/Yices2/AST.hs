@@ -28,7 +28,7 @@ data Yices2 = Yices2 {
     y2_vars :: VarMap
 }
 
-instance SolverAST Yices2 YTerm where
+instance SolverAST Yices2 YTerm YTerm YTerm where
   declare_bool y nm = do
     ty <- c_yices_bool_type
     term <- c_yices_new_uninterpreted_term ty
