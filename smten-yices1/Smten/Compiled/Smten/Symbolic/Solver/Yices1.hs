@@ -15,9 +15,11 @@ import Foreign hiding (bit)
 import Foreign.C.String
 import Foreign.C.Types
 
+import Smten.Runtime.Bit
 import Smten.Runtime.Yices1.FFI
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
+import Smten.Runtime.Model
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
@@ -99,39 +101,33 @@ instance SolverAST Yices1 YExpr where
 
   getBoolValue y nm = do
     model <- withy1 y c_yices_get_model 
-    decl <- getdecl y nm
-    br <- c_yices_get_value model decl
-    case br of
-      _ | br == yTrue -> return True
-      _ | br == yFalse -> return False
-      _ | br == yUndef -> return False
+    getBoolValueWithModel y nm model
 
   getIntegerValue y nm = do
     model <- withy1 y c_yices_get_model 
-    decl <- getdecl y nm
-    alloca $ \ptr -> do
-      ir <- c_yices_get_int_value model decl ptr
-      if ir == 1
-          then toInteger <$> peek ptr
-          else return 0
+    getIntegerValueWithModel y nm model
 
   getBitVectorValue y w nm = do
     model <- withy1 y c_yices_get_model 
-    decl <- getdecl y nm
-    allocaArray (fromInteger w) $ \ptr -> do
-        ir <- c_yices_get_bitvector_value model decl (fromInteger w) ptr
-        if ir == 1
-            then bvInteger <$> peekArray (fromInteger w) ptr
-            else return 0
+    getBitVectorValueWithModel y w nm model
 
+  getModel y vars = do
+    model <- withy1 y c_yices_get_model
+    let getv (nm, BoolT) = BoolA <$> getBoolValueWithModel y nm model
+        getv (nm, IntegerT) = IntegerA <$> getIntegerValueWithModel y nm model
+        getv (nm, BitT w) = do
+           b <- getBitVectorValueWithModel y w nm model
+           return (BitA $ bv_make w b)
+    r <- mapM getv vars
+    return r
 
-  check y = {-# SCC "Yices1Check" #-} do
+  check y = do
     res <- withy1 y c_yices_check
     return $ toResult res
 
   cleanup y = withy1 y c_yices_del_context
 
-  assert y p = {-# SCC "Yices1Assert" #-} withy1 y $ \ctx -> c_yices_assert ctx p
+  assert y p = withy1 y $ \ctx -> c_yices_assert ctx p
   bool y True = withy1 y c_yices_mk_true
   bool y False = withy1 y c_yices_mk_false
   integer y i = withy1 y $ \ctx -> c_yices_mk_num ctx (fromInteger i)
@@ -184,3 +180,29 @@ yices1 = solverFromAST $ do
   vars <- H.new
   return $ Yices1 ptr vars
 
+getBoolValueWithModel :: Yices1 -> FreeID -> YModel -> IO Bool
+getBoolValueWithModel y nm model = do
+  decl <- getdecl y nm
+  br <- c_yices_get_value model decl
+  case br of
+    _ | br == yTrue -> return True
+    _ | br == yFalse -> return False
+    _ | br == yUndef -> return False
+
+getIntegerValueWithModel :: Yices1 -> FreeID -> YModel -> IO Integer
+getIntegerValueWithModel y nm model = do
+  decl <- getdecl y nm
+  alloca $ \ptr -> do
+    ir <- c_yices_get_int_value model decl ptr
+    if ir == 1
+        then toInteger <$> peek ptr
+        else return 0
+
+getBitVectorValueWithModel :: Yices1 -> Integer -> FreeID -> YModel -> IO Integer
+getBitVectorValueWithModel y w nm model = do
+  decl <- getdecl y nm
+  allocaArray (fromInteger w) $ \ptr -> do
+      ir <- c_yices_get_bitvector_value model decl (fromInteger w) ptr
+      if ir == 1
+          then bvInteger <$> peekArray (fromInteger w) ptr
+          else return 0

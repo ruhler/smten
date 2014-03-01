@@ -46,6 +46,7 @@ instance SolverAST DebugLL Debug where
     getBoolValue = error $ "Debug.getBoolValue: not implemented"
     getIntegerValue = error $ "Debug.getIntegerValue: not implemented"
     getBitVectorValue = error $ "Debug.getBitVectorValue: not implemented"
+    getModel = error $ "Debug.getModel: not implemented"
     check = error $ "Debug.check not implemented"
 
     assert dbg e = do
