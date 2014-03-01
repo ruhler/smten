@@ -14,7 +14,7 @@ import Smten.Runtime.SolverAST
 type Vars = H.BasicHashTable FreeID Type
 
 build :: (SolverAST ctx exp) => ctx -> BoolFF -> IO (exp, [(FreeID, Type)])
-build ctx p = {-# SCC "Build" #-} do
+build ctx p = do
     key <- newKey
     vars <- H.new :: IO Vars
     let uservar id ty = do

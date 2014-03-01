@@ -16,6 +16,7 @@ import Smten.Runtime.FreeID
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 import Smten.Runtime.MiniSatFFI
+import Smten.Runtime.Model
 import Smten.Runtime.Result
 import Smten.Runtime.Bits
 import Smten.Runtime.Integers
@@ -60,7 +61,9 @@ instance SolverAST MiniSat MSExpr where
   getIntegerValue = nointegers
   getBitVectorValue = nobits
 
-  check s = {-# SCC "MiniSatCheck" #-} do
+  getModel s vars = sequence [BoolA <$> getBoolValue s nm | (nm, BoolT) <- vars]
+
+  check s = do
     r <- c_minisat_check (s_ctx s)
     case r of
        0 -> return Unsat

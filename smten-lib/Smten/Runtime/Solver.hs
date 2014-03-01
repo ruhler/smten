@@ -33,9 +33,9 @@ instance SmtenHS0 Solver where
 solverFromAST :: (SolverAST ctx exp) => IO ctx -> Solver
 solverFromAST mksolver = Solver $ \formula -> do
     solver <- mksolver
-    (p, vars) <- build solver formula
-    assert solver p
-    res <- check solver
+    (p, vars) <- {-# SCC "Build" #-} build solver formula
+    {-# SCC "Assert" #-} assert solver p
+    res <- {-# SCC "Check" #-} check solver
     case res of 
         Sat -> do
             vals <- {-# SCC "GetModel" #-} getModel solver vars
