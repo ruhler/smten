@@ -70,7 +70,7 @@ instance SolverAST Yices2 YTerm where
     c_yices_free_model model
     return r
 
-  getValues y vars = do
+  getModel y vars = do
     model <- c_yices_get_model (y2_ctx y) 1
     let getv (nm, BoolT) = BoolA <$> getboolval y nm model
         getv (nm, IntegerT) = IntegerA <$> getintegerval y nm model

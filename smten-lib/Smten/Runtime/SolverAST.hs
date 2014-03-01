@@ -24,8 +24,8 @@ class SolverAST ctx exp | ctx -> exp where
   -- Read a bunch of values all in one go
   -- TODO: probably all the solvers should implement this instead of
   -- using the default.
-  getValues :: ctx -> [(FreeID, Type)] -> IO [Any]
-  getValues s vars =
+  getModel :: ctx -> [(FreeID, Type)] -> IO [Any]
+  getModel s vars =
     let getValue (f, BoolT) = BoolA <$> getBoolValue s f
         getValue (f, IntegerT) = IntegerA <$> getIntegerValue s f
         getValue (f, BitT w) = do

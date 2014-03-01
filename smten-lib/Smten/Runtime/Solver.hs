@@ -38,7 +38,7 @@ solverFromAST mksolver = Solver $ \formula -> do
     res <- check solver
     case res of 
         Sat -> do
-            vals <- {-# SCC "ReadModel" #-} getValues solver vars
+            vals <- {-# SCC "GetModel" #-} getModel solver vars
             m <- model $ zip (map fst vars) vals
             {-# SCC "Cleanup" #-} cleanup solver
             return (Just m)
