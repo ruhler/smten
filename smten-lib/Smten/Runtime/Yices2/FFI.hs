@@ -63,7 +63,8 @@ import Foreign.C.Types
 import Smten.Runtime.Result
 
 data YContext
-data YModel
+data YModel_
+type YModel = Ptr YModel_
 data YContextConfig
 data YParam
 type YType = Int32
@@ -187,19 +188,19 @@ foreign import ccall unsafe "y2_check_context"
     c_yices_check_context :: Ptr YContext -> Ptr YParam -> IO YSMTStatus
 
 foreign import ccall unsafe "y2_get_model"
-    c_yices_get_model :: Ptr YContext -> Int32 -> IO (Ptr YModel)
+    c_yices_get_model :: Ptr YContext -> Int32 -> IO YModel
 
 foreign import ccall unsafe "y2_free_model"
-    c_yices_free_model :: Ptr YModel -> IO ()
+    c_yices_free_model :: YModel -> IO ()
 
 foreign import ccall unsafe "y2_get_bool_value"
-    c_yices_get_bool_value :: Ptr YModel -> YTerm -> Ptr Int32 -> IO Int32
+    c_yices_get_bool_value :: YModel -> YTerm -> Ptr Int32 -> IO Int32
 
 foreign import ccall unsafe "y2_get_int64_value"
-    c_yices_get_int64_value :: Ptr YModel -> YTerm -> Ptr Int64 -> IO Int32
+    c_yices_get_int64_value :: YModel -> YTerm -> Ptr Int64 -> IO Int32
 
 foreign import ccall unsafe "y2_get_bv_value"
-    c_yices_get_bv_value :: Ptr YModel -> YTerm -> Ptr Int32 -> IO Int32
+    c_yices_get_bv_value :: YModel -> YTerm -> Ptr Int32 -> IO Int32
 
 foreign import ccall unsafe "y2_bvle_atom"
     c_yices_bvle_atom :: YTerm -> YTerm -> IO YTerm
