@@ -1,7 +1,8 @@
 
 module Smten.Runtime.Model (
     Any(..),
-    Model, model, m_vars, lookupBool, lookupInteger, lookupBit,
+    Model, model, lookupBool, lookupInteger, lookupBit,
+    m_bools, m_integers, m_bits,
   ) where
 
 import Smten.Runtime.Bit
@@ -16,6 +17,15 @@ newtype Model = Model {
 
 m_vars :: Model -> [(FreeID, Any)]
 m_vars m = HT.assocs (m_hashed m)
+
+m_bools :: Model -> [(FreeID, Bool)]
+m_bools m = [(nm, v) | (nm, BoolA v) <- m_vars m]
+
+m_bits :: Model -> [(FreeID, Bit)]
+m_bits m = [(nm, v) | (nm, BitA v) <- m_vars m]
+
+m_integers :: Model -> [(FreeID, Integer)]
+m_integers m = [(nm, v) | (nm, IntegerA v) <- m_vars m]
 
 instance Show Model where
     show = show . map fst . m_vars

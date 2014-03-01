@@ -23,14 +23,14 @@ data DebugLL = DebugLL {
 dbgPutStrLn :: DebugLL -> String -> IO ()
 dbgPutStrLn dbg s = hPutStrLn (dbg_handle dbg) s
 
-dbgModelVar :: DebugLL -> (FreeID, Any) -> IO ()
-dbgModelVar dbg (n, BoolA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
-dbgModelVar dbg (n, IntegerA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
-dbgModelVar dbg (n, BitA x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
+dbgModelVar :: (Show a) => DebugLL -> (FreeID, a) -> IO ()
+dbgModelVar dbg (n, x) = dbgPutStrLn dbg $ freenm n ++ " = " ++ show x
 
 dbgModel :: DebugLL -> Model -> IO ()
-dbgModel dbg m = mapM_ (dbgModelVar dbg) (m_vars m)
-
+dbgModel dbg m = do
+    mapM_ (dbgModelVar dbg) (m_bools m)
+    mapM_ (dbgModelVar dbg) (m_bits m)
+    mapM_ (dbgModelVar dbg) (m_integers m)
 
 -- mark a debug object for sharing.
 sh :: Debug -> Debug
