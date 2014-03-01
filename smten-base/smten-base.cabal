@@ -70,8 +70,8 @@ library
     Smten.System.IO0
 
     Smten.Runtime.AnyMap
-    Smten.Runtime.AssertCache
     Smten.Runtime.Bit
+    Smten.Runtime.BuildCache
     Smten.Runtime.Formula
     Smten.Runtime.Formula.BitF
     Smten.Runtime.Formula.BoolF

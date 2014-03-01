@@ -128,7 +128,7 @@ library
 
   other-modules:
     Smten.Runtime.AnyKeyMap
-    Smten.Runtime.Assert
+    Smten.Runtime.Build
     Smten.Runtime.Debug
     Smten.Runtime.HashTable
     Smten.Runtime.Yices2.AST

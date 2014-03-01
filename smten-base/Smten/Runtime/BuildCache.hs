@@ -1,9 +1,9 @@
 
 {-# LANGUAGE PatternGuards #-}
 
--- | Per-formula 1-element cache for the Smten.Runtime.Assert traversal 
-module Smten.Runtime.AssertCache (
-    AssertCache, AssertCacheKey, new, newKey, cached,
+-- | Per-formula 1-element cache for the Smten.Runtime.Build traversal 
+module Smten.Runtime.BuildCache (
+    BuildCache, BuildCacheKey, new, newKey, cached,
     ) where
 
 import Data.IORef
@@ -12,25 +12,25 @@ import GHC.Base (Any)
 import System.IO.Unsafe
 import Unsafe.Coerce
 
-type AssertCacheKey = Unique
-data CacheEntry = Empty | Cached AssertCacheKey Any
-newtype AssertCache = AssertCache (IORef CacheEntry)
+type BuildCacheKey = Unique
+data CacheEntry = Empty | Cached BuildCacheKey Any
+newtype BuildCache = BuildCache (IORef CacheEntry)
 
-instance Show AssertCache where
-    show _ = "?AssertCache?"
+instance Show BuildCache where
+    show _ = "?BuildCache?"
 
 -- | Create a new cache.
 -- You supply the constructor function, and it is called with a new cache
 -- to compute the result.
-new :: (AssertCache -> a) -> a
-new f = {-# SCC "AssertCache_new" #-} unsafePerformIO $ do
+new :: (BuildCache -> a) -> a
+new f = unsafePerformIO $ do
           c <- newIORef Empty
-          return (f (AssertCache c))
+          return (f (BuildCache c))
 
 -- | Create a new cache key
 -- To use a cached value, it must have the same key as last time you
 -- computed it.
-newKey :: IO AssertCacheKey
+newKey :: IO BuildCacheKey
 newKey = newUnique
 
 -- Perform the IO operation and cache the result, but only if the
@@ -38,13 +38,13 @@ newKey = newUnique
 --
 -- It is up to the user to ensure the type 'a' is fixed for a given
 -- cache and key.
-cached :: AssertCache -> AssertCacheKey -> IO a -> IO a
-cached (AssertCache cache) key action = do
+cached :: BuildCache -> BuildCacheKey -> IO a -> IO a
+cached (BuildCache cache) key action = do
   entry <- readIORef cache
   case entry of
     Cached oldkey x | oldkey == key -> return $! unsafeCoerce x
     _ -> do
         v <- action
-        {-# SCC "Cache_update" #-} writeIORef cache (Cached key (unsafeCoerce v))
+        writeIORef cache (Cached key (unsafeCoerce v))
         return v
 

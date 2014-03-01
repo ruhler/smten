@@ -7,7 +7,7 @@ module Smten.Compiled.Smten.Symbolic.Solver.Debug (debug) where
 
 import System.IO
 
-import qualified Smten.Runtime.Assert as A
+import Smten.Runtime.Build
 import Smten.Runtime.Bit
 import Smten.Runtime.Debug
 import Smten.Runtime.FreeID
@@ -93,7 +93,8 @@ debug fsmten s = do
   let dbg = DebugLL fout
   return . Solver $ \formula -> do
      dbgPutStrLn dbg $ ""
-     A.assert dbg formula
+     (p, _) <- build dbg formula
+     assert dbg p
      dbgPutStrLn dbg $ "check... "
      res <- solve s formula
      case res of

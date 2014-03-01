@@ -54,6 +54,7 @@ Performance::
 * bit blast directly in minisat instead of using a separate Bits wrapper?
     Or change bit blaster to be reusable functions instead of something 
     you plug yourself into.
+    I tried inlining it into minisat, it didn't help (I don't understand why).
 * switch to using getValues method for all solvers (and rename it getModel)
 * Look at generated code for each solver, see if there is anything stupid
     ex: Foo s _ -> foo s

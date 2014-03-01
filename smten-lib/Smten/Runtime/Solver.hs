@@ -8,8 +8,8 @@ import Smten.Runtime.Model
 import Smten.Runtime.Result
 import Smten.Runtime.Formula.Finite
 import Smten.Runtime.SmtenHS
-import qualified Smten.Runtime.SolverAST as AST
-import qualified Smten.Runtime.Assert as A
+import Smten.Runtime.SolverAST
+import Smten.Runtime.Build
 
 newtype Solver = Solver {
     -- | Use a solver to solve a single SMT query.
@@ -30,18 +30,19 @@ instance SmtenHS0 Solver where
   
 
 {-# INLINEABLE solverFromAST #-}
-solverFromAST :: (AST.SolverAST ctx exp) => IO ctx -> Solver
+solverFromAST :: (SolverAST ctx exp) => IO ctx -> Solver
 solverFromAST mksolver = Solver $ \formula -> do
     solver <- mksolver
-    vars <- A.assert solver formula
-    res <- AST.check solver
+    (p, vars) <- build solver formula
+    assert solver p
+    res <- check solver
     case res of 
         Sat -> do
-            vals <- {-# SCC "ReadModel" #-} AST.getValues solver vars
+            vals <- {-# SCC "ReadModel" #-} getValues solver vars
             m <- model $ zip (map fst vars) vals
-            {-# SCC "Cleanup" #-} AST.cleanup solver
+            {-# SCC "Cleanup" #-} cleanup solver
             return (Just m)
         Unsat -> do
-            {-# SCC "Cleanup" #-} AST.cleanup solver
+            {-# SCC "Cleanup" #-} cleanup solver
             return Nothing
 
