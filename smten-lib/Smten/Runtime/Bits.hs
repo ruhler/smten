@@ -12,8 +12,10 @@ import Data.Maybe
 import Data.IORef
 import qualified Data.HashTable.IO as H
 
+import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
 import Smten.Runtime.Formula.Type
+import Smten.Runtime.Model
 import Smten.Runtime.SolverAST
 
 data Formula exp = Exp { expr :: exp }
@@ -66,6 +68,14 @@ instance (SolverAST s exp) => SolverAST (Bits s exp) (Formula exp) where
      let idmax = idmin + w - 1
      bits <- mapM (getBoolValue s) [idmin .. idmax]
      return (valB bits)
+
+  getModel s vars =
+    let getValue (f, BoolT) = BoolA <$> getBoolValue s f
+        getValue (f, IntegerT) = IntegerA <$> getIntegerValue s f
+        getValue (f, BitT w) = do
+           b <- getBitVectorValue s w f
+           return (BitA $ bv_make w b)
+    in mapM getValue vars
 
   check (Bits s _ _) = check s
   cleanup (Bits s _ _) = cleanup s

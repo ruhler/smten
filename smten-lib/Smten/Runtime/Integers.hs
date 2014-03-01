@@ -26,6 +26,7 @@ instance (SolverAST s exp) => SolverAST (Integers s) (Formula exp) where
   getBoolValue (Integers s) nm = getBoolValue s nm
   getIntegerValue (Integers s) nm = getIntegerValue s nm
   getBitVectorValue (Integers s) w nm = getBitVectorValue s w nm
+  getModel (Integers s) vars = getModel s vars
 
   check (Integers s) = check s
   cleanup (Integers s) = cleanup s
