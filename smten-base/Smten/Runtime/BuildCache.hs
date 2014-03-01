@@ -23,7 +23,7 @@ instance Show BuildCache where
 -- You supply the constructor function, and it is called with a new cache
 -- to compute the result.
 new :: (BuildCache -> a) -> a
-new f = unsafePerformIO $ do
+new f = unsafeDupablePerformIO $ do
           c <- newIORef Empty
           return (f (BuildCache c))
 

@@ -15,7 +15,7 @@ freenm x = {-# SCC "FreeName" #-} "f~" ++ show x
 
 -- Return a globally fresh variable.
 withfresh :: (FreeID -> a) -> a
-withfresh f = unsafePerformIO $ do
+withfresh f = unsafeDupablePerformIO $ do
     nm <- newFresh
     return (f nm) 
 
