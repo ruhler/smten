@@ -56,7 +56,9 @@ Performance::
     Or change bit blaster to be reusable functions instead of something 
     you plug yourself into.
     I tried inlining it into minisat, it didn't help (I don't understand why).
-* switch to using getValues method for all solvers
+* switch to using getModel method for all solvers
+    - just need to figure out how to support it for Bits, then we should
+      be able to get rid of getFooValue methods
 * Look at generated code for each solver, see if there is anything stupid
     ex: Foo s _ -> foo s
      vs s -> withfoo $ \ss -> foo ss
