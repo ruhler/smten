@@ -20,11 +20,10 @@ Runtime::
     they should be bounded in size somehow to allow for incremental queries
                 
 Cleanup::
-* Bits wrapper should no longer need to remap IDs,
-    - just allocate new ones for bit vectors
 * Get rid of Formula.Type and Any in Model
     - by changing model to be grouped by type
 * Switch all solvers to use getModel instead of getFooValue
+* Cache vars in Build traversal, so that 'var_foo' methods can be removed?
 * Use GHC.Prim for primitive char equality and other ops.
 * Understand the interface between Smten.Prelude and GHC.Prelude, and clean
   it up, because I have a feely things are getting sloppy there.

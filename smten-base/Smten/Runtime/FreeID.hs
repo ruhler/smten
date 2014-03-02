@@ -1,6 +1,6 @@
 
 module Smten.Runtime.FreeID (
-    FreeID, freenm, withfresh,
+    FreeID, freenm, fresh, withfresh,
     ) where
 
 import Data.IORef
@@ -16,15 +16,15 @@ freenm x = {-# SCC "FreeName" #-} "f~" ++ show x
 -- Return a globally fresh variable.
 withfresh :: (FreeID -> a) -> a
 withfresh f = unsafeDupablePerformIO $ do
-    nm <- newFresh
+    nm <- fresh
     return (f nm) 
 
 freshSource :: IORef FreeID
 freshSource = unsafePerformIO (newIORef 0)
 {-# NOINLINE freshSource #-}
 
-newFresh :: IO FreeID
-newFresh = do
+fresh :: IO FreeID
+fresh = do
   r <- atomicModifyIORef freshSource $ \x -> let z = x+1 in (z,z)
   r `seq` return r
 

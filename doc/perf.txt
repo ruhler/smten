@@ -2,14 +2,14 @@ Performance Status
 ==================
 
 shampi::
-   stp.Bit: 12.71
+   stp.Bit: 12.81
    yices2.Bit: 4.82
    yices2.Integer: 4.76
    yices1.Bit: 6.43
    yices1.Integer: 6.50
    z3.Bit: 7.38
    z3.Integer: 19.12
-   minisat.Bit: 7.84
+   minisat.Bit: 7.71
 
 nqueens
 -------
@@ -32,10 +32,10 @@ stp Int 28: 4.979058
 stp Bit 70: 3.245505
 stp Bool 60: 2.232629
 stp Bool2 35: 5.32915
-minisat Int 42: 12.597487
-minisat Bit 68: 12.832077
-minisat Bool 450: 12.869027
-minisat Bool2 120: 13.45749
+minisat Int 42: 12.678714
+minisat Bit 68: 12.881671
+minisat Bool 450: 12.885942
+minisat Bool2 120: 13.548311
 
 sudoku
 ------
