@@ -15,7 +15,7 @@ import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
-import Smten.Runtime.MiniSatFFI
+import Smten.Runtime.MiniSat.FFI
 import Smten.Runtime.Model
 import Smten.Runtime.Result
 import Smten.Runtime.Bits

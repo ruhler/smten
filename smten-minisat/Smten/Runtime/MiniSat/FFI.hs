@@ -3,7 +3,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | FFI interface to minisat.
-module Smten.Runtime.MiniSatFFI (
+module Smten.Runtime.MiniSat.FFI (
     MSSolver, MSExpr, 
     c_minisat_new, c_minisat_delete,
     c_minisat_var, c_minisat_getvar,
