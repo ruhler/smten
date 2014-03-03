@@ -55,7 +55,7 @@ extern "C" int minisat_and(Solver* s, int a, int b)
     Lit x = mkLit(s->newVar(), true);
     s->addClause(~x, lit(a));               // x -> a
     s->addClause(~x, lit(b));               // x -> b
-    s->addClause(~lit(a), ~lit(b), x);      // a & b ==> x
+    s->addClause(~lit(a), ~lit(b), x);      // a & b -> x
     return unlit(x);
 }
 
@@ -64,7 +64,7 @@ extern "C" int minisat_or(Solver* s, int a, int b)
     Lit x = mkLit(s->newVar(), true);
     s->addClause(~lit(a), x);           // a -> x
     s->addClause(~lit(b), x);           // b -> x
-    s->addClause(~x, lit(a), lit(b));   // x ==> a | b
+    s->addClause(~x, lit(a), lit(b));   // x -> a | b
     return unlit(x);
 }
 

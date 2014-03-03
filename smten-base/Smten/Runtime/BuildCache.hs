@@ -7,31 +7,35 @@ module Smten.Runtime.BuildCache (
     ) where
 
 import Data.IORef
-import Data.Unique
 import GHC.Base (Any)
 import System.IO.Unsafe
 import Unsafe.Coerce
 
-type BuildCacheKey = Unique
-data CacheEntry = Empty | Cached BuildCacheKey Any
+type BuildCacheKey = Integer
+data CacheEntry = Cached BuildCacheKey Any
 newtype BuildCache = BuildCache (IORef CacheEntry)
 
 instance Show BuildCache where
     show _ = "?BuildCache?"
+
+empty :: CacheEntry
+empty = Cached 0 (error "BuildCache: empty!")
 
 -- | Create a new cache.
 -- You supply the constructor function, and it is called with a new cache
 -- to compute the result.
 new :: (BuildCache -> a) -> a
 new f = unsafeDupablePerformIO $ do
-          c <- newIORef Empty
+          c <- newIORef empty
           return (f (BuildCache c))
 
 -- | Create a new cache key
 -- To use a cached value, it must have the same key as last time you
 -- computed it.
 newKey :: IO BuildCacheKey
-newKey = newUnique
+newKey = do
+  r <- atomicModifyIORef keySource $ \x -> let z = x+1 in (z,z)
+  r `seq` return r
 
 -- Perform the IO operation and cache the result, but only if the
 -- result isn't already in the cache.
@@ -42,9 +46,14 @@ cached :: BuildCache -> BuildCacheKey -> IO a -> IO a
 cached (BuildCache cache) key action = do
   entry <- readIORef cache
   case entry of
-    Cached oldkey x | oldkey == key -> return $! unsafeCoerce x
-    _ -> do
-        v <- action
-        writeIORef cache (Cached key (unsafeCoerce v))
-        return v
+    Cached oldkey x
+      | oldkey == key -> return $! unsafeCoerce x
+      | otherwise -> do
+            v <- action
+            writeIORef cache (Cached key (unsafeCoerce v))
+            return v
+
+keySource :: IORef BuildCacheKey
+keySource = unsafePerformIO (newIORef 1)
+{-# NOINLINE keySource #-}
 
