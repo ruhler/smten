@@ -6,7 +6,7 @@
 
 -- | Add limited support for symbolic Integers to a backend which doesn't
 -- already support integers.
-module Smten.Runtime.Integers (addIntegers) where
+module Smten.Runtime.Integers (Integers, addIntegers) where
 
 import Smten.Runtime.SolverAST
 

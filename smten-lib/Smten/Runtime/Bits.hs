@@ -7,7 +7,7 @@
 
 -- | Add support for symbolic bit vectors to a backend which doesn't
 -- already support bit vectors.
-module Smten.Runtime.Bits(addBits) where
+module Smten.Runtime.Bits(Bits, addBits) where
 
 import Control.Monad
 import Data.Functor

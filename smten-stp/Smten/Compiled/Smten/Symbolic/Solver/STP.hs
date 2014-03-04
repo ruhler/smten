@@ -16,8 +16,11 @@ import Foreign.C.Types
 import Data.Functor((<$>))
 import Data.IORef
 
+import Smten.Runtime.Build
 import Smten.Runtime.STPFFI
 import Smten.Runtime.FreeID
+import Smten.Runtime.Formula.Finite
+import Smten.Runtime.Formula.Type
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
@@ -44,13 +47,18 @@ gceM s v = do
     gce s x
     return x
 
+type STP_WITH_I = Integers STP STP_Expr STP_Expr STP_Expr
+
+{-# SPECIALIZE build :: STP_WITH_I -> BoolFF -> IO (STP_Expr, [(FreeID, Type)]) #-}
+{-# SPECIALIZE solverFromAST :: IO STP_WITH_I -> Solver #-}
+
 stp :: Solver
 stp = solverFromAST $ do
   ptr <- c_vc_createValidityChecker
   vars <- H.new
   gc <- newIORef []
   let s = STP { stp_ctx = ptr, stp_vars = vars, stp_gc = gc }
-  addIntegers s
+  addIntegers s :: IO STP_WITH_I
 
 withvc :: STP -> (STP_VC -> IO a) -> IO a
 withvc s f = f (stp_ctx s)

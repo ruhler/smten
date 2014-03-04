@@ -11,7 +11,9 @@ import qualified Data.HashTable.IO as H
 
 import Data.Functor
 import Data.Maybe
+import Smten.Runtime.Build
 import Smten.Runtime.Formula.Type
+import Smten.Runtime.Formula.Finite
 import Smten.Runtime.FreeID
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
@@ -31,13 +33,19 @@ data MiniSat = MiniSat {
 nointegers = error "There is no native support integers in MiniSat"
 nobits = error "There is no native support for bit vectors in MiniSat"
 
+type MS_WITH_I = Integers MiniSat MSExpr MSExpr MSExpr
+type MS_WITH_V = Bits MS_WITH_I MSExpr [(MSExpr, Integer)] MSExpr
+
+{-# SPECIALIZE build :: MS_WITH_V -> BoolFF -> IO (MSExpr, [(FreeID, Type)]) #-}
+{-# SPECIALIZE solverFromAST :: IO MS_WITH_V -> Solver #-}
+
 minisat :: Solver
 minisat = solverFromAST $ do
   ptr <- c_minisat_new
   vars <- H.new
   let base = MiniSat ptr vars
   withints <- addIntegers base
-  addBits withints
+  addBits withints :: IO MS_WITH_V
 
 instance SolverAST MiniSat MSExpr MSExpr MSExpr where
   declare_bool s nm = do 

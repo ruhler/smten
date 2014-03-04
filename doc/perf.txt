@@ -2,14 +2,14 @@ Performance Status
 ==================
 
 shampi::
-   stp.Bit: 12.67
+   stp.Bit: 12.75
    yices2.Bit: 4.82
    yices2.Integer: 4.79
    yices1.Bit: 6.40
    yices1.Integer: 6.44
    z3.Bit: 7.32
    z3.Integer: 18.96
-   minisat.Bit: 6.44
+   minisat.Bit: 6.41
 
 nqueens
 -------
@@ -28,14 +28,14 @@ z3 Integer 36: 10.51086
 z3 Bit 60: 2.578259
 z3 Bool 80: 2.395374
 z3 Bool2 60: 2.839682
-stp Int 28: 4.919016
-stp Bit 70: 3.277206
-stp Bool 60: 2.229515
-stp Bool2 35: 5.286774
-minisat Int 42: 9.974803
-minisat Bit 68: 6.24572
-minisat Bool 450: 12.909048
-minisat Bool2 120: 13.349731
+stp Int 28: 4.717011
+stp Bit 70: 3.267666
+stp Bool 60: 2.211906
+stp Bool2 35: 5.131656
+minisat Int 42: 9.835418
+minisat Bit 68: 6.195882
+minisat Bool 450: 12.736196
+minisat Bool2 120: 12.778781
 
 sudoku
 ------
@@ -54,21 +54,21 @@ z3 Enum 200: 13.754445
 z3 BitOneHot 22: 15.263372
 z3 Int 150: 13.803159
 z3 Integer 30: 13.980396
-stp Bit 150: 14.655475
-stp Enum 45: 14.114717
-stp BitOneHot 21: 14.12124
-stp Int 29: 15.156283
-minisat Bit 72: 6.926478
-minisat Enum 205: 8.457087
-minisat BitOneHot 8: 15.555939
-minisat Int 120: 13.420394
+stp Bit 150: 14.281118
+stp Enum 45: 13.903013
+stp BitOneHot 21: 14.076389
+stp Int 29: 13.878672
+minisat Bit 72: 6.86297
+minisat Enum 205: 8.247678
+minisat BitOneHot 8: 15.436083
+minisat Int 120: 13.079618
 
 sketch:
   yices2: 11.64
   yices1: 14.62
   z3: 16.87
-  stp: 48.94
-  minisat: 50.11
+  stp: 50.36
+  minisat: 49.99
 
 arch-extract:
   yices2 FETDEC: 20.62
