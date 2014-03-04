@@ -68,6 +68,16 @@ extern "C" int minisat_or(Solver* s, int a, int b)
     return unlit(x);
 }
 
+extern "C" int minisat_ite(Solver* s, int p, int a, int b)
+{
+    Lit x = mkLit(s->newVar(), true);
+    s->addClause(~lit(p), lit(a), ~x);   // p -> a | ~x
+    s->addClause(~lit(p), ~lit(a), x);   // p -> ~a | x
+    s->addClause(lit(p), lit(b), ~x);  // ~p -> b | ~x
+    s->addClause(lit(p), ~lit(b), x);  // ~p -> ~b | x
+    return unlit(x);
+}
+
 extern "C" void minisat_assert(Solver* s, int x)
 {
     s->addClause(lit(x));

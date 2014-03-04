@@ -23,6 +23,8 @@ Cleanup::
 * Why is smten-minisat in a separate package?
     If we can move it to smten, we can use it as the default solver and
     get rid of the 'smten' solver.
+    I think, though, there were issues with template haskell. But we should be
+    able to move minisat to the default solver anyway, right?
 * Get rid of Formula.Type and Any in Model
     - by changing model to be grouped by type
 * Switch all solvers to use getModel instead of getFooValue
@@ -54,8 +56,6 @@ Smten Executable::
 * Add a flag for generating a cabal package?
 
 Performance::
-* Replace BuildCacheKey with 1 bit instead of Integer?
-    Or could that break things?
 * specialize solverFromAst and Build for all solvers?
 * switch to using getModel method for all solvers
     - just need to figure out how to support it for Bits, then we should

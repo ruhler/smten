@@ -9,7 +9,7 @@ module Smten.Runtime.MiniSat.FFI (
     c_minisat_var, c_minisat_getvar,
     c_minisat_check, c_minisat_assert, 
     c_minisat_true, c_minisat_false,
-    c_minisat_not, c_minisat_and, c_minisat_or,
+    c_minisat_not, c_minisat_and, c_minisat_or, c_minisat_ite,
     ) where
 
 import Foreign
@@ -53,3 +53,5 @@ foreign import ccall unsafe "minisat_and"
 foreign import ccall unsafe "minisat_or"
     c_minisat_or :: MSSolver -> MSExpr -> MSExpr -> IO MSExpr
 
+foreign import ccall unsafe "minisat_ite"
+    c_minisat_ite :: MSSolver -> MSExpr -> MSExpr -> MSExpr -> IO MSExpr

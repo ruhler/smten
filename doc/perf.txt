@@ -2,14 +2,14 @@ Performance Status
 ==================
 
 shampi::
-   stp.Bit: 12.81
-   yices2.Bit: 4.82
-   yices2.Integer: 4.76
-   yices1.Bit: 6.43
-   yices1.Integer: 6.50
-   z3.Bit: 7.38
-   z3.Integer: 19.12
-   minisat.Bit: 7.71
+   stp.Bit: 12.73
+   yices2.Bit: 4.85
+   yices2.Integer: 4.81
+   yices1.Bit: 6.46
+   yices1.Integer: 6.48
+   z3.Bit: 7.33
+   z3.Integer: 19.00
+   minisat.Bit: 6.49
 
 nqueens
 -------
@@ -32,10 +32,10 @@ stp Int 28: 4.979058
 stp Bit 70: 3.245505
 stp Bool 60: 2.232629
 stp Bool2 35: 5.32915
-minisat Int 42: 12.678714
-minisat Bit 68: 12.881671
-minisat Bool 450: 12.885942
-minisat Bool2 120: 13.548311
+minisat Int 42: 9.970357
+minisat Bit 68: 6.258361
+minisat Bool 450: 12.897487
+minisat Bool2 120: 13.33256
 
 sudoku
 ------
@@ -58,17 +58,17 @@ stp Bit 150: 14.5022
 stp Enum 45: 14.194021
 stp BitOneHot 21: 14.083639
 stp Int 29: 14.636913
-minisat Bit 72: 15.563372
-minisat Enum 205: 13.112889
-minisat BitOneHot 8: 16.792146
-minisat Int 120: 16.651108
+minisat Bit 72: 6.818246
+minisat Enum 205: 8.437038
+minisat BitOneHot 8: 15.381473
+minisat Int 120: 13.135209
 
 sketch:
   yices2: 11.54
   yices1: 15.51
   z3: 17.67
   stp: 51.36
-  minisat: 30.46
+  minisat: 50.29
 
 arch-extract:
   yices2 FETDEC: 20.52

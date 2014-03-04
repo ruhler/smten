@@ -86,12 +86,7 @@ instance SolverAST MiniSat MSExpr MSExpr MSExpr where
   or_bool s a b = c_minisat_or (s_ctx s) a b
   not_bool s a = c_minisat_not (s_ctx s) a
 
-  ite_bool s p a b = do
-    p_and_a <- and_bool s p a
-    notp <- not_bool s p
-    notp_and_b <- and_bool s notp b
-    or_bool s p_and_a notp_and_b
-
+  ite_bool s p a b = c_minisat_ite (s_ctx s) p a b
   ite_integer = nointegers
   ite_bit = nobits
 
