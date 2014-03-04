@@ -13,7 +13,14 @@ import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.Yices2.FFI
 import Smten.Runtime.Yices2.AST
+import Smten.Runtime.Build
+import Smten.Runtime.Formula.Finite
+import Smten.Runtime.Formula.Type
+import Smten.Runtime.FreeID
 import Smten.Runtime.Solver
+
+{-# SPECIALIZE build :: Yices2 -> BoolFF -> IO (YTerm, [(FreeID, Type)]) #-}
+{-# SPECIALIZE solverFromAST :: IO Yices2 -> Solver #-}
 
 yices2 :: Solver
 yices2 = solverFromAST $ do

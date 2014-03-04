@@ -24,6 +24,7 @@ source-repository this
 library
   exposed-modules:
     Smten.Runtime.Bits
+    Smten.Runtime.Build
     Smten.Runtime.Integers
     Smten.Runtime.Model
     Smten.Runtime.Solver
@@ -128,7 +129,6 @@ library
 
   other-modules:
     Smten.Runtime.AnyKeyMap
-    Smten.Runtime.Build
     Smten.Runtime.Debug
     Smten.Runtime.HashTable
     Smten.Runtime.Yices2.AST

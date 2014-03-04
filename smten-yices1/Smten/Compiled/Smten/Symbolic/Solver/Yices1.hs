@@ -16,7 +16,9 @@ import Foreign.C.String
 import Foreign.C.Types
 
 import Smten.Runtime.Bit
+import Smten.Runtime.Build
 import Smten.Runtime.Yices1.FFI
+import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
 import Smten.Runtime.Model
@@ -193,6 +195,9 @@ instance SolverAST Yices1 YExpr YExpr YExpr where
      c_yices_mk_bv_sign_extend ctx a (fromInteger (to - fr))
   extract_bit y hi lo x = withy1 y $ \ctx ->
      c_yices_mk_bv_extract ctx (fromInteger hi) (fromInteger lo) x
+
+{-# SPECIALIZE build :: Yices1 -> BoolFF -> IO (YExpr, [(FreeID, Type)]) #-}
+{-# SPECIALIZE solverFromAST :: IO Yices1 -> Solver #-}
 
 yices1 :: Solver
 yices1 = solverFromAST $ do

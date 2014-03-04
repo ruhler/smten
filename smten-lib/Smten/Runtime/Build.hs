@@ -13,6 +13,7 @@ import Smten.Runtime.SolverAST
 
 type VarMap = H.BasicHashTable FreeID Type
 
+{-# INLINEABLE build #-}
 build :: (SolverAST ctx b i v) => ctx -> BoolFF -> IO (b, [(FreeID, Type)])
 build ctx p = do
     key <- newKey

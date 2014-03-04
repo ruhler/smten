@@ -2,78 +2,78 @@ Performance Status
 ==================
 
 shampi::
-   stp.Bit: 12.73
-   yices2.Bit: 4.85
-   yices2.Integer: 4.81
-   yices1.Bit: 6.46
-   yices1.Integer: 6.48
-   z3.Bit: 7.33
-   z3.Integer: 19.00
-   minisat.Bit: 6.49
+   stp.Bit: 12.67
+   yices2.Bit: 4.82
+   yices2.Integer: 4.79
+   yices1.Bit: 6.40
+   yices1.Integer: 6.44
+   z3.Bit: 7.32
+   z3.Integer: 18.96
+   minisat.Bit: 6.44
 
 nqueens
 -------
-yices2 Int 59: 13.687913
-yices2 Integer 31: 8.66179
-yices2 Bit 92: 2.090971
-yices2 Bool 152: 1.887617
-yices2 Bool2 72: 2.365815
-yices1 Int 31: 9.768412
-yices1 Integer 44: 3.95604
-yices1 Bit 68: 1.589444
-yices1 Bool 100: 2.858661
-yices1 Bool2 55: 3.974431
-z3 Int 38: 6.001555
-z3 Integer 36: 10.421826
-z3 Bit 60: 2.578332
-z3 Bool 80: 2.436224
-z3 Bool2 60: 3.367355
-stp Int 28: 4.979058
-stp Bit 70: 3.245505
-stp Bool 60: 2.232629
-stp Bool2 35: 5.32915
-minisat Int 42: 9.970357
-minisat Bit 68: 6.258361
-minisat Bool 450: 12.897487
-minisat Bool2 120: 13.33256
+yices2 Int 59: 13.504085
+yices2 Integer 31: 8.690022
+yices2 Bit 92: 2.088818
+yices2 Bool 152: 1.889113
+yices2 Bool2 72: 2.3197
+yices1 Int 31: 9.590256
+yices1 Integer 44: 3.94889
+yices1 Bit 68: 1.582666
+yices1 Bool 100: 2.752087
+yices1 Bool2 55: 3.576026
+z3 Int 38: 5.648595
+z3 Integer 36: 10.51086
+z3 Bit 60: 2.578259
+z3 Bool 80: 2.395374
+z3 Bool2 60: 2.839682
+stp Int 28: 4.919016
+stp Bit 70: 3.277206
+stp Bool 60: 2.229515
+stp Bool2 35: 5.286774
+minisat Int 42: 9.974803
+minisat Bit 68: 6.24572
+minisat Bool 450: 12.909048
+minisat Bool2 120: 13.349731
 
 sudoku
 ------
-yices2 Bit 400: 14.732551
-yices2 Enum 500: 13.102987
-yices2 BitOneHot 10: 17.78018
-yices2 Int 300: 13.472973
-yices2 Integer 2: 12.613417
-yices1 Bit 125: 15.323762
-yices1 Enum 225: 11.232644
-yices1 BitOneHot 11: 16.227291
-yices1 Int 140: 13.834353
-yices1 Integer 90: 14.960063
-z3 Bit 225: 11.995166
-z3 Enum 200: 14.274579
-z3 BitOneHot 22: 15.013318
-z3 Int 150: 14.539761
-z3 Integer 30: 13.999104
-stp Bit 150: 14.5022
-stp Enum 45: 14.194021
-stp BitOneHot 21: 14.083639
-stp Int 29: 14.636913
-minisat Bit 72: 6.818246
-minisat Enum 205: 8.437038
-minisat BitOneHot 8: 15.381473
-minisat Int 120: 13.135209
+yices2 Bit 400: 14.751969
+yices2 Enum 500: 12.820175
+yices2 BitOneHot 10: 17.693166
+yices2 Int 300: 13.08066
+yices2 Integer 2: 12.568237
+yices1 Bit 125: 15.28056
+yices1 Enum 225: 10.724584
+yices1 BitOneHot 11: 16.146965
+yices1 Int 140: 13.121415
+yices1 Integer 90: 14.967215
+z3 Bit 225: 12.566314
+z3 Enum 200: 13.754445
+z3 BitOneHot 22: 15.263372
+z3 Int 150: 13.803159
+z3 Integer 30: 13.980396
+stp Bit 150: 14.655475
+stp Enum 45: 14.114717
+stp BitOneHot 21: 14.12124
+stp Int 29: 15.156283
+minisat Bit 72: 6.926478
+minisat Enum 205: 8.457087
+minisat BitOneHot 8: 15.555939
+minisat Int 120: 13.420394
 
 sketch:
-  yices2: 11.54
-  yices1: 15.51
-  z3: 17.67
-  stp: 51.36
-  minisat: 50.29
+  yices2: 11.64
+  yices1: 14.62
+  z3: 16.87
+  stp: 48.94
+  minisat: 50.11
 
 arch-extract:
-  yices2 FETDEC: 20.52
-  z3 FETDEC: 6.47
-  stp FETDEC: 14.25
+  yices2 FETDEC: 20.62
+  z3 FETDEC: 5.78
+  stp FETDEC: 13.16
   yices1 FETDEC: CRASH
   minisat FETDEC: CRASH
   

@@ -17,6 +17,8 @@ import Data.Maybe
 import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.Bit
+import Smten.Runtime.Build
+import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula.Type
 import Smten.Runtime.FreeID
 import Smten.Runtime.Model
@@ -152,6 +154,9 @@ instance SolverAST Z3 Z3Expr Z3Expr Z3Expr where
      c_Z3_mk_sign_ext ctx (fromInteger (to - fr)) a
   extract_bit z hi lo x = withz3c z $ \ctx ->
      c_Z3_mk_extract ctx (fromInteger hi) (fromInteger lo) x
+
+{-# SPECIALIZE build :: Z3 -> BoolFF -> IO (Z3Expr, [(FreeID, Type)]) #-}
+{-# SPECIALIZE solverFromAST :: IO Z3 -> Solver #-}
 
 z3 :: Solver
 z3 = solverFromAST $ do

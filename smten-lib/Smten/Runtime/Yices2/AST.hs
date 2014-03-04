@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Smten.Runtime.Yices2.AST (Yices2(..)) where
+module Smten.Runtime.Yices2.AST (Yices2(..), YTerm) where
 
 
 import Foreign
