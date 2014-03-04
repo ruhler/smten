@@ -56,7 +56,6 @@ Smten Executable::
 * Add a flag for generating a cabal package?
 
 Performance::
-* specialize solverFromAst and Build for all solvers?
 * switch to using getModel method for all solvers
     - just need to figure out how to support it for Bits, then we should
       be able to get rid of getFooValue methods

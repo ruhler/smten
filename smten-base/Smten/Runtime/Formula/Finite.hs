@@ -57,6 +57,7 @@ andFF _ FalseFF = falseFF
 andFF Unreachable_BoolFF Unreachable_BoolFF = Unreachable_BoolFF
 andFF Unreachable_BoolFF _ = falseFF
 andFF _ Unreachable_BoolFF = falseFF
+andFF (NotFF a _) (NotFF b _) = notFF (orFF a b)
 andFF a b
  | a `stableNameEq` b = a
  | otherwise = new (AndFF a b)
@@ -73,6 +74,7 @@ orFF TrueFF _ = trueFF
 orFF _ TrueFF = trueFF
 orFF FalseFF b = b
 orFF a FalseFF = a
+orFF (NotFF a _) (NotFF b _) = notFF (andFF a b)
 orFF Unreachable_BoolFF Unreachable_BoolFF = Unreachable_BoolFF
 orFF Unreachable_BoolFF _ = trueFF
 orFF _ Unreachable_BoolFF = trueFF
@@ -92,6 +94,7 @@ iteFF p FalseFF b = andFF (notFF p) b
 iteFF _ Unreachable_BoolFF b = b
 iteFF _ a Unreachable_BoolFF = a
 iteFF p a b | a `stableNameEq` b = a
+iteFF p (NotFF a _) (NotFF b _) = notFF (iteFF p a b)
 iteFF p a b = new (IteFF p a b)
 
 -- For nicer syntax, we give an instance of Num for BoolFF
