@@ -32,6 +32,13 @@ rfact x = if (x < 1) then 1 else x * rfact (x-1)
 data MaybeInteger = NoInteger | JustInteger Integer
    -- deriving (Show)
 
+-- Verify we don't have to give all methods for it to compile (even
+-- if we ought to be defining all the methods)
+instance Num MaybeInteger where
+    (+) (JustInteger a) (JustInteger b) = JustInteger (a+b)
+    (+) _ _ = NoInteger
+    
+
 fromMaybeInteger :: Integer -> MaybeInteger -> Integer
 fromMaybeInteger def = \mi ->
     case mi of

@@ -77,3 +77,12 @@ arch-extract:
   yices1 FETDEC: CRASH
   minisat FETDEC: CRASH
   
+
+modelcheck
+----------
+yices2 10: 8.594871
+yices1 5: 21.40106
+z3 6: 16.54459
+stp 4: 10.94065
+minisat 10: 9.823123
+
