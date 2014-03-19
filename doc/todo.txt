@@ -1,6 +1,3 @@
-Release::
-* smten-minisat tarball doesn't include all the code needed.
-
 Approx::
 * Getting rid of Unreachable_PartialF leads to blowup in sketch
     Why?
