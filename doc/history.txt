@@ -1,3 +1,18 @@
+March 18, 2014
+  smten-4.1.0.0, smten-base-4.1.0.0, smten-lib-4.1.0.0,
+  smten-minisat-4.1.0.0, smten-stp-4.1.0.0, smten-yices1-4.1.0.0
+
+  Changes from smten-4.0.0.0
+  * Support more options in smten compiler
+  * Expanded Smten Prelude
+  * Added bitvector support to MiniSat
+  * Better support for handling errors in queries
+  * Remove requirement for RebindableSyntax in smten code
+  * Add some support for AutoDeriving of Eq, Ord, and Show
+  * Load yices2 and z3 dynamically at runtime
+  * Much internal code cleanup and refactoring
+  * Much optimizations and performance improvements
+
 October 05, 2013
   smten-4.0.0.0, smten-base-4.0.0.0, smten-lib-4.0.0.0,
   smten-minisat-4.0.0.0, smten-stp-4.0.0.0, smten-yices1-4.0.0.0,

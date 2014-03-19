@@ -1,7 +1,7 @@
 Smten (Developer) ReadMe
 ========================
 Richard Uhler <ruhler@csail.mit.edu>
-October 2013
+March 2014
 
 Configuring Smten for Development Build
 ---------------------------------------
@@ -53,7 +53,7 @@ fullclean::
 
 Documentation
 -------------
-The 'doc' directory contains mostly out of date documents. The only relevant
+The 'doc' directory contains mostly out-of-date documents. The only relevant
 documents now are:
 
 doc/todo.txt:: contains a brief list of known issues and plan work to do.

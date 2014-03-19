@@ -1,7 +1,7 @@
 Tutorial 1 - Getting Started
 ============================
 Richard Uhler <ruhler@csail.mit.edu>
-October 2013
+March 2014
 
 Goals
 -----
@@ -19,37 +19,39 @@ Compiler (GHC), version 7.6, which can be downloaded from
 http://www.haskell.org/ghc. It also requires cabal. If you haven't already
 done so, you should install GHC now.
 
-Note: Version smten-4.0.0.0 requires you have profiling libraries installed.
-If you have not already done so, set 'library-profiling: True' in your
-.cabal/config file.
-
 Installing Smten
 ----------------
-The smten compiler and runtime libraries are distributed as a set of three
+The smten compiler and runtime libraries are distributed as a set of 
 cabal packages. The +smten+ package provides the compiler. The +smten-base+
 package provides the Smten prelude, and +smten-lib+ provides additional Smten
-libraries.
+libraries. There are additional packages for specific solver backends,
+including smten-minisat for the MiniSat solver, smten-yices1 for Yices1, and
+smten-stp for STP.
 
 The smten cabal packages can be downloaded from github
 https://github.com/ruhler/smten/releases. At the time of writing, the latest
-release is smten-4.0.0.0. For this tutorial you only need the three packages
-+smten+, +smten-base+, and +smten-lib+.
+release is smten-4.1.0.0. For this tutorial you should install four packages:
++smten+, +smten-base+, +smten-lib+, and +smten-minisat+.
 
 Install the packages using +cabal+. For example:
   
-  $ tar xf smten-4.0.0.0.tar.gz
-  $ cd smten-4.0.0.0
-  smten-4.0.0.0$ cabal install
+  $ tar xf smten-4.1.0.0.tar.gz
+  $ cd smten-4.1.0.0
+  smten-4.1.0.0$ cabal install
    ... (this may take a while ) ...
-  smten-4.0.0.0$ cd ../
-  $ tar xf smten-base-4.0.0.0.tar.gz
-  $ cd smten-base-4.0.0.0
-  smten-base-4.0.0.0$ cabal install
+  smten-4.1.0.0$ cd ../
+  $ tar xf smten-base-4.1.0.0.tar.gz
+  $ cd smten-base-4.1.0.0
+  smten-base-4.1.0.0$ cabal install
    ... (this may take a while ) ...
-  smten-base-4.0.0.0$ cd ../
-  $ tar xf smten-lib-4.0.0.0.tar.gz
-  $ cd smten-lib-4.0.0.0
-  smten-lib-4.0.0.0$ cabal install
+  smten-base-4.1.0.0$ cd ../
+  $ tar xf smten-lib-4.1.0.0.tar.gz
+  $ cd smten-lib-4.1.0.0
+  smten-lib-4.1.0.0$ cabal install
+   ... (this may take a while ) ...
+  $ tar xf smten-minisat-4.1.0.0.tar.gz
+  $ cd smten-minisat-4.1.0.0
+  smten-minisat-4.1.0.0$ cabal install
    ... (this may take a while ) ...
 
 Hello, World

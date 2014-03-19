@@ -1,7 +1,7 @@
 Tutorial 3 - SMT Backends
 =========================
 Richard Uhler <ruhler@csail.mit.edu>
-October 2013
+March 2014
 
 Goals
 -----
@@ -12,33 +12,12 @@ computations, and to encourage you to install one or more of them.
 Introduction
 ------------
 In the previous tutorial we presented a symbolic computation for solving the
-nqueens problem and used the builtin ``smten'' solver for running that
-computation. The builtin smten solver, however, is not terribly efficient, and
-fails to work on large nqueens problems.
-
-Fortunately, there has been much research and effort producing highly
-efficient SMT solvers which Smten can leverage for improving the performance
-of symbolic computation. The current list of supported backends includes
-Yices1, Yices2, STP, Z3, and MiniSat. To get a sense of how these solvers can
-improve the performance of symbolic computation in Smten, consider the
-following results obtained by the author when running n-queens with various n
-and backends:
-
-|================================================
-|        |    8    |   16    |    24    |     32
-|Smten   | 25.430s |  NA     |     NA   |    NA
-|Yices1  |  0.023s | 0.254s  |  17.491s | 40.784s
-|Yices2  |  0.017s | 0.171s  |  16.712s | 35.149s
-|STP     |  0.077s | 0.919s  |  20.737s | 49.622s
-|Z3      |  0.031s | 0.247s  |  17.404s | 40.334s
-|MiniSat |  0.021s | 0.240s  |  17.780s | 44.269s
-|================================================
-
-Using an SMT backend significantly outperforms the builtin Smten solver.
-Though the performance of each SMT solver appears similar here, we'll see in
-future tutorials how nqueens can be modified to leverage backend solver
-support for bit vectors or integers, which leads to greater variation in the
-solving times among SMT backends.
+nqueens problem and used the MiniSat solver for running that computation. The
+MiniSat solver is not the only solver available, however, and there can be
+great advantages to using a different solver. This is particularly the case
+for solvers with primitive support for free Integers and Bit-Vectors discussed
+in later tutorials. The current list of supported
+backends includes Yices1, Yices2, STP, Z3, and MiniSat.
 
 Using an Alternate Backend
 --------------------------
@@ -56,7 +35,7 @@ For example, assuming the Yices2 solver has been installed, it can be used in
 the nqueens from the previous tutorial by importing
 +Smten.Symbolic.Solver.Yices2+ and changing the line:
 
-   result <- run_symbolic smten $ do 
+   result <- run_symbolic minisat $ do 
 
 To the line:
    
@@ -66,29 +45,7 @@ To the line:
 The remainder of this tutorial provides more details about how to install and
 use each of the backends. You are encouraged to try installing and running as
 many of these solvers as you can, though in practice you should only need one
-of them (other than the ``smten'' solver) for Smten to be useful.
-
-The Smten Solver
-----------------
-The Smten solver is a custom solver provided with Smten. The Smten solver is
-not efficient. It's primary purpose is to allow users to experiment with small
-Smten examples without requiring the overhead of installing an SMT solver. It
-is not recommend for general use.
-
-Package:: smten-lib
-
-Module:: Smten.Symbolic.Solver.Smten
-
-Solver Name:: smten
-
-Installation::
-    No additional installation step is needed to use the Smten solver.
-
-Native Theories::
-    Booleans are supported natively. Bit vectors are supported by bit-blasting
-    to booleans. Concrete evaluation of Integers is supported, but free
-    Integers are not supported.
-
+of them for Smten to be useful. Yices2 seems to be a good overall choice.
 
 The Debug Solver
 ----------------
@@ -118,7 +75,7 @@ Yices1
 The Yices1 solver is an SMT solver from SRI International. It is expected to
 be obsoleted by Yices2 eventually, but is still useful nonetheless.
 
-Package:: smten-lib
+Package:: smten-yices1
 
 Module:: Smten.Symbolic.Solver.Yices1
 
@@ -126,19 +83,14 @@ Solver Name:: yices1
 
 Installation::
   The yices1 solver must be installed before it can be used. It can be
-  downloaded from http://yices.csl.sri.com. Make sure to download the
-  version of Yices1 with GMP dynamically linked.
+  downloaded from http://yices.csl.sri.com.
   +
   + 
-  The yices1 backend of smten looks for the shared library ``libyices.so'' in
-  standard locations at runtime. It will report an error if it is unable to
-  find ``libyices.so''.
-  +
-  +
-  To install the shared library for yices1, either place ``libyices.so'' in a
-  common library path, such as /usr/lib or /usr/local/lib, and run 'ldconfig',
-  or add the path containing ``libyices.so'' to the LD_LIBRARY_PATH environment
-  variable at runtime.
+  Once the Yices1 solver is installed, install the smten-yices1 cabal package
+  available at http://github.com/ruhler/smten/releases. You may need to add
+  the path containing +libyices.a+ to the +extra_lib_dirs+ option in your
+  ~/.cabal/config file in order for cabal to find the Yices1 library to build
+  the smten-yices1 package.
 
 Native Theories::
     Yices1 supports booleans, bit vectors, and integers natively.
