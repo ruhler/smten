@@ -3,7 +3,7 @@ version: @VERSION@-@GITTAG@
 synopsis: Smten library
 license: BSD3
 license-file: LICENSE
-copyright: Copyright (c) 2012, 2013  SRI International, Inc.
+copyright: Copyright (c) 2012, 2013, 2014  SRI International, Inc.
 author: Richard Uhler
 maintainer: ruhler@csail.mit.edu
 category: Language

@@ -49,6 +49,7 @@ Install the packages using +cabal+. For example:
   $ cd smten-lib-4.1.0.0
   smten-lib-4.1.0.0$ cabal install
    ... (this may take a while ) ...
+  smten-lib-4.1.0.0$ cd ../
   $ tar xf smten-minisat-4.1.0.0.tar.gz
   $ cd smten-minisat-4.1.0.0
   smten-minisat-4.1.0.0$ cabal install
