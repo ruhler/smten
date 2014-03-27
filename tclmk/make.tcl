@@ -53,7 +53,7 @@ catch {hrun ghc-pkg unregister smten}
 
 # Any occurrences of these variables surrounded by @ signs are substituted 
 # into the .cabal files before running cabal.
-set ::VERSIONMAJOR "4.1"
+set ::VERSIONMAJOR "4.2"
 set ::VERSIONMINOR "0.0"
 set ::VERSION "$::VERSIONMAJOR.$::VERSIONMINOR"
 set ::GITBRANCH [exec git rev-parse --abbrev-ref HEAD]
