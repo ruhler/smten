@@ -9,6 +9,7 @@ import Smten.Tests.Test
 tests :: IO ()
 tests = do
   test "Char.ord" (97 == ord 'a')
+  test "Char.chr" (chr 97 == 'a')
 
   putStrLn "Char PASSED"
 

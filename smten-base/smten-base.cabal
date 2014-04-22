@@ -25,7 +25,6 @@ library
     Smten.Control.Monad
     Smten.Data.Bool
     Smten.Data.Char
-    Smten.Data.Char0
     Smten.Data.Function
     Smten.Data.Functor
     Smten.Data.Either
@@ -50,6 +49,7 @@ library
     Smten.Data.Maybe_
     Smten.Data.Tuple_
     Smten.GHC.Base
+    Smten.GHC.Char
     Smten.GHC.Classes
     Smten.GHC.Enum
     Smten.GHC.Integer.Type
@@ -89,7 +89,6 @@ library
     Smten.Compiled.Smten.Control.Monad
     Smten.Compiled.Smten.Data.Bool
     Smten.Compiled.Smten.Data.Char
-    Smten.Compiled.Smten.Data.Char0
     Smten.Compiled.Smten.Data.Function
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.EqInteger
@@ -122,6 +121,7 @@ library
     Smten.Compiled.Data.Maybe
     Smten.Compiled.Data.Tuple
     Smten.Compiled.GHC.Base
+    Smten.Compiled.GHC.Char
     Smten.Compiled.GHC.Classes
     Smten.Compiled.GHC.CString
     Smten.Compiled.GHC.Enum

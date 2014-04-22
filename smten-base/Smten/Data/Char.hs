@@ -8,9 +8,10 @@ module Smten.Data.Char (
 import qualified Prelude as P
 import Smten.Smten.Base
 import Smten.Data.Bool
-import Smten.Data.Char0
 import Smten.Data.Eq
 import Smten.Data.Ord
+import GHC.Base(ord)
+import GHC.Char(chr)
 import GHC.Num(Num(..))
 
 isSpace :: Char -> Bool

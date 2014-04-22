@@ -4,9 +4,9 @@
 module Smten.Compiled.GHC.Prim (
     GHC.Prim.realWorld#, GHC.Prim.State#, GHC.Prim.RealWorld,
     GHC.Prim.Char#, GHC.Prim.Int#, GHC.Prim.Addr#,
-    (/=#), (==#), (>=#), (<=#), (>#), (<#),
+    (/=#), (==#), (>=#), (<=#), (>#), (<#), GHC.Prim.chr#,
     GHC.Prim.negateInt#, (GHC.Prim.-#), (GHC.Prim.*#), (GHC.Prim.+#),
-    eqChar#, neChar#, gtChar#, geChar#, ltChar#, leChar#,
+    eqChar#, neChar#, gtChar#, geChar#, ltChar#, leChar#, GHC.Prim.ord#,
     ) where
 
 import qualified GHC.Prim

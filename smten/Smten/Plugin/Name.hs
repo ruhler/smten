@@ -107,8 +107,16 @@ nmCG ty f qlf nm
 
           (issym, occnm') = resym (useuniq || isconsym) (dewire occnm)
 
+          -- Append the unique to the given name.
+          --  addunqnm "foo" "bar" = "foo_bar"
+          --  addunqnm "foo#" "bar" = "foo_bar#"
+          addunqnm :: String -> String -> String
+          addunqnm [] nm = "_" ++ unqnm
+          addunqnm "#" nm = "_" ++ unqnm ++ "#"
+          addunqnm (x:xs) nm = x : addunqnm xs unqnm
+
           unqlf = f $ if useuniq
-                        then occnm' ++ "_" ++ unqnm
+                        then addunqnm occnm' unqnm
                         else occnm'
 
       full <- case (qlf, modnm) of

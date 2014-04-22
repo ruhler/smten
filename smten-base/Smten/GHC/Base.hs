@@ -7,6 +7,7 @@ module Smten.GHC.Base (
     Monad(..),
     foldr, build, map, (++),
     otherwise,
+    unsafeChr, ord,
     String, eqString,
     id, (.), const, flip, ($),
     ) where
@@ -14,8 +15,8 @@ module Smten.GHC.Base (
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Base instead of Smten.Compiled.Smten.GHC.Base
 
-import GHC.Prim (RealWorld, State#)
-import GHC.Types (Char, Bool(..), IO(..))
+import GHC.Prim (RealWorld, State#, ord#, chr#)
+import GHC.Types (Char(..), Int(..), Bool(..), IO(..))
 import GHC.Classes ((&&), (==))
 import GHC.Err (error)
 
@@ -75,6 +76,12 @@ otherwise :: Bool
 otherwise = True
 
 type String = [Char]
+
+unsafeChr :: Int -> Char
+unsafeChr (I# i#) = C# (chr# i#)
+
+ord :: Char -> Int
+ord (C# c#) = I# (ord# c#)
 
 eqString :: String -> String -> Bool
 eqString [] [] = True
