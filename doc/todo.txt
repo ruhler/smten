@@ -61,6 +61,9 @@ Performance::
     when we really want to say (a > b)
 
 * Concrete Performance
+   ** Performance is very sensitive to generation of case expressions for
+      data types. Can we special case that, or otherwise optimize it in any
+      way?
    ** Special case pattern matching on concrete objects with a tag?
         Except, this doesn't improve symbolic performance any, which is sad.
    ** Enable -O on all smten files
