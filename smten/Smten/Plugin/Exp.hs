@@ -284,23 +284,27 @@ mkDataCase vnm tycon mdef ms = do
          body' <- expCG body
          return (S.VarE gdnm, body', gdfield:binds)
 
-   def <- case mdef of
-            Nothing -> return []
-            Just b -> do
-              -- Note: the condition is unreachable, because if there is 
-              -- a default, it's always last, and the 'merge' function ignores
-              -- the condition for the last alternative.
-              e <- expCG b
-              return [(error "mkDataCase: unreachable condition", e, [])]
-
    alts <- mapM mkalt ms
-   let choices = alts ++ def
-       merge [(_, x, _)] = return x
+   let merge []
+         | Just b <- mdef = expCG b
+       merge [(p, x, _)]
+         | Nothing <- mdef = do
+             isfalse <- S.VarE <$> usequalified "Smten.Runtime.Formula" "isFalseF"
+             unreach <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "unreachable"
+             true <- usequalified "Prelude" "True"
+             false <- usequalified "Prelude" "False"
+             return $ S.CaseE (S.AppE isfalse p) [
+                        S.Alt (S.ConP true []) unreach,
+                        S.Alt (S.ConP false []) x]
        merge ((p, a, _):xs) = do
           xs' <- merge xs
           mkIte p a xs'
-       fields = concat [fs | (_, _, fs) <- choices]
-   body <- merge choices
+
+       mergetop [(_, x, _)] | Nothing <- mdef = return x
+       mergetop xs = merge xs
+
+       fields = concat [fs | (_, _, fs) <- alts]
+   body <- mergetop alts
    tynm <- qtynameCG $ tyConName tycon
    return $ S.CaseE (S.VarE vnm) [S.Alt (S.RecP tynm fields) body]
 
