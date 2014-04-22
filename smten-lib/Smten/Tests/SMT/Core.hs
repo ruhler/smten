@@ -4,6 +4,7 @@ module Smten.Tests.SMT.Core (smttests, tests) where
 
 import Smten.Prelude
 import Smten.Control.Monad
+import Smten.Data.Array
 import Smten.Symbolic
 import Smten.Symbolic.Solver.Smten
 import Smten.Tests.SMT.Test
@@ -135,9 +136,17 @@ smttests = do
    symtesteq "SMT.Core.DistinctInts" (Just ()) $ do
        [a, b, c] <- sequence $ replicate 3 (msum (map return [0, 1, 2 :: Int]))
        assert (a /= b && a /= c && b /= c)
+
+   -- Test that we can use smten arrays with symbolic evaluation.
+   symtesteq "SMT.Core.Array" (Just 2) $ do
+       let arr :: Array Int Int
+           arr = array (0, 2) [(0, 42), (1, 12), (2, 19)]
+       idx <- msum (map return [0, 1, 2 :: Int])
+       assert (arr ! idx == 19)
+       return idx
    
 tests :: IO ()
 tests = do
-   runtest (SMTTestCfg smten [] ["SMT.Core.Integer"]) smttests
+   runtest (SMTTestCfg smten [] []) smttests
    putStrLn "SMT.Core PASSED"
 

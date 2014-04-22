@@ -19,10 +19,11 @@ import Smten.Compiled.Smten.Smten.Base
 
 data PrimArray a = PrimArray (Array P.Int a)
                  | PrimArray_Ite BoolF (PrimArray a) (PrimArray a)
+                 | PrimArray_Unreachable
 
 instance SmtenHS1 PrimArray where
     ite1 = PrimArray_Ite
-    unreachable1 = P.error "PrimArray.unreachable"
+    unreachable1 = PrimArray_Unreachable
 
 instance SymbolicOf (Array P.Int a) (PrimArray a) where
     tosym = PrimArray
@@ -31,6 +32,7 @@ instance SymbolicOf (Array P.Int a) (PrimArray a) where
       case x of
         PrimArray x -> f x
         PrimArray_Ite p a b -> ite0 p (f $$ a) (f $$ b)
+        PrimArray_Unreachable -> unreachable
 
 primArray :: (SmtenHS0 a) => List__ a -> PrimArray a
 primArray = {-# SCC "PRIM_PRIMARRAY" #-} symapp (\xs -> PrimArray (listArray (0, genericLength xs) xs))

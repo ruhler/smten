@@ -284,6 +284,10 @@ mkDataCase vnm tycon mdef ms = do
          body' <- expCG body
          return (S.VarE gdnm, body', gdfield:binds)
 
+   -- TODO: The performance of concrete evaluation in Smten is very sensitive
+   -- to this code, see if we can make it better?
+   -- For example: if we assume the last case is reachable, we can improve
+   -- concrete performance a fair amount.
    alts <- mapM mkalt ms
    let merge []
          | Just b <- mdef = expCG b
