@@ -7,6 +7,7 @@ import Smten.Tests.Test
 import qualified Smten.Tests.Array
 import qualified Smten.Tests.Basic
 import qualified Smten.Tests.Bit
+import qualified Smten.Tests.Char
 import qualified Smten.Tests.DataMap
 import qualified Smten.Tests.List
 import qualified Smten.Tests.Prelude
@@ -34,6 +35,7 @@ main = do
   test "Dummy" True
   Smten.Tests.Basic.tests
   Smten.Tests.Prelude.tests
+  Smten.Tests.Char.tests
   Smten.Tests.Prim.tests
   Smten.Tests.Bit.tests
   Smten.Tests.DataMap.tests

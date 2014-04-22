@@ -64,6 +64,7 @@ library
     Smten.Tests.Array
     Smten.Tests.Basic
     Smten.Tests.Bit
+    Smten.Tests.Char
     Smten.Tests.DataMap
     Smten.Tests.List
     Smten.Tests.Prelude
@@ -112,6 +113,7 @@ library
     Smten.Compiled.Smten.Tests.Array
     Smten.Compiled.Smten.Tests.Basic
     Smten.Compiled.Smten.Tests.Bit
+    Smten.Compiled.Smten.Tests.Char
     Smten.Compiled.Smten.Tests.DataMap
     Smten.Compiled.Smten.Tests.List
     Smten.Compiled.Smten.Tests.Prelude
