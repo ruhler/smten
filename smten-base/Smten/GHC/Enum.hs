@@ -7,6 +7,7 @@ module Smten.GHC.Enum (Enum(..)) where
 -- Smten.Compiled.GHC.Enum instead of Smten.Compiled.Smten.GHC.Enum
 
 import GHC.Base
+import GHC.Char
 import GHC.Num
 
 class Enum a where
@@ -33,6 +34,17 @@ instance Enum Int where
         if a > c
             then []
             else a : enumFromThenTo b (b + b - a) c
+
+instance Enum Char where
+    succ x = chr (ord x + 1)
+    pred x = chr (ord x - 1)
+    toEnum = chr
+    fromEnum = ord
+
+    enumFrom i = map toEnum (enumFrom (fromEnum i))
+    enumFromThen a b = map toEnum (enumFromThen (fromEnum a) (fromEnum b))
+    enumFromTo a b = map toEnum (enumFromTo (fromEnum a) (fromEnum b))
+    enumFromThenTo a b c = map toEnum (enumFromThenTo (fromEnum a) (fromEnum b) (fromEnum c))
     
 instance Enum Integer where
     succ x = x + 1
