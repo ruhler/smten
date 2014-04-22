@@ -50,6 +50,7 @@ library
     Smten.Debug.Trace
     Smten.Smten.TypeLits
 
+    Smten.Search
     Smten.Symbolic0
     Smten.Symbolic
     Smten.Symbolic.SMT
@@ -100,6 +101,7 @@ library
     Smten.Compiled.Smten.Debug.Trace
     Smten.Compiled.Smten.Smten.TypeLits
 
+    Smten.Compiled.Smten.Search
     Smten.Compiled.Smten.Symbolic0
     Smten.Compiled.Smten.Symbolic
     Smten.Compiled.Smten.Symbolic.SMT

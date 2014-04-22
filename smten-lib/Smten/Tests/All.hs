@@ -22,6 +22,7 @@ import qualified Smten.Tests.SMT.Opt
 import qualified Smten.Debug.Trace ()
 import qualified Smten.Control.Monad.Error ()
 import qualified Smten.Control.Monad.State.Strict ()
+import qualified Smten.Search ()
 import qualified Smten.Symbolic.SMT ()
 import qualified Smten.System.Environment ()
 import qualified Smten.System.Exit ()
