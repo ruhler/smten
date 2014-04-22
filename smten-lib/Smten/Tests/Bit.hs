@@ -40,7 +40,7 @@ tests = do
     test "Bit.my_bv_concat" (0x1c == my_bv_concat (3 :: Bit 2) (4 :: Bit 3))
     test "Bit.read" (bit3 5 == read "5")
     test "Bit.enum" ([bit3 1, bit3 2, bit3 3] == enumFromTo 1 3)
-    --test "Bit.arith" ([bit3 1, bit3 2, bit3 3] == [1 .. 3])
+    test "Bit.arith" ([bit3 1, bit3 2, bit3 3] == [1 .. 3])
     putStrLn "Bit PASSED"
 
 
