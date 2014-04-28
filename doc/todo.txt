@@ -93,8 +93,6 @@ Front End::
   Use the same approach as we did for Eq.
 * Auto-deriving of Eq doesn't work on Enums.
 * Get rid of linebuffer, and support general IO operations instead
-* Instance of Enum for Char
-* instance of Show for Tuple3.
 * Auto-deriving of Ord sometimes fails?
 
 Documentation

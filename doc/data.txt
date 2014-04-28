@@ -1,0 +1,261 @@
+
+Wed Apr 23 10:06:03 EDT 2014
+
+Exploration of how to represent data types in Smten.
+
+Current Approach
+----------------
+Throughout this discussion we will work with the following abstract
+Smten-level user defined datatype:
+
+  data Foo =
+     FooA A1 A2 ...
+   | FooB B1 B2 ...
+   | ...
+         
+The Smten compiler generates the following datatype for this:
+
+  data Foo = Foo {
+    gdFooA :: BoolF,
+    flFooA1 :: A1, flFooA2 :: A2, ...,
+
+    gdFooB :: BoolF,
+    flFooB1 :: B1, flFooB2 :: B2, ...,
+
+    ...
+  }
+
+A single constructor 'Foo' is generated with fields:
+ * for each original constructor FooX, a field gdFooX indicating
+   those cases corresponding to the original constructor FooX.
+ * for each original constructor field <n> of FooX, a field flFooX<n>
+   with the value of that field, assuming gdFooX is satisfied.
+
+Assuming a smten level case expression of the form:
+  case x of
+    FooA a1 a2 ... -> fa a1 a2 ...
+    FooB b1 b2 ... -> fb b1 b2 ...
+    ...
+
+There are two cases. Either the case expression is exhaustive, or it contains
+a default branch.
+    
+Given a default branch with body 'def', we generate:
+
+   ite (gdFooA x) (fa (flFooA1 x) (flFooA2 x) ...)
+  (ite (gdFooB x) (fb (flFooB1 x) (flFooB2 x) ...)
+  (...
+  (ite (gdFooZ x) (fz (flFooZ1 x) (flFooZ2 x) ...) def)))
+
+It is an ite tree, from top to bottom, with the default as the final else.
+Note: because we see case expressions after de-sugaring, they are all
+disjoint. That means the order is irrelevant for correctness purposes.
+
+Given no default branch, we generate:
+
+   ite (gdFooA x) (fa (flFooA1 x) (flFooA2 x) ...)
+  (ite (gdFooB x) (fb (flFooB1 x) (flFooB2 x) ...)
+  (...
+  (ite (gdFooZ x) (fz (flFooZ1 x) (flFooZ2 x) ...) unreachable)))
+
+Using unreachable for the default value.
+Actually, we optimize the last ite slightly:
+
+   ite p x unreachable  ==>  if isFalse p then unreachable else x
+
+Performance evaluation suggests the overall performance of concrete evaluation
+is very sensitive to the code generated here.
+
+Alternative Approaches
+----------------------
+A. Ignore last guard if no default branch.
+If there is no default branch, we generate at the leaf of the ite tree:
+  
+  ite (gdFooZ x) (fz ...) unreachable
+
+At first glance, it seems like this is equivalent to: (fz ...)
+If we could make that replacement, it would give a noticeable performance
+improvement.
+When is this okay, and when is it not?
+
+Cases:
+  gdFooZ x is: FINITE or BOTTOM or INFINITE
+    where FINITE means it can be computed in finite time.
+          BOTTOM means it is an explicit _|_ which we can catch as an exception
+          INFINITE means it is an implicit _|_, which we can't catch as an exception 
+
+  (fz ...) is: FINITE or BOTTOM or INFINITE
+
+
+ite (gdFooZ x) (fz ...) unreachable =?= (fz ...)
+
+A. gdFooZ = FINITE, fz ... = FINITE
+When everything is FINITE:
+* expect behavior is correct
+   - unreachable can be replaced with (fz ...) because (fz ...) is finite.
+   - ite (gdFooZ x) (fz ...) (fz ...) can be replaced with (fz ...) because
+     (gdFooZ x) is finite
+* expect minor performance improvements
+   Because we don't have to evaluate gdFooZ.
+* possible minor performance degredation when gdFooZ is False
+   Because we evaluate and catch _|_ instead of unreachable
+* no major performance loss
+   Because (fz ...) is not significantly worse than unreachable if gdFooZ is
+   False.
+
+B. FINITE, BOTTOM
+* behavior is correct
+  unreachable can be replaced with (fz ...), because (fz ...) is _|_, which
+  we will detect, and thanks to abstraction/refinement, abstract away.
+  If gdFooZ really is false, then the abstracted thing isn't reachable, so we
+  shouldn't get stuck.
+* expect minor performance improvements
+   Because we don't have to evaluate gdFooZ.
+* possible minor performance degredation when gdFooZ is False
+   Because we evaluate and catch _|_ instead of unreachable
+* no major performance loss
+   Because (fz ...) is not significantly worse than unreachable if gdFooZ is
+   False.
+
+C. FINITE, INFINITE
+* behavior is correct in theory.
+  Because we should be able to handle INFINITE things.
+  In practice, this could lead to major performance problems though.
+
+The major performance problem:
+  If we evaluate gdFooZ and it is False, then 'unreachable' is much better
+  than (fz ...) which would cause smten to hang.
+
+  This case has been witnessed in sketch.
+
+D. BOTTOM, FINITE
+  The result we should get is: BOTTOM.
+  The result we now get is: (fz ...)
+  This is a potential strictness violation:
+    case x of
+        Foo -> y
+ 
+  If 'x' is _|_, the whole thing should be _|_, but we replace it with 'y'.
+  Potentially, then, we could return a result from 'y' which is not actually
+  reachable (because we should get _|_ instead).
+
+E. BOTTOM, BOTTOM
+  The result we should get is: BOTTOM.
+  The result we do get is: BOTTOM.
+
+F. BOTTOM, INFINITE
+  The result we should get is: BOTTOM.
+  The result we do get is: INFINITE.
+
+  In practice, this could be a major performance problem, because we can
+  detect BOTTOM right away, but not INFINITE.
+
+G. INFINITE, FINITE
+  Same bug as (D)
+
+H. INFINITE, BOTTOM
+  Performance improvement.
+
+I. INFINITE, INFINITE
+  Fine.
+
+
+In summary, there are two cases where this is strictness violating:
+ * gdFooZ is BOTTOM or INFINITE and (fz ...) is finite
+
+There is a major performance degradation:
+ * if gdFooZ is False and (fz ...) is INFINITE, we get INFINITE instead of FINITE
+ 
+There is a major performance improvement:
+ * if gdFooZ is INFINITE and (fz ...) is BOTTOM, we get BOTTOM instead of INFINITE
+
+
+We have this odd consequence from distinguishing between BOTTOM and INFINITE:
+violating strictness by ignoring a BOTTOM can actually make things worse,
+because BOTTOM can turn into INFINITE.
+  
+Strictness Violation Okay?
+--------------------------
+We already have strictness violating optimizations:
+  ite p x x ==> x
+
+if p is _|_.
+
+This could lead to language level problems:
+
+A.  search (union (single 3) (let x = single 4 in if _|_ then x else x)
+Semantics say this should return (Just 3).
+Our implementation could return (Just 4), which is not explained by the
+semantics.
+
+The question is: in practice, is this ever important? Would a user be upset if
+(Just 4) was returned?
+
+B. search (let x = empty in if _|_ then x else x)
+Semantics say this should not terminate.
+Our implementation could return Nothing.
+
+Is this acceptable in practice?
+
+C. search (let x = single 4 in if _|_ then x else x)
+Semantics say this should not terminate.
+Our implementation could return (Just 4)
+
+Is this acceptable in practice?
+
+
+I suppose ideally we would have a flag you could specify somewhere:
+ * allow strictness violation: improves performance
+ * disallow strictness violation: causes slowness
+
+
+Optimizing the Representation
+-----------------------------
+Consider Tuples.
+
+ data Foo = FooA A1 A2 A3 ...
+
+Code generated for this type is:
+
+ data Foo = FooA BoolF A1 A2 A3 ...
+
+We add an extra formula. Is that needed?
+
+It's a question, again, of strictness.
+
+Cases:
+ * Foo is the combination of all finite tuples
+   Then BoolF must be TRUE, because it is always of the form
+    ite p TRUE TRUE, and p is finite.
+
+ * Foo is _|_
+   Then the guard and values are _|_ when you try to read them.
+   Consider:   case _|_ of
+                FooA a b c -> y
+   We should not generate 'y' as the result of this. 
+   We should generate:
+    case x of
+       FooA a b c -> y
+   
+
+This brings up a very important question.
+Aren't we already doing case on the object to extract the fields, and is that
+lazy or strict pattern matching?
+
+What does this mean for the previous discussions?
+
+It means we properly handle the case when the argument is _|_.
+
+The question is: what if the argument is *sometimes* _|_?
+
+ ite p (Foo TRUE a b c) _|_ =
+
+ FooA (p ? TRUE : _|_) (p ? a : _|_) (p ? b : _|_) (p ? c : _|_)
+
+What's worse is:
+
+ ite p _|_ _|_ = Foo (p ? _|_ : _|_) (p ? _|_ : _|_) (p ? _|_ : _|_)
+
+We've just lost strictness. And now, even if we do a case on an argument, that
+doesn't at all ensure we properly handle strictness.
+

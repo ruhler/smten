@@ -87,4 +87,10 @@ instance Show Integer where
 instance (Show a, Show b) => Show (a, b) where
     show (a, b) = "(" ++ show a ++ "," ++ show b ++ ")"
 
+instance (Show a, Show b, Show c) => Show (a, b, c) where
+    show (a, b, c) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ ")"
+
+instance (Show a, Show b, Show c, Show d) => Show (a, b, c, d) where
+    show (a, b, c, d) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ ")"
+
 

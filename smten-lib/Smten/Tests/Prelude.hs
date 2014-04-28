@@ -24,6 +24,10 @@ tests = do
   test "p.read.Int" ((10 :: Int) == read "10")
   test "p.read.Integer" ((10 :: Integer) == read "10")
   test "p.Show.Maybe" ("Just (Just Nothing)" == show (Just (Just (Nothing :: Maybe Bool))))
+  test "p.Show.Unit" ("()" == show ())
+  test "p.Show.Tuple2" ("(True,False)" == show (True,False))
+  test "p.Show.Tuple3" ("(True,False,True)" == show (True,False,True))
+  test "p.Show.Tuple4" ("(True,False,True,False)" == show (True,False,True,False))
 
   x <- tgc True
   test "p.tgc" (x == "hi")
