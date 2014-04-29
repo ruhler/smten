@@ -7,8 +7,6 @@ module Smten.Plugin.Name (
     nullnmCG, qnullnmCG,
     connmCG, qconnmCG,
     denewtynmCG, qdenewtynmCG,
-    itenmCG, qitenmCG,
-    unreachnmCG, qunreachnmCG,
     qapplytonmCG,
     ) where
 
@@ -171,22 +169,6 @@ denewtynmCG = nmCG True ("__deNewTy" ++) False
 
 qdenewtynmCG :: Name -> CG S.Name
 qdenewtynmCG = nmCG True ("__deNewTy" ++) True
-
--- Name of Ite constructor for Int, Char types.
-qitenmCG :: Name -> CG S.Name
-qitenmCG = nmCG True ("Ite_" ++) True
-
-itenmCG :: Name -> CG S.Name
-itenmCG = nmCG True ("Ite_" ++) False
-
--- Name of Unreachable constructor for Int, Char types.
--- TODO: is this needed anymore?
-qunreachnmCG :: Name -> CG S.Name
-qunreachnmCG = nmCG True ("Unreachable_" ++) True
-
--- TODO: is this needed anymore?
-unreachnmCG :: Name -> CG S.Name
-unreachnmCG = nmCG True ("Unreachable_" ++) False
 
 -- Name of applyToXXX function for Int, Char types.
 qapplytonmCG :: Name -> CG S.Name
