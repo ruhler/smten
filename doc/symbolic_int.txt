@@ -195,3 +195,70 @@ I# x = Int (singleton (I# x) trueF)
 
 Code generation for case expressions:
 
+The incoming case expression will be of the form:
+  case foo of
+    (I# x) -> ...
+
+Always. Right?
+
+Then we want to generate code which is:
+
+Let's say:
+  symapp foo (\x -> ...)
+
+Where the function is of type (Int# -> SmtenHS), and foo is just the argument.
+
+In fact, why not have:
+
+caseInt__ Or something like that?
+
+This does mean we treat the case as an opaque function though...
+
+It would be nice, perhaps, to look at that function, and see if it is a case
+expression on the 'x' (which I suspect is a common case).
+
+And what then?
+
+Well, it doesn't matter to start.
+To start we can use the caseInt__ idea from above. Apply it to all the
+possible values of the Int (not worse than what we do now), and be done with
+it.
+
+This is fine, except I feel like I must use PartialF to get strictness
+correct.
+
+Perhaps define IntF type, and implement Int as a PartialF?
+Whatever optimizations we would do to IntF we may as well do to the PartialF
+in general?
+
+I think priority should go to a working implementation.
+Then a correct implementation.
+
+Thus, I propose the following plan:
+
+1. Change how code for Char and Int is generated
+Based on:
+  applyToInt__ :: SmtenHS a => (Int# -> a) -> Int -> a
+
+Expect:
+ * Cleaner code.
+ * No change in functionality.
+ * Very minor performance changes. May be better or worse.
+
+2. Define Int in terms of PartialF and IntF
+Expect:
+ * Some code cleanup:
+    - get rid of UnreachableInt
+    - can assume arguments have been evaluated
+ * No change in functionality.
+ * Noticeable constant performance degradation
+
+3. Re-implement Int to use a Map
+Expect:
+ * No change in functionality.
+ * Noticeable constant performance degradation
+ * Symbolic int blowups go away
+
+4. Low level optimizations
+However I can make those happen. 
+

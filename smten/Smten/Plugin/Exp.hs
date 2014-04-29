@@ -65,7 +65,7 @@ expCG e@(Case x v ty ms) = do
       mkBody | [] <- ms = mkEmptyCase vnm ty
              | isBoolType argty = mkBoolCase vnm def ndefs
              | isConcreteType argty = mkConcreteCase vnm def ndefs
-             | isSmtenPrimType argty = mkSmtenPrimCase vnm argty def ndefs
+             | Just alt <- isSmtenPrimCase argty def ndefs = mkSmtenPrimCase vnm argty alt
              | Just (tycon, _) <- splitTyConApp_maybe argty = mkDataCase vnm tycon def ndefs
              | ndefs <- [], Just defval <- def = mkSeqCase vnm defval
              | otherwise = do
@@ -213,12 +213,12 @@ mkDefault (Just b) = do
 --              Unreachable -> unreachable
 --   in casef vnm
 --
--- TODO: Perhaps a better approach here would be to generate the case
--- expression for Prelude.Char and Prelude.Int types as a function, then call
--- symapp? Because this is basically just duplicating code from symapp
-mkSmtenPrimCase :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
-mkSmtenPrimCase vnm argty mdef ms = do
-  alts <- mapM altCG ms
+-- TODO: Don't inline the code here, call out to an abstract applyToXXX
+-- function. That will make this code much nicer, and make it easier to
+-- change the implementation for different primitive types.
+mkSmtenPrimCase :: S.Name -> Type -> CoreAlt -> CG S.Exp
+mkSmtenPrimCase vnm argty alt = do
+  alt' <- altCG alt
   uniqf <- lift $ getUniqueM
   uniqv <- lift $ getUniqueM
   let occf = mkVarOcc "casef"
@@ -238,7 +238,6 @@ mkSmtenPrimCase vnm argty mdef ms = do
   casefnm <- qnameCG casef
   qitenm <- qitenmCG tynm
   qunreachnm <- qunreachnmCG tynm
-  defalt <- mkDefault mdef
   let itebody = foldl1 S.AppE [
          S.VarE ite0nm,
          S.VarE "p",
@@ -248,8 +247,7 @@ mkSmtenPrimCase vnm argty mdef ms = do
       itealt = S.Alt itepat itebody
       unreachalt = S.Alt (S.ConP qunreachnm []) (S.VarE unreachnm)
 
-      allalts = alts ++ [itealt, unreachalt] ++ defalt
-      casee = S.CaseE (S.VarE vnmv') allalts
+      casee = S.CaseE (S.VarE vnmv') [alt', itealt, unreachalt]
       lame = S.LamE vnmv' casee
       bind = S.Val casefnm Nothing lame
       ine = S.AppE (S.VarE casefnm) (S.VarE vnm)
@@ -335,6 +333,19 @@ isConcreteType t = isType "(#,#)" ["GHC.Prim"] t
 isSmtenPrimType :: Type -> Bool
 isSmtenPrimType t = isType "Int" ["GHC.Types"] t
                  || isType "Char" ["GHC.Types"] t
+
+-- Test whether a case expression is for Smten primitive types
+-- These are case expressions of type Int and Char
+-- By how these are constructed, we expect there to be exactly one
+-- non-default case.
+-- This is because:
+--  * We have already taken care of empty case expressions elsewhere
+--  * Int and Char both have a single constructor (I# and C# respectively)
+--
+-- TODO: Why can't we have exactly one default case and no non-default ones?
+isSmtenPrimCase :: Type -> Maybe CoreExpr -> [CoreAlt] -> Maybe CoreAlt
+isSmtenPrimCase t Nothing [alt] | isSmtenPrimType t = Just alt
+isSmtenPrimCase _ _ _ = Nothing
 
 isType :: String -> [String] -> Type -> Bool
 isType wnm wmods t = 
