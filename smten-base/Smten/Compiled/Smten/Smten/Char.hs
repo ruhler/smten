@@ -3,7 +3,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Char (
-    Char(..),
+    Char(..), __C#, __applyToChar,
     toHSChar,
   ) where
 
@@ -22,14 +22,18 @@ data Char =
   | Ite_Char BoolF Char Char
   | Unreachable_Char
 
+__C# = C#
+
 instance SymbolicOf P.Char Char where
     tosym (P.C# x) = C# x
+    symapp f x = __applyToChar (\v -> f (P.C# v)) x
 
-    symapp f x =
-      case x of
-        C# c -> f (P.C# c)
-        Ite_Char p a b -> ite0 p (f $$ a) (f $$ b)
-        Unreachable_Char -> unreachable
+__applyToChar :: (SmtenHS0 a) => (P.Char# -> a) -> Char -> a
+__applyToChar f x =
+  case x of
+    C# c -> f c
+    Ite_Char p a b -> ite0 p (__applyToChar f a) (__applyToChar f b)
+    Unreachable_Char -> unreachable
 
 toHSChar :: Char -> P.Char
 toHSChar (C# x) = P.C# x

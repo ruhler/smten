@@ -4,9 +4,11 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Base (
-    Char(..), Int(..), Integer(..),
+    Integer(..),
     error,
-    fromList__, toHSChar, toHSString, fromHSString,
+    fromList__, toHSString, fromHSString,
+    module Smten.Compiled.Smten.Smten.Char,
+    module Smten.Compiled.Smten.Smten.Int,
     module Smten.Compiled.Smten.Smten.List,
     module Smten.Compiled.Smten.Smten.Tuple,
     module Smten.Compiled.Smten.Smten.Unit,

@@ -206,52 +206,20 @@ mkDefault (Just b) = do
   return [x]
 
 -- For "Smten" primitive types: Char and Int
---   let casef __vnm =
---         case __vnm of
---              X# v -> ...
---              Ite p a b -> ite0 p (casef a) (casef b)
---              Unreachable -> unreachable
---   in casef vnm
+--  case x of
+--    X# v -> body
 --
--- TODO: Don't inline the code here, call out to an abstract applyToXXX
--- function. That will make this code much nicer, and make it easier to
--- change the implementation for different primitive types.
+-- We generate code:
+--   applyToXXX (\v -> body) x
 mkSmtenPrimCase :: S.Name -> Type -> CoreAlt -> CG S.Exp
-mkSmtenPrimCase vnm argty alt = do
-  alt' <- altCG alt
-  uniqf <- lift $ getUniqueM
-  uniqv <- lift $ getUniqueM
-  let occf = mkVarOcc "casef"
-      casef = mkSystemName uniqf occf
-
-      occv = mkVarOcc vnm
-      vnmv = mkSystemName uniqv occv
-
-      tycon = fst (fromMaybe (error "mkSymSmtenPrim splitTyConApp failed") $
+mkSmtenPrimCase vnm argty (DataAlt _, [v], body) = do
+  let tycon = fst (fromMaybe (error "mkSymSmtenPrim splitTyConApp failed") $
                        splitTyConApp_maybe argty)
       tynm = tyConName tycon
-  
-  ite0nm <- usequalified "Smten.Runtime.SmtenHS" "ite0"
-  unreachnm <- usequalified "Smten.Runtime.SmtenHS" "unreachable"
-
-  vnmv' <- qnameCG vnmv
-  casefnm <- qnameCG casef
-  qitenm <- qitenmCG tynm
-  qunreachnm <- qunreachnmCG tynm
-  let itebody = foldl1 S.AppE [
-         S.VarE ite0nm,
-         S.VarE "p",
-         S.AppE (S.VarE casefnm) (S.VarE "a"),
-         S.AppE (S.VarE casefnm) (S.VarE "b")]
-      itepat = S.ConP qitenm [S.VarP "p", S.VarP "a", S.VarP "b"]
-      itealt = S.Alt itepat itebody
-      unreachalt = S.Alt (S.ConP qunreachnm []) (S.VarE unreachnm)
-
-      casee = S.CaseE (S.VarE vnmv') [alt', itealt, unreachalt]
-      lame = S.LamE vnmv' casee
-      bind = S.Val casefnm Nothing lame
-      ine = S.AppE (S.VarE casefnm) (S.VarE vnm)
-  return (S.LetE [bind] ine)
+  v' <- qnameCG $ varName v
+  body' <- expCG body
+  appnm <- qapplytonmCG tynm
+  return $ S.AppE (S.AppE (S.VarE appnm) (S.LamE v' body')) (S.VarE vnm)
 
 -- For regular algebraic data types.
 -- case v of

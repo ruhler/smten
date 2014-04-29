@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Int (
-    Int(..),
+    Int(..), __I#, __applyToInt,
   ) where
 
 import qualified Prelude as P
@@ -21,14 +21,19 @@ data Int =
   | Ite_Int BoolF Int Int
   | Unreachable_Int
 
+__I# = I#
+
 instance SymbolicOf P.Int Int where
     tosym (P.I# x) = I# x
+    symapp f x = __applyToInt (\v -> f (P.I# v)) x
 
-    symapp f x =
-      case x of
-        I# i -> f (P.I# i)
-        Ite_Int p a b -> ite0 p (f $$ a) (f $$ b)
-        Unreachable_Int -> unreachable
+__applyToInt :: (SmtenHS0 a) => (P.Int# -> a) -> Int -> a
+__applyToInt f x =
+  case x of
+    I# i -> f i
+    Ite_Int p a b -> ite0 p (__applyToInt f a) (__applyToInt f b)
+    Unreachable_Int -> unreachable
+     
 
 instance SmtenHS0 Int where
     ite0 p a b = 
