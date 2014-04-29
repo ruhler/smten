@@ -1,0 +1,197 @@
+
+Tue Apr 29 11:32:52 EDT 2014
+
+There is a performance problem with handling of Symbolic Int.
+How do I fix it?
+
+First: What are the int operations?
+
+* Literals: 0, 1, 2, ...
+* Case expressions:
+    case x of
+      0 -> ...
+      1 -> ...
+      _ -> ...
+   Where 'x' has type Int#.
+* Primitive operators on Int#:
+    +# -# <# ># etc...
+* ite
+* unreachable
+   
+   
+Goal 1:
+* concrete evaluation of Int should not suffer from symbolic evaluation.
+
+A concrete Int should be represented using an Int#, and operations on it
+should be done directly to the Int#.
+
+Goal 2:
+* symbolic evaluation of Int should be decent
+
+Current Approach:
+* Keep Int as an ITE tree.
+
+We do optimize: if p then 3 else 3 ==> 3
+But nothing more than that.
+
+Problem: we don't preserve sharing, or leverage sharing.
+
+Failing performance test case:
+
+ x <- msum (map return [1..10 :: Int])
+ let y = x + x + x + x
+     z = y + y + y + y
+ assert (z == z)
+
+The single call to == leads to a blowup in the number of underlying
+PRIM_INT_EQ operations, because currently we do binary operations as the cross
+product of both arguments.
+
+  x has 10 possible values.
+  x+x has 10^2 = 100 possible values.
+  x+x+x+x has 10^4 possible values.
+  y+y+y+y has 10^16 possible values
+  z == z leads to 10^17 operations, which is really really big.
+
+Especially considering it should be enough to just try all 10 possibilities
+for x to find the answer.
+
+Let me contrast this with a slightly different case:
+  p <- freeBool
+  x <- msum (map return [1..10::Int])
+  let y = if p then x else x
+      z = if p then y else y
+      w = if p then w else w
+  in assert (w == w)
+
+In this case, we still have a blowup, even though it should be obvious that
+w = z = y = x. And hopeful we only have to do 10^2 operations instead of:
+ 
+    x has 10
+    y has 20
+    z has 40
+    w has 80
+    w == w has 80*80 = 6400
+
+These are two different performance issues.
+The first is silly combinatorial blowup.
+The second is failure to recognize sharing.
+
+Or maybe, in a sense, they are both an issue with sharing.
+
+Consider x from 1 to 10, and:
+    let y = x + x + x + x
+
+In our current implementation, y is an ITE tree with 10^4 values.
+But, what's funny is, really y can only range from 4 to 40, so there are only
+36 possible values.
+
+This suggests the first approach to make Int better, which is modeled on how
+we do data structures. Organize the symbolic Int value by constructor.
+Conceptually we would have:
+
+data Int = Int {
+ is0 :: Bool,
+ is1 :: Bool,
+ is2 :: Bool,
+ ...
+}
+
+Except that there are too many to list them all, so we use a map:
+
+Map.Map Int# BoolF
+
+How to perform primitive operations?
+Ignore concrete optimizations for now.
+
+Literals are easy:
+    n   goes to: singleton n# True
+
+Case expressions are easy:
+  make an ite out of the looked up values.
+  Default to 'false' for a constructor not in the map.
+
+Primitive operators:
+  Unary Predicate: Make an ite tree.
+  Unary Operator: 
+    This is hard, because it might map multiple different source values to the
+    same destination value. Looks like we want to make an ite tree.
+  Binary Operator:
+    Make a 2D ite tree?
+    It's ugly, but maybe it's a fine start. Certainly no worse than what we
+    already have.
+    I can turn this into unary operators too, if that would help.
+ite:
+  Do an element wise ite. Defaulting to 'false' for things that are not in
+  both maps. This is like a 'unionWith' function... except we need to modify
+  it for the case where a value is missing from one or the other.
+
+Good. I think this is a good candidate to try improving the Symbolic Int
+representation.
+Not perfect, but potentially significantly better than what we have now, and
+certainly not worse (from a symbolic blowup point of view).
+
+We could then refine it to take advantage of what we know about primitives.
+For example, if the map is sorted, we could much more quickly do operations
+like less than 0: take the OR of all constructors in the map which are less
+than zero. (Or maybe that will happen automatically anyway).
+
+What are the challenges to making this work well in practice?
+
+* How to keep concrete evaluation fast
+    Hopefully just a special case for Int# will be enough?
+* How to represent 'unreachable'?
+    Hopefully just a special case for unreachable will be enough?
+* How to deal with termination and strictness issues properly?
+    Can we reuse PartialF? Does that make sense?
+
+How do we evaluate the implementation?
+
+* Start by establishing a baseline of performance.
+* Then experiment with different versions of the implementation to understand
+  the performance implications.
+
+I would say: don't expect a fast implementation all at once.
+Don't pre-maturely optimize.
+Try to eliminate as many special cases as possible, and understand where
+things go bad.
+
+Work on a separate branch.
+
+Then it's pretty clear what to do, no?
+
+1. Evaluate current performance on the benchmarks.
+2. Use Map representation, with no specialization for concrete or unreachable
+   And ignoring strictness issues.
+3. Based on what we find:
+  * add concrete specialization
+  * fix strictness issues
+  * add unreachable specialization
+
+And now, hopefully, we can merge in the changes and be happy.
+
+Tue Apr 29 13:18:12 EDT 2014
+
+Attempt I Design Proposal:
+
+data Int = Int (IntMap BoolF)
+
+tosym x = Int (singleton x trueF)
+
+symapp f (Int m) =
+  let ites [] = unreachable
+      ites (v, p):xs = ite p v (ites xs)
+  in ites (toList m)
+
+unreachable = Int empty
+
+ite0 p (Int a) (Int b) =
+  Int (mergeWithKey
+        (\_ av bv -> ite p av bv)
+        (map (\pold -> p && pold))
+        (map (\pold -> not p && pold)))
+
+I# x = Int (singleton (I# x) trueF)
+
+Code generation for case expressions:
+
