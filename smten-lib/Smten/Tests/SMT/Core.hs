@@ -129,7 +129,7 @@ smttests = do
            else do
                assert (not b)
        return (a, b)
-
+ 
    -- Test an case we've had trouble with in the past
    -- The bug was we accidentally said:
    --   not (if p then a else b) = if p then b else a

@@ -247,7 +247,7 @@ Expect:
 
 Done. Results as expected.
 
-2. Define Int in terms of PartialF and IntF
+2+ Define Int in terms of PartialF and IntF
 Expect:
  * Some code cleanup:
     - get rid of UnreachableInt
@@ -255,7 +255,9 @@ Expect:
  * No change in functionality.
  * Noticeable constant performance degradation
 
-3. Re-implement Int to use a Map
+Done. Caused some blowups in sketch which I haven't looked into.
+
+3+ Re-implement Int to use a Map
 Expect:
  * No change in functionality.
  * Noticeable constant performance degradation
@@ -263,4 +265,18 @@ Expect:
 
 4. Low level optimizations
 However I can make those happen. 
+
+
+Wed Apr 30 09:27:30 EDT 2014
+
+Here are the results of trying the map:
+ * minor degradation on tests not using symbolic ints.
+ * tests using symbolic ints... are all over the place.
+   Some notably faster, some a fair amount slower, some the same.
+ * in sketch: around 25 test cases which failed before are working now.
+   That is, it fixed the issue I was trying to fix (and a number of others).
+   One test case that worked before does not work anymore.
+
+Which is troubling. Because it's not obviously a win everywhere to do this.
+But it is significant in many cases in sketch.
 
