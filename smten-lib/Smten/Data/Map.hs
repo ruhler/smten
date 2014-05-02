@@ -5,7 +5,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Map (
     Map,
-    lookup, insert,
+    lookup, member, insert,
     size, empty, singleton, fromList, toList,
     keys, elems, assocs,
   )  where
@@ -30,6 +30,13 @@ lookup k t
           LT -> lookup k l
           GT -> lookup k r
           EQ -> Just x
+
+member :: (Ord k) => k -> Map k a -> Bool
+member k m
+  = case lookup k m of
+      Nothing -> False
+      Just _  -> True
+
 
 empty :: Map k v
 empty = Tip
