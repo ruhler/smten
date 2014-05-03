@@ -2,22 +2,29 @@
 {-# LANGUAGE DataKinds, EmptyDataDecls #-}
 {-# LANGUAGE TypeFamilies #-}
 module Smten.Compiled.GHC.TypeLits (
-    SingI, DGSingI(..), Nat, type (+),
+    KnownNat, DGKnownNat(..), knownNatVal, Nat, type (+),
     ) where
 
 import GHC.TypeLits (Nat, type (+))
 
-type family SingI a (b :: Nat)
-type instance SingI Nat (b :: Nat) = DGSingI
+import Smten.Runtime.Formula.IntegerF
+import Smten.Runtime.Formula.Finite
 
-newtype DGSingI = DGSingI {
-    __deNewTyDGSingI :: Integer
-}
+type family KnownNat (b :: Nat)
+type instance KnownNat (b :: Nat) = DGKnownNat
 
-instance Num DGSingI where
-    fromInteger = DGSingI . fromInteger
-    (+) = error "No (+) for SingI"
-    (*) = error "No (*) for SingI"
-    abs = error "No abs for SingI"
-    signum = error "No signum for SingI"
+newtype DGKnownNat = DGKnownNat IntegerF
+
+knownNatVal :: DGKnownNat -> Integer
+knownNatVal (DGKnownNat x) =
+  case deIntegerF x of
+     (TrueFF, IntegerFF v, _) -> v
+
+instance Num DGKnownNat where
+    fromInteger = DGKnownNat . fromInteger
+    (+) = error "No (+) for KnownNat"
+    (-) = error "No (-) for KnownNat"
+    (*) = error "No (*) for KnownNat"
+    abs = error "No abs for KnownNat"
+    signum = error "No signum for KnownNat"
 

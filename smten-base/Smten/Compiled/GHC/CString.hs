@@ -3,8 +3,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.GHC.CString (unpackCString#) where
 
-import qualified Prelude as P
-
 import GHC.Prim
 import qualified GHC.CString as GHC
 import Smten.Compiled.Smten.Smten.Base

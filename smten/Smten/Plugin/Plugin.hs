@@ -7,6 +7,7 @@ import Data.Functor
 import Data.Maybe
 import System.Directory
 
+import ConLike
 import GhcPlugins
 import TidyPgm
 
@@ -106,9 +107,10 @@ exportCG (AnId x)
   | otherwise = do
     nm <- qnameCG (varName x)
     return [S.VarExport nm]
-exportCG (ADataCon d) = do
+exportCG (AConLike (RealDataCon d)) = do
     nm <- qconnmCG $ dataConName d
     return [S.VarExport nm]
+exportCG (AConLike (PatSynCon ps)) = error "SMTEN PLUGIN: TODO: support pattern synonyms"
 exportCG (ATyCon t)
   | isSynTyCon t = return []
   | otherwise = do

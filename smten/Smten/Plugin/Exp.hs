@@ -9,6 +9,7 @@ import Data.Functor
 import Data.Maybe
 
 import CostCentre
+import Data.ByteString.Char8 (unpack)
 import Pair
 import GhcPlugins
 
@@ -331,7 +332,7 @@ isConstructor v = case idDetails v of
                     _ -> False
             
 litCG :: Literal -> S.Literal
-litCG (MachStr str) = S.StringHashL (unpackFS str)
+litCG (MachStr str) = S.StringHashL (unpack str)
 litCG (MachChar c) = S.CharL c
 litCG (MachInt i) = S.IntL i
 litCG (MachWord i) = S.WordL i

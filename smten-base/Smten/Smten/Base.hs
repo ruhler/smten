@@ -6,7 +6,7 @@ module Smten.Smten.Base (
     ) where
 
 import qualified Prelude as P
-import Prelude (Integer, String)
+import Prelude (String)
 import Smten.Plugin.Annotations
 import Smten.Smten.Char
 import Smten.Smten.Int

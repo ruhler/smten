@@ -56,6 +56,7 @@ instance Bits Bit where
     testBit = error $ "TODO: Bit testBit"
     popCount = error $ "TODO: Bit popCount"
     bitSize (Bit w _) = fromInteger w
+    bitSizeMaybe _ = Nothing
     isSigned _ = False
 
 bv_zero_extend :: Integer -> Bit -> Bit

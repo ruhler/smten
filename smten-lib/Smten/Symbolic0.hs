@@ -58,6 +58,6 @@ free_Integer = primitive "Smten.Symbolic0.free_Integer"
 
 -- | The set of all bit vectors of size n.
 {-# NOINLINE free_Bit #-}
-free_Bit :: (SingI n) => Symbolic (Bit n)
+free_Bit :: (KnownNat n) => Symbolic (Bit n)
 free_Bit = primitive "Smten.Symbolic0.free_Bit"
 

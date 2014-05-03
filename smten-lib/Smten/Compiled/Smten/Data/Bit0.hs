@@ -37,8 +37,8 @@ bv_leq = {-# SCC "PRIM_BV_LEQ" #-} bit_leqF
 bv_show :: BitF n -> List__ Char
 bv_show = {-# SCC "PRIM_BV_SHOW" #-} symapp P.$ \av -> fromHSString (P.show (av :: P.Bit))
 
-bv_fromInteger :: SingI Nat n -> Integer -> BitF n
-bv_fromInteger w = {-# SCC "PRIM_BV_FROMINTEGER" #-} symapp P.$ \v -> bitF (P.bv_make (__deNewTyDGSingI w) v)
+bv_fromInteger :: KnownNat n -> Integer -> BitF n
+bv_fromInteger w = {-# SCC "PRIM_BV_FROMINTEGER" #-} symapp P.$ \v -> bitF (P.bv_make (knownNatVal w) v)
 
 bv_add :: BitF n -> BitF n -> BitF n
 bv_add = {-# SCC "PRIM_BV_ADD" #-} bit_addF
@@ -55,11 +55,11 @@ bv_or = {-# SCC "PRIM_BV_OR" #-} bit_orF
 bv_and :: BitF n -> BitF n -> BitF n
 bv_and = {-# SCC "PRIM_BV_AND" #-} bit_andF
 
-bv_shl :: SingI Nat n -> BitF n -> BitF n -> BitF n
-bv_shl w = {-# SCC "PRIM_BV_SHL" #-} bit_shlF (__deNewTyDGSingI w)
+bv_shl :: KnownNat n -> BitF n -> BitF n -> BitF n
+bv_shl w = {-# SCC "PRIM_BV_SHL" #-} bit_shlF (knownNatVal w)
 
-bv_lshr :: SingI Nat n -> BitF n -> BitF n -> BitF n
-bv_lshr w = {-# SCC "PRIM_BV_LSHR" #-} bit_lshrF (__deNewTyDGSingI w)
+bv_lshr :: KnownNat n -> BitF n -> BitF n -> BitF n
+bv_lshr w = {-# SCC "PRIM_BV_LSHR" #-} bit_lshrF (knownNatVal w)
 
 bv_not :: BitF n -> BitF n
 bv_not = {-# SCC "PRIM_BV_NOT" #-} bit_notF
@@ -67,14 +67,14 @@ bv_not = {-# SCC "PRIM_BV_NOT" #-} bit_notF
 bv_concat :: Bit a -> Bit b -> BitF n
 bv_concat = {-# SCC "PRIM_BV_CONCAT" #-} bit_concatF
 
-bv_sign_extend :: SingI Nat m -> SingI Nat n -> Bit m -> BitF n
-bv_sign_extend mw nw = {-# SCC "PRIM_BV_SIGN_EXTEND" #-} bit_sign_extendF (__deNewTyDGSingI mw) (__deNewTyDGSingI nw)
+bv_sign_extend :: KnownNat m -> KnownNat n -> Bit m -> BitF n
+bv_sign_extend mw nw = {-# SCC "PRIM_BV_SIGN_EXTEND" #-} bit_sign_extendF (knownNatVal mw) (knownNatVal nw)
 
-bv_extract :: SingI Nat n -> Bit m -> Integer -> BitF n
-bv_extract nw x = {-# SCC "PRIM_BV_EXTRACT" #-} symapp (\lsb -> bit_extractF (lsb P.+ (__deNewTyDGSingI nw) P.- 1) lsb x)
+bv_extract :: KnownNat n -> Bit m -> Integer -> BitF n
+bv_extract nw x = {-# SCC "PRIM_BV_EXTRACT" #-} symapp (\lsb -> bit_extractF (lsb P.+ (knownNatVal nw) P.- 1) lsb x)
 
-bv_width :: SingI Nat n -> BitF n -> Integer
-bv_width w _ = {-# SCC "PRIM_BV_WIDTH" #-} tosym (__deNewTyDGSingI w)
+bv_width :: KnownNat n -> BitF n -> Integer
+bv_width w _ = {-# SCC "PRIM_BV_WIDTH" #-} tosym (knownNatVal w)
 
 bv_value :: BitF n -> Integer
 bv_value = {-# SCC "PRIM_BV_VALUE" #-} symapp (\b -> tosym (P.bv_value b))

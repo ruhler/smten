@@ -48,6 +48,6 @@ tests = do
 data FunnyKind a = FunnyKind (Bit a)
 
 -- Verify we can write a non-primitive function with the (+) type.
-my_bv_concat :: (SingI a) => Bit a -> Bit b -> Bit (a+b)
+my_bv_concat :: (KnownNat a) => Bit a -> Bit b -> Bit (a+b)
 my_bv_concat = bv_concat
 

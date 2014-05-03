@@ -41,6 +41,7 @@ if {![file exists "build/home/cabal"]} {
     hrun cabal update
     exec echo "extra-lib-dirs: $::env(LD_LIBRARY_PATH)" >> build/home/.cabal/config
     exec echo "library-profiling: True" >> build/home/.cabal/config
+    exec echo "shared: True" >> build/home/.cabal/config
 }
 
 # Uninstall all the smten libraries already installed.

@@ -144,9 +144,9 @@ library
     Smten.Compiled.Smten.Tests.Yices2
     Smten.Compiled.Smten.Tests.Z3
 
-  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
-                 pretty ==1.1.*, array ==0.4.*, ghc-prim ==0.3.*,
-                 template-haskell ==2.8.*, containers ==0.5.*,
+  build-depends: base ==4.7.*, hashtables ==1.1.*, mtl ==2.1.*,
+                 pretty ==1.1.*, array ==0.5.*, ghc-prim ==0.3.*,
+                 template-haskell ==2.9.*, containers ==0.5.*,
                  hashable ==1.2.*,
                  smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   --ghc-prof-options: -fprof-auto-top
@@ -157,9 +157,9 @@ library
 Test-Suite tests
     type: exitcode-stdio-1.0
     main-is: tests.hs
-    build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
-                   pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
-                   template-haskell ==2.8.*, containers ==0.5.*,
+    build-depends: base ==4.7.*, hashtables ==1.1.*, mtl ==2.1.*,
+                   pretty ==1.1.*,  array ==0.5.*, ghc-prim ==0.3.*,
+                   template-haskell ==2.9.*, containers ==0.5.*,
                    hashable ==1.2.*,
                    smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
     ghc-options: -rtsopts
@@ -169,9 +169,9 @@ Test-Suite tests
 test-suite y2tests
   type: exitcode-stdio-1.0
   main-is: y2tests.hs
-  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
-                 pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
-                 template-haskell ==2.8.*, containers ==0.5.*,
+  build-depends: base ==4.7.*, hashtables ==1.1.*, mtl ==2.1.*,
+                 pretty ==1.1.*,  array ==0.5.*, ghc-prim ==0.3.*,
+                 template-haskell ==2.9.*, containers ==0.5.*,
                  hashable ==1.2.*,
                  smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   extra-libraries: dl
@@ -180,9 +180,9 @@ test-suite y2tests
 test-suite z3tests
   type: exitcode-stdio-1.0
   main-is: z3tests.hs
-  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
-                 pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
-                 template-haskell ==2.8.*, containers ==0.5.*,
+  build-depends: base ==4.7.*, hashtables ==1.1.*, mtl ==2.1.*,
+                 pretty ==1.1.*,  array ==0.5.*, ghc-prim ==0.3.*,
+                 template-haskell ==2.9.*, containers ==0.5.*,
                  hashable ==1.2.*,
                  smten-base ==@VERSIONMAJOR@.*, smten ==@VERSIONMAJOR@.*
   extra-libraries: dl

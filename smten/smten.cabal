@@ -40,7 +40,7 @@ source-repository this
 
 executable smten
   main-is: smten.hs
-  build-depends: base ==4.6.*, process ==1.1.*, mtl ==2.1.*
+  build-depends: base ==4.7.*, process ==1.2.*, mtl ==2.1.*
 
 library
   exposed-modules:
@@ -57,8 +57,8 @@ library
     Smten.Plugin.Type
     Smten.Plugin.Output.Syntax
     Smten.Plugin.Output.Ppr
-  build-depends: base ==4.6.*, ghc ==7.6.*, directory ==1.2.*,
+  build-depends: base ==4.7.*, ghc ==7.8.*, directory ==1.2.*,
                  mtl ==2.1.*, text ==0.11.*, wl-pprint-text ==1.1.*,
-                 containers ==0.5.*
+                 containers ==0.5.*, bytestring ==0.10.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 

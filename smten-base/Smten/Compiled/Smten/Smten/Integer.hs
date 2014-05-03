@@ -77,6 +77,7 @@ instance SymbolicOf P.Integer IntegerF where
 instance P.Num IntegerF where
     fromInteger = integerF
     (+) = P.error "Smten IntegerF P.Num (+) not supported"
+    (-) = P.error "Smten IntegerF P.Num (-) not supported"
     (*) = P.error "Smten IntegerF P.Num (*) not supported"
     abs = P.error "Smten IntegerF P.Num abs not supported"
     signum = P.error "Smten IntegerF P.Num signum not supported"

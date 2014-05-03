@@ -101,13 +101,13 @@ free_Integer = Symbolic {
  }
 
 
-free_Bit :: SingI Nat n -> Symbolic (BitF n)
+free_Bit :: KnownNat n -> Symbolic (BitF n)
 free_Bit w = Symbolic {
     runS = \u -> {-# SCC "freeBitS" #-} withfresh $ \nm ->
-            u `seq` (trueF, var_BitF (__deNewTyDGSingI w) nm, DTSingle nm),
+            u `seq` (trueF, var_BitF (knownNatVal w) nm, DTSingle nm),
 
     relS = \m (DTSingle nm) ->
-        bitF $ lookupBit m (__deNewTyDGSingI w) nm
+        bitF $ lookupBit m (knownNatVal w) nm
  }
 
 

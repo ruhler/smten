@@ -137,8 +137,8 @@ library
     Smten.Compiled.GHC.Types
     Smten.Compiled.System.IO
 
-  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten ==@VERSIONMAJOR@.*,
-                 hashtables ==1.0.*, template-haskell ==2.8.*,
+  build-depends: base ==4.7.*, ghc-prim ==0.3.*, smten ==@VERSIONMAJOR@.*,
+                 hashtables ==1.1.*, template-haskell ==2.9.*,
                  transformers ==0.3.*, integer-gmp ==0.5.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports

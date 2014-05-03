@@ -9,9 +9,9 @@
 import Control.Monad.State
 import Data.List
 import Data.Version (showVersion)
-import System.Cmd
 import System.Environment
 import System.Exit
+import System.Process
 
 import Paths_smten
 

@@ -38,7 +38,7 @@ __applyToInt f x =
 instance SmtenHS0 Int where
     ite0 p a b = 
         case (select a b, a, b) of
-           (SRBoth, I# av, I# bv) | av P.==# bv -> a
+           (SRBoth, I# av, I# bv) | P.isTrue# (av P.==# bv) -> a
            (SRBoth, _, _) | a `stableNameEq` b -> a
            (SRBoth, Unreachable_Int, _) -> b
            (SRBoth, _, Unreachable_Int) -> a
@@ -53,3 +53,4 @@ instance P.Num Int where
     (*) = P.error "Smten Int P.Num (*) not supported"
     abs = P.error "Smten Int P.Num abs not supported"
     signum = P.error "Smten Int P.Num signum not supported"
+    negate = P.error "Smten Int P.Num negate not supported"

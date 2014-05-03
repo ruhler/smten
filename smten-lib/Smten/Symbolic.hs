@@ -47,7 +47,7 @@ instance Free Bool where
 instance Free Integer where
     free = free_Integer
 
-instance (SingI n) => Free (Bit n) where
+instance (KnownNat n) => Free (Bit n) where
     free = free_Bit
 
 instance (Free a) => Free (Maybe a) where

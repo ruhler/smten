@@ -5,7 +5,6 @@ module Smten.Data.Char (
     digitToInt, isDigit, isUpper, isLower, isAlpha, isAlphaNum,
  ) where
 
-import qualified Prelude as P
 import Smten.Smten.Base
 import Smten.Data.Bool
 import Smten.Data.Eq

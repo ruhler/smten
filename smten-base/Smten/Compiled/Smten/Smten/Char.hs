@@ -41,7 +41,7 @@ toHSChar (C# x) = P.C# x
 instance SmtenHS0 Char where
     ite0 p a b = 
         case (select a b, a, b) of
-           (SRBoth, C# av, C# bv) | av `P.eqChar#` bv -> a
+           (SRBoth, C# av, C# bv) | P.isTrue# (av `P.eqChar#` bv) -> a
            (SRBoth, _, _) | a `stableNameEq` b -> a
            (SRBoth, Unreachable_Char, _) -> b
            (SRBoth, _, Unreachable_Char) -> a
