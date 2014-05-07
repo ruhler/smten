@@ -1,0 +1,310 @@
+
+Tue May  6 11:18:59 EDT 2014
+
+In upgrading to GHC 7.8, we are running into problems with code generation for
+`cast`. Here I try to understand the problems and properly implement cast
+generation from the ground up.
+
+The idea:
+ * Different types may have the same runtime representation.
+   For example: newtype X = X A. Then X has the same representation at runtime
+   as A
+ * To convert between these types, `cast` is used in SystemFC.
+   It includes the source and destination types of the cast, and a
+   justification ("coercion") for why the types are the same.
+
+How can we generate code for a cast?
+ A. Use unsafeCoerce#
+    Which can convert between any two types.
+    This is unpleasant, but should be safe because of the coercion.
+ B. Use 'coerce'
+    New to ghc 7.8. It should work for safe coercions, between things like
+    newtypes.
+    This is nice, because it's safe.
+ C. Use newtype constructors and deconstructors
+    Which work for direct newtype coercions only.
+    This is nice, because it really expresses what's going on. But it's
+    limited.
+
+In general, using unsafeCoerce may be necessary in the case of unsafeCoerce in
+the source program.
+I believe using 'coerce' should work in any safe coercion built up from
+newtypes.
+
+The key to making this work is to make it clear to GHC what the types are
+before and after the conversion.
+
+First attempt: Use 'coerce' for all casts.
+Expect:
+ * It won't work for unsafeCoerce, but we don't have those, so it shouldn't be
+   a problem
+ * It will work for every other kind of cast that can arise.
+
+Okay, let me try it and see what the problems are.
+1. Without supplying any type information.
+
+Problems:
+
+Problem I
+---------
+IO constructor is not in scope, so we can't use "coerce"
+for cast of (State# RealWorld -> (# State# RealWorld, a #))
+         to (IO a)
+
+Solution: Just have IO be in scope.
+
+
+Problem II
+----------
+Ambiguity. Cannot coerce:
+      x, which has polymorphic type:
+        (forall a, SmtenHS a) => a -> (State# RealWorld -> (# State# RealWorld, a#))
+    to: (forall b, SmtenHS b) => b -> IO b
+
+The problem is it's not clear we want to instantiate x using the type 'b'
+for 'a'.
+
+Solution: Given an explicit type signature:
+  coerce (x :: (b -> (State# RealWorld -> (# State# RealWorld, b))))
+Note: we do not have a Forall for 'b', and we do not have a SmtenHS for 'b'.
+
+The source and destination types given for the cast are:
+FROM:   forall a . a -> State# RealWorld -> (# State# RealWorld, a #) 
+TO  :   forall a . a -> IO a
+
+They are entirely in terms of 'a', and not in terms of 'b'.
+
+So, instead of doing the substitution, the idea would be to produce:
+ (coerce (x :: (forall a . a -> State# RealWorld -> (# State# RealWorld, a #))))
+ :: (forall a . a -> IO a)
+
+That is, we give the type before the coercion and after the coercion.
+We leave it up to GHC to figure out that it properly type checks.
+
+Note: we must include the 'forall' to bound the type variable...
+But, we need some way to say the variable 'a' on the left is the same
+as the variable 'a' on the right.
+
+Fortunately, the forall in the type signature brings the type variable 'a' in
+scope. So really I should produce:
+ (coerce (x :: (a -> State# RealWorld -> (# State# RealWorld, a #))))
+ :: (forall a . a -> IO a)
+
+Question: do we need SmtenHS in the scope?
+The answer is yes! We do, because in order to call 'x', we must have SmtenHS.
+So really we should have:
+ (coerce (x :: (a -> State# RealWorld -> (# State# RealWorld, a #))))
+ :: (forall a . (SmtenHS0 a) => a -> IO a)
+
+In summary:
+ * Give explicit type for inner value, not in a top context (no forall, no
+   context)
+ * Give explicit type for outer value, in a top context (with forall, and
+   SmtenHS context)
+
+Let me try it.
+
+And that solves the problem.
+
+Problem III
+-----------
+Cannot Coerce because different types:
+
+From: (forall m a . (SmtenHS1 m, SmtenHS0 a) =>
+        Monad m -> m a -> t m a
+To  :  (Monad n -> n b -> t n b)
+
+This is in the implementation of lift, which extracts the lift method
+from a MonadTrans object.
+
+Note the type of MonadTrans:
+
+newtype MonadTrans t =
+  MonadTrans (forall m a . (SmtenHS1 m, SmtenHS0 a) => Monad m -> m a -> t m a)
+
+The Cast we are trying is:
+
+FROM: MonadTrans t
+To  : forall m a. Monad m => m a -> t m a
+
+Question: why is this not recognized as a newtype coercion?
+
+An issue with forall? Because we scope over concrete m and a on the outside,
+but on the inside it's general? And we don't define them right?
+
+Actually, it looks like we do.
+
+I say:
+  go from: MonadTrans t
+       to: forall m a . (SmtenHS1 m, SmtenHS0 a) => Monad m -> m a -> t m a
+
+Wait. But then we give an explicit type signature for the body of 'lift':
+  (\tpl_B1 -> coerce ...) ::
+           forall t . (MonadTrans t) => 
+              forall m a . (SmtenHS1 m, SmtenHS0 a) => Monad m -> m a -> t m a
+
+Now look: we say the body of a lambda has some type.
+We say the type of the lambda has some other type.
+And it's not clear that they refer to the same variables?
+
+Question: Why are we generating the outer type signature?
+  
+It's because we have a lambda with a type variable.
+And for some reason I include the type of the body of the lambda with a type
+variable.
+
+It's still not clear why this causes a problem however.
+
+Let me try to minimize the problem and simplify.
+
+I'm able to replicate the problem separately.
+Let me simplify.
+
+Observations:
+ * The extra type signature does not matter. It's not the problem.
+ * Using unsafeCoerce# lets this compile fine I think.
+
+It seems like what is happening is this:
+
+The offending expression:
+   (coerce (undefined :: (MonadTrans t)))
+     :: (forall m a . Monad m -> m a -> t m a)
+   
+Goal:
+  coerce from: MonadTrans t
+           to: forall m a . Monad m -> m a -> t m a
+
+We apply newtype coercion to prove that:
+  MonadTrans t converts to
+    forall m a . Monad m -> m a -> t m a
+    That turns into our new source.
+
+But for some reason our target is turning into:
+    Monad m -> m a -> t m a, without the forall.
+
+So something is wrong. We can't use 'coerce' to coerce a forall type to
+another forall type, because somethings wrong with the compiler that the outer
+forall type is being stripped away.
+
+I don't know how to fix this using coerce. To me it looks like a bug, or
+some discrepancy in when a type variable is considered free or bound.
+
+Proposed work around: use unsafeCoerce# instead of coerce.
+Because coerce doesn't work in enough situations.
+It doesn't work here, and it doesn't work for an unsafeCoerce from the user
+(assuming you could do that in smten).
+
+Problem IV
+----------
+The Reader local problem.
+
+class MonadReader r m | m -> r where
+    local :: (r -> r) -> m a -> m a
+
+instance MonadReader r (Reader r) where
+    local f m = Reader $ runReader m . f
+
+newtype Reader r a = Reader (r -> a)
+
+The implementation of 'local' is given as:
+
+local = cast a9
+
+Where a9 is the actual implementation, with the type:
+  forall r . (SmtenHS0 r) => Monad (Reader r) ->
+    (forall a (SmtenHS0 a) => (r -> r) -> (Reader r a) -> (r -> a))
+
+And local has type:
+  forall r . (SmtenHS0 r) => Monad (Reader r) ->
+    (forall a (SmtenHS0 a) => (r -> r) -> (Reader r a) -> (Reader r a)
+
+A perfectly good kind of coercion.
+
+The explicit types given for the cast are:
+  inside:  Monad (Reader r) -> 
+             (forall a . (r -> r) -> Reader r a -> (r -> a)
+  outside:  forall r . SmtenHS0 r => Monad (Reader r) ->
+              (forall a . (SmtenHS0 a) => (r -> r) -> Reader r a -> Reader r a 
+
+
+Notice: the outside gives forall a, and SmtenHS0 a.
+        the inside gives forall a, but not SmtenHS0 a.
+
+Now for the complaint:
+  Could not deduce SmtenHS0 a, which is needed in order to call a9.
+  That's because the inside doesn't give SmtenHS0 a.
+
+Proposals: 
+ A. Include SmtenHS0 on the inside.
+ B. Remove forall on the inside.
+
+Let me start with 'A'.
+
+It does not work. The inner 'a' is not linked to the outer 'a', which makes
+it ambiguous.
+
+Let me try to replicate and minimize this so I can play around more easily.
+
+Here's the real problem:
+  The 'a' on the outside is not being bound to the top level 'a', making it
+  ambiguous.
+
+That is, we produce an expression of type (forall a ....), then try to use it
+for a particular 'a', namely the one at the top level. But GHC doesn't know
+which one you want to use it for, so it is ambiguous.
+
+In order to fix this, we must remove the 'forall' from the outer signature.
+And we have to not nest 'forall' in the top level type signature.
+
+The strange thing is, before we said we want the 'forall' in the outer
+signature. The reason was: the names of variables may not match between the
+top level signature and the outer level signature!
+
+Ah. I see. It should really be:
+
+* Don't use forall in the inner.
+* Do use forall and SmtenHS in the outer.
+As we had. The problem was we had nested foralls:
+
+ (forall r . Foo r -> forall a ...)
+
+There were two problems with this:
+1. We only dropped the outer forall, and not also the inner forall.
+   Thus re-binding 'a', and introducing ambiguity
+2. We left the outer forall nested.
+   Thus meaning it wouldn't bind the inner 'a'.
+
+The fix was to basically remove nesting of the forall:
+  forall r . Foo r -> (forall a blah)
+
+converted to:
+  forall r a . Foo r -> blah
+
+Note: We only have to do the conversion for the 'outer' signature, and not
+also the top-level signature. I'm not sure why that's the case.
+
+Why can we justify the conversion?
+
+Tue May  6 20:26:31 EDT 2014
+
+Here's my proposal:
+
+Fact:
+  We cannot bound any variables between the outer type of a cast and the inner
+  type. Otherwise we will have ambiguous variables.
+
+Proposal:
+  Remove all foralls from the inner type.
+  Lift all foralls to the top of the outer type (so the bindings to the inner
+  type are made).
+
+I fear it won't work for truly higher rank things, like the ST monad.
+But we don't do any of that kind of thing in Smten at this point, so don't
+worry about that.
+
+This should be easy to try. Let me do so and see what goes wrong then.
+
+Tue May  6 20:59:05 EDT 2014
+
+That appears to have fixed that problem.
+

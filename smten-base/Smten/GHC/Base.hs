@@ -2,6 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 {-# LANGUAGE RankNTypes #-}
+
 module Smten.GHC.Base (
     Functor(..),
     Monad(..),

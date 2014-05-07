@@ -7,7 +7,7 @@ module Smten.Compiled.GHC.Types (
     Bool, __True, __False, isTrue#,
     Char(..), __C#, __applyToChar,
     Int(..), __I#, __applyToInt,
-    IO, __deNewTyIO,
+    IO(..), __deNewTyIO,
  ) where
 
 import GHC.Prim (RealWorld, State#, Int#)

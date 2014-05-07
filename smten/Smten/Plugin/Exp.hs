@@ -77,29 +77,40 @@ expCG e@(Case x v ty ms) = do
   let binds = [S.Val vnm Nothing arg]
   return $ S.LetE binds body
   
-        
--- newtype construction cast
-expCG (Cast x c)
-  | Just dcnm <- newtypeCast c = do
-      dcnm' <- qnameCG dcnm
-      x' <- expCG x
-      return $ S.AppE (S.VarE dcnm') x'
-
--- newtype de-construction cast
-expCG (Cast x c)
-  | Just dcnm <- denewtypeCast c = do
-      dcnm' <- qdenewtynmCG dcnm
-      x' <- expCG x
-      return $ S.AppE (S.VarE dcnm') x'
-
-expCG (Cast x c) = do
-  --lift $ errorMsg (text "Warning: Using unsafeCoerce for cast " <+> ppr x <+> showco c)
-  x' <- expCG x
+expCG e@(Cast x c) = do
   let (at, bt) = unPair $ coercionKind c
-  at' <- topTypeCG $ dropForAlls at
-  bt' <- topTypeCG bt
+  lift $ debugTraceMsg (text "CAST:" <+> ppr e
+                           $+$ text "FROM:" <+> ppr at
+                           $+$ text "TO  :" <+> ppr bt)
+  x' <- expCG x
+  at' <- castInnerTypeCG at
+  bt' <- castOuterTypeCG bt
   coerce <- usequalified "GHC.Prim" "unsafeCoerce#"
   return (S.SigE (S.AppE (S.VarE coerce) (S.SigE x' at')) bt')
+        
+---- newtype construction cast
+--expCG (Cast x c)
+--  | Just dcnm <- newtypeCast c = do
+--      dcnm' <- qnameCG dcnm
+--      x' <- expCG x
+--      return $ S.AppE (S.VarE dcnm') x'
+--
+---- newtype de-construction cast
+--expCG (Cast x c)
+--  | Just dcnm <- denewtypeCast c = do
+--      dcnm' <- qdenewtynmCG dcnm
+--      x' <- expCG x
+--      return $ S.AppE (S.VarE dcnm') x'
+--
+--expCG (Cast x c) = do
+--  --lift $ errorMsg (text "Warning: Using unsafeCoerce for cast " <+> ppr x <+> showco c)
+--  x' <- expCG x
+--  let (at, bt) = unPair $ coercionKind c
+--  at' <- topTypeCG $ dropForAlls at
+--  bt' <- topTypeCG bt
+--  coerce <- usequalified "GHC.Prim" "unsafeCoerce#"
+--  return (S.SigE (S.AppE (S.VarE coerce) (S.SigE x' at')) bt')
+
 expCG (Tick (ProfNote cc _ _) x) = do
    x' <- expCG x
    return (S.SccE (unpackFS $ cc_name cc) x')

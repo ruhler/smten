@@ -1,5 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -ddump-simpl #-}
+
 module Smten.Control.Monad.Trans (
     MonadTrans(..),
     MonadIO(..),
