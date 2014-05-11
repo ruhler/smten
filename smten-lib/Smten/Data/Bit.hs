@@ -11,7 +11,7 @@ module Smten.Data.Bit (
     ) where
 
 import Smten.Prelude
-import Smten.Smten.TypeLits
+import GHC.TypeLits
 import Smten.Data.Bit0
 import Smten.Data.Ix
 

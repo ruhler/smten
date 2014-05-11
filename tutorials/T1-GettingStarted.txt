@@ -15,7 +15,7 @@ SMT queries. The Smten front-end language is Haskell. For questions on Smten
 syntax, please consult a Haskell reference, such as the Haskell Report.
 
 The implementation of Smten is based on and requires the Glasgow Haskell
-Compiler (GHC), version 7.6, which can be downloaded from
+Compiler (GHC), version 7.8, which can be downloaded from
 http://www.haskell.org/ghc. It also requires cabal. If you haven't already
 done so, you should install GHC now.
 

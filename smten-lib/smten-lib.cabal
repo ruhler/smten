@@ -48,7 +48,6 @@ library
     Smten.Data.Map
     Smten.Debug.Trace0
     Smten.Debug.Trace
-    Smten.Smten.TypeLits
 
     Smten.Search
     Smten.Symbolic0
@@ -99,7 +98,6 @@ library
     Smten.Compiled.Smten.Data.Map
     Smten.Compiled.Smten.Debug.Trace0
     Smten.Compiled.Smten.Debug.Trace
-    Smten.Compiled.Smten.Smten.TypeLits
 
     Smten.Compiled.Smten.Search
     Smten.Compiled.Smten.Symbolic0

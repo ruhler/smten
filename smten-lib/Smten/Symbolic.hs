@@ -12,7 +12,7 @@ module Smten.Symbolic (
 
 import Smten.Prelude
 import Smten.Data.Bit
-import Smten.Smten.TypeLits
+import GHC.TypeLits
 import Smten.Symbolic0
 import Smten.Control.Monad
 

@@ -41,7 +41,7 @@ library
     Smten.Tests.STP
     Smten.Compiled.Smten.Tests.STP
 
-  build-depends: base ==4.6.*, hashtables ==1.0.*,
+  build-depends: base ==4.7.*, hashtables ==1.1.*,
                  smten ==@VERSIONMAJOR@.*, smten-base ==@VERSIONMAJOR@.*,
                  smten-lib ==@VERSIONMAJOR@.*
   extra-libraries: stp stdc++
@@ -50,7 +50,7 @@ library
 Test-Suite test-smten-stp
   type: exitcode-stdio-1.0
   main-is: tests.hs
-  build-depends: base ==4.6.*, hashtables ==1.0.*,
+  build-depends: base ==4.7.*, hashtables ==1.1.*,
                  smten-base ==@VERSIONMAJOR@.*, smten-lib ==@VERSIONMAJOR@.*
   extra-libraries: stp stdc++
 

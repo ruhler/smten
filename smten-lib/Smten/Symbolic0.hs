@@ -10,7 +10,7 @@ module Smten.Symbolic0 (
 
 import Smten.Prelude
 import Smten.Data.Bit
-import Smten.Smten.TypeLits
+import GHC.TypeLits
 import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}

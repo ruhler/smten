@@ -79,7 +79,8 @@ getbits s w e
 
 instance SolverAST STP STP_Expr STP_Expr STP_Expr where
   declare_bool s nm = do
-    st <- gceM s $ withvc s c_vc_boolType
+    -- Don't gc the result of c_vc_boolType, because stp does it for us.
+    st <- withvc s c_vc_boolType
     v <- withvc s $ \vc ->
            withCString (freenm nm) $ \cnm ->
              gceM s $ c_vc_varExpr vc cnm st

@@ -34,7 +34,7 @@ library
     Smten.Tests.MiniSat
     Smten.Compiled.Smten.Tests.MiniSat
 
-  build-depends: base ==4.6.*, hashtables ==1.0.*,
+  build-depends: base ==4.7.*, hashtables ==1.1.*,
                  smten ==@VERSIONMAJOR@.*, smten-base ==@VERSIONMAJOR@.*,
                  smten-lib ==@VERSIONMAJOR@.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
@@ -46,7 +46,7 @@ library
 test-suite test-smten-minisat
   type: exitcode-stdio-1.0
   main-is: tests.hs
-  build-depends: base ==4.6.*, hashtables ==1.0.*,
+  build-depends: base ==4.7.*, hashtables ==1.1.*,
                  smten-base ==@VERSIONMAJOR@.*, smten-lib ==@VERSIONMAJOR@.*
   include-dirs: minisat
   cc-options: -D __STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS

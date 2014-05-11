@@ -5,7 +5,7 @@ module Smten.Tests.Bit (tests, FunnyKind(..), my_bv_concat) where
 
 import Smten.Prelude
 import Smten.Tests.Test
-import Smten.Smten.TypeLits
+import GHC.TypeLits
 import Smten.Data.Bit
 
 bit3 :: Integer -> Bit 3
