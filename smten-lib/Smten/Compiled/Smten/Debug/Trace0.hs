@@ -3,7 +3,6 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Smten.Compiled.Smten.Debug.Trace0 (trace) where
 
-import qualified Prelude as P
 import qualified Debug.Trace as P
 
 import Smten.Runtime.SmtenHS

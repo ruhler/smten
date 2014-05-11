@@ -308,3 +308,270 @@ Tue May  6 20:59:05 EDT 2014
 
 That appears to have fixed that problem.
 
+Problem V
+---------
+Instance of MonadTrans for ReaderT.
+
+There is a type variable 'a' which is never bound.
+Why not? Why would it not be bound anywhere?
+
+From:  forall r m a . Monad m => m a -> r -> m a
+  to:  forall r . monadTrans (ReaderT r)
+
+The expression being coerced:
+  (\@r -> foo @ r) 
+    
+There is no way to bind the variables m and a in the outer scope.
+They don't exist then.
+
+I can use newtype cast detection to get rid of this problem I think.
+It just gives another one: the 'r's are mixed up.
+
+But I should be able to fix it without the newtype hack, right?
+
+Wed May  7 10:43:35 EDT 2014
+
+The code being generated for this is:
+
+Top Level Type: forall ra . (SmtenHS0 ra) => MonadTrans (ReaderT ra)
+Outer Type    : forall rx . SmtenHS0 rx => MonadTrans (ReaderT rx)
+Inner Type    : Monad mx -> mx ax -> rx -> mx ax
+Body Type     : forall m a . (SmtenHS1 m, SmtenHS0 a) => Monad m -> m a -> rx -> m a
+Body Expr: foo
+
+Complaint: can't deduce SmtenHS1 for m at inner type.
+
+Proposal: *do* generate forall and context for inner type, for all variables
+not declared at outer type.
+
+Of course, this may not actually work. I should verify manually first.
+
+No. It doesn't work. Because we have a bound variable between the inner and
+outer types, leading to an ambiguity.
+
+A. Could I put it on the outer type? Declare mx and ax then?
+
+No. Because 'mx' and 'ax' are not part of the top level type, so they are
+ambiguous.
+
+B. Use 'coerce'? or newtype coercion?
+
+I can't use 'coerce', for the same issue we had before when trying to use
+coerce.
+
+I can't use newtype coercion, because it's not a top level thing. The
+conversion is nested.
+
+C. ???
+I don't know how to solve this problem.
+
+Thu May  8 14:46:52 EDT 2014
+
+It looks like we can work around the problem if we do eta expansion.
+
+Instead of: (coerce foo), with some type signature, we have:
+    (coerce (\a b -> coerce (foo a b)))
+
+But note: the outer coerce is the newtype constructor (needed to get the
+context for 'a' and 'b' in scope), and the inner coerce is unsafeCoerce#.
+
+Here's an idea: what if we do coercion piece by piece based on the "Coercion"
+given? Don't try to do it all at once at the top level. Will that work out?
+
+Let's start over with this approach and see how far we get.
+
+AxiomInstCo
+-----------
+From: Read a
+To:   (Int -> ReadS a)
+
+Arising from a single-method dictionary.
+In essence, Read a is a newtype for (Int -> ReadS a).
+
+AxiomInstCo (CoAxiom Branched) BranchIndex [Coercion]
+
+CoAxiom's are used for type families and newtypes.
+
+The list of coercion shows how argument types are coerced.
+
+Let me try using 'coerce' for this case, and see if it works out.
+
+SymCo
+-----
+From: Int -> ReadS Integer
+To:   Read Integer
+
+Looks like the same case as before, only flipped, and with a concrete argument
+type instead of variable.
+
+SymCo is symmetric. Given a coercion from A to B, SymCo says we can do a
+conversion from B to A.
+
+I think this approach is not working so well. I don't know how to do decompose
+a coercion into different parts.
+
+What about this. Let me use 'coerce' by default, then try to make things
+better if they don't work then?
+
+That is, start all over again with how I do coercions, but this time keep an
+eye on the coercion itself to try and fix things, instead of just appealing to
+the types?
+
+Or, should I go back to what was working before, then see what the failing
+cast coercion looks like and try to fix it based on that? Yes, that's probably
+the best approach.
+
+
+The coercion for the failing MonadTransReaderT case:
+
+forall r .
+  (forall m a .
+    Monad (reflexive)
+    ->  m a (reflexive)
+    -> ReaderT r m a (NT symetric to (r -> m a)))
+   ; NT Symetric to MonadTrans
+
+The trouble seems to come from the ForAll conversion, which does conversion of
+polymorphic types.
+
+But none of this suggests how to properly do the conversion.
+
+Perhaps I just need a special case for dictionary newtype conversions?
+    
+In fact, looking back, all the real problems I have had with coercions are
+from these special kinds of single-method class newtype conversions.
+
+One thing is for sure, I must use the newtype constructor for this case,
+because that's the only way I can get the SmtenHS* in context.
+
+Here is the proposal:
+* Anytime I see a Foo to NT Foo conversion for some expression x, 
+  generate the code:
+    NT (\a b ... -> unsafeCoerce# (x a b ...))
+
+Where there is an argument a, b, ... for each argument to 'x'.
+
+Will that work out? I suppose we won't know until we try.
+
+Fri May  9 18:37:35 EDT 2014
+
+Newtype cast source type:
+  forall r m a . Monad m => m a -> r -> m a
+
+Notice it is a function. We want to detect that and add ... what?
+The problem here is, we only want to treat this as 2 arguments: Monad and m a,
+not 'r' too.
+
+Let me check if it's a newtype.
+Then let me look at the type from the newtype, not the actual object.
+Let me look at whether it is a forall type.
+If so... let me, for now, just say: TODO. See what all shows up.
+
+Fri May  9 20:37:29 EDT 2014
+
+I can isolate when this specific case occurs.
+What I haven't figured out how to do is make it work.
+What type signatures do we need to put where?
+Apparently my minimized example is to minimal to help me out with that.
+
+Here's the problem:
+ * We need to link the type 'r' used in the body with the top level.
+But if we give the type for 'r', we also have to give it for 'm' and 'a',
+which is problematic.
+
+Sun May 11 12:05:32 EDT 2014
+
+Here's how to give a type for 'r'.
+Eta expand the body again, but this time inside of the coerce. Then explicitly
+type the extra argument the way it should be typed.
+
+Note we can introduce types 'm' and 'a' explicitly using forall in a type
+signature around the argument to the newtype constructor.
+
+In summary, I would say the main points are:
+ 1. You must use the newtype constructor in order to get the context
+    from the newtype constructor. coerce and unsafeCoerce# will not have
+    that context.
+ 2. You may put a forall type around the argument to the newtype constructor
+    in order to name the variables in the context.
+ 3. You do *not* need to do eta expansion. If the type variables are in scope,
+    then everything should work fine.
+ 4. You must have the proper argument type to the newtype constructor.
+    You may need additional casts to get this.
+
+So now I should be able to say how we can translate this specific case
+correctly. Once I figure that out, we can start to ask if there is a more
+general translation we can do to correctly deal with these things.
+The key challenge is linking type variables properly.
+
+Here's what we are dealing with:
+
+Top Level Type: forall ra . MonadTrans (ReaderT ra)
+Outer Type:     forall rx . MonadTrans (ReaderT rx)
+Inner Type    : forall rx mx ax . Monad mx -> mx ax -> rx -> mx ax
+Body Type     : forall ma aa . Monad ma -> ma aa -> rx -> ma aa
+
+Here's what I want to generate:
+
+Top Type: forall ra . SmtenHS0 ra => MonadTrans (ReaderT ra)
+Outer Type: forall rx . SmtenHS0 rx => MonadTrans (ReaderT rx)
+Newtype Arg: forall mx ax . SmtenHS1 mx, SmtenHS0 ax => Monad mx -> mx ax -> ReaderT rx mx ax
+Inner Type: Monad mx -> mx ax -> rx -> mx ax
+Body Type: forall ma aa. SmtenHS ma aa => Monad ma -> ma aa -> rx -> ma aa 
+
+Let me verify this actually works.
+
+Yes. This works.
+
+What do we need to do to generate this?
+Top Type: we already have.
+Outer Type: treat as a topTypeCG
+Newtype Arg: what is the source?
+  We need to figure out the source of this type. Then we can ask how to
+  generate code for it.
+  The type is: The argument type to the newtype constructor specialized
+  for this instance: (ReaderT rx).
+  Hopefully we'll get: 
+    forall mx ax . Monad mx -> mx ax -> ReaderT rx ax
+  Then use topTypeCG
+Inner Type: treat as an innerTypeCG - with no foralls. Or just drop foralls.
+Body Type: we already have
+
+What to generate for the entire thing:
+
+SigE (AppE NewTypeCon (SigE (AppE UnsafeCoerce (SigE body (Inner Type)) (Newtype Type)) (Outer Type)
+
+The last thing I need to implement this is figure out how to get at the
+newtype arg. Let me look at that now.
+
+I get the Type Constructor from the type: tycon: MonadTrans
+I get the data constructor for that type: dc:    DGMonadTrans
+I get the argument type: argty: forall m a . Monad m -> m a -> t m a
+
+But that's more general than I wanted.
+
+Sun May 11 13:40:32 EDT 2014
+
+I'm very close now. The trouble is, we aren't using the right type variables
+for the newtype arg. I need to choose type variables which bound the variables
+in the inner type.
+
+Can I figure this out from the coercion given?
+
+We have a transitive cast.
+
+That's interesting. Maybe I just need to recognize transitive casts, and
+do them in steps? Wouldn't the inner type of that transitive cast give me
+exactly the type I'm looking for?
+
+Sun May 11 15:29:54 EDT 2014
+
+I want to try again doing the cast based on breaking down the coercion into
+parts. See how far that gets me.
+
+We'll have two: castCG and symcastCG
+
+Sun May 11 16:29:54 EDT 2014
+
+That did it! It compiles now. Hurray!
+

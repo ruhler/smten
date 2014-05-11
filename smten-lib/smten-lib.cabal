@@ -138,7 +138,6 @@ library
     Smten.Runtime.Yices2.AST
     Smten.Runtime.Yices2.FFI
     Smten.Runtime.Z3.FFI
-    Smten.Smten.TypeLitsTH
     Smten.Tests.Yices2
     Smten.Tests.Z3
     Smten.Compiled.Smten.Tests.Yices2

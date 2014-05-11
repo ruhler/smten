@@ -76,40 +76,8 @@ expCG e@(Case x v ty ms) = do
   body <- mkBody
   let binds = [S.Val vnm Nothing arg]
   return $ S.LetE binds body
-  
-expCG e@(Cast x c) = do
-  let (at, bt) = unPair $ coercionKind c
-  lift $ debugTraceMsg (text "CAST:" <+> ppr e
-                           $+$ text "FROM:" <+> ppr at
-                           $+$ text "TO  :" <+> ppr bt)
-  x' <- expCG x
-  at' <- castInnerTypeCG at
-  bt' <- castOuterTypeCG bt
-  coerce <- usequalified "GHC.Prim" "unsafeCoerce#"
-  return (S.SigE (S.AppE (S.VarE coerce) (S.SigE x' at')) bt')
-        
----- newtype construction cast
---expCG (Cast x c)
---  | Just dcnm <- newtypeCast c = do
---      dcnm' <- qnameCG dcnm
---      x' <- expCG x
---      return $ S.AppE (S.VarE dcnm') x'
---
----- newtype de-construction cast
---expCG (Cast x c)
---  | Just dcnm <- denewtypeCast c = do
---      dcnm' <- qdenewtynmCG dcnm
---      x' <- expCG x
---      return $ S.AppE (S.VarE dcnm') x'
---
---expCG (Cast x c) = do
---  --lift $ errorMsg (text "Warning: Using unsafeCoerce for cast " <+> ppr x <+> showco c)
---  x' <- expCG x
---  let (at, bt) = unPair $ coercionKind c
---  at' <- topTypeCG $ dropForAlls at
---  bt' <- topTypeCG bt
---  coerce <- usequalified "GHC.Prim" "unsafeCoerce#"
---  return (S.SigE (S.AppE (S.VarE coerce) (S.SigE x' at')) bt')
+
+expCG (Cast x c) = castCG True x c
 
 expCG (Tick (ProfNote cc _ _) x) = do
    x' <- expCG x
@@ -119,28 +87,56 @@ expCG x = do
   lift $ fatalErrorMsg (text "TODO: expCG " <+> ppr x)
   return (S.VarE "???")
 
--- Test if the coercion looks like a newtype cast.
--- If so, returns the name of the data constructor to use for the conversion.
-newtypeCast :: Coercion -> Maybe Name
-newtypeCast c = 
-  let rhs = dropForAlls . snd . unPair $ coercionKind c
-  in case splitTyConApp_maybe rhs of
-        Just (tycon, _) | isNewTyCon tycon ->
-           let [dcon] = tyConDataCons tycon
-           in Just $ dataConName dcon
-        _ -> Nothing
-        
--- Test if the coercion looks like a de-newtype cast.
--- If so, returns the name of the data constructor to use for the de-conversion.
-denewtypeCast :: Coercion -> Maybe Name
-denewtypeCast c = 
-  let lhs = dropForAlls . fst . unPair $ coercionKind c
-  in case splitTyConApp_maybe lhs of
-        Just (tycon, _) | isNewTyCon tycon ->
-           let [dcon] = tyConDataCons tycon
-           in Just $ dataConName dcon
-        _ -> Nothing
+-- castCG p x c
+--   p - the polarity of the cast.
+--     True means: go from fst of coercionKind to snd of coercionKind
+--     False means: go from snd of coercionKind to fst of coercionKind
+castCG :: Bool -> CoreExpr -> Coercion -> CG S.Exp
+castCG p x c =
+  case c of
+    AxiomInstCo {} -> do
+      let lhs = dropForAlls . fst . unPair $ coercionKind c
+      case splitTyConApp_maybe lhs of
+         Just (tycon, _) | isNewTyCon tycon ->
+            case p of
+              True -> do
+                -- This is a de-newtype cast: from NT Foo to Foo
+                let [dc] = tyConDataCons tycon
+                denew <- S.VarE <$> qdenewtynmCG (dataConName dc)
+                x' <- expCG x
+                return $ S.AppE denew x'
+              False -> do
+                -- This is a newtype cast: from Foo to NT Foo
+                let [dc] = tyConDataCons tycon
+                new <- S.VarE <$> qnameCG (dataConName dc)
+                x' <- expCG x
+                return $ S.AppE new x'
+         _ -> unknownCastCG p x c
+    ForAllCo _ c' -> do
+      let ty = (if p then snd else fst) (unPair $ coercionKind c)
+      ty' <- topTypeCG ty
+      x' <- castCG p x c'
+      return $ S.SigE x' ty'
+    TransCo c1 c2 ->
+      case p of
+        True -> castCG True (Cast x c1) c2
+        False -> castCG False (Cast x (SymCo c2)) c1
+    SymCo c' -> castCG (not p) x c'
+    _ -> unknownCastCG p x c
 
+-- TODO: Ideally we should be able to handle every cast, and shouldn't
+-- have to rely on this.
+unknownCastCG :: Bool -> CoreExpr -> Coercion -> CG S.Exp
+unknownCastCG p x c = do
+  lift $ debugTraceMsg (text "unknownCastCG: " <+> ppr (Cast x c))
+  let (at, bt) = unPair $ coercionKind c
+      (st, dt) = if p then (at, bt) else (bt, at)
+  x' <- expCG x
+  st' <- castInnerTypeCG st
+  dt' <- castOuterTypeCG dt
+  coerce <- usequalified "GHC.Prim" "unsafeCoerce#"
+  return (S.SigE (S.AppE (S.VarE coerce) (S.SigE x' st')) dt')
+   
 
 -- Empty case expressions:
 --   case x of {}

@@ -2,7 +2,7 @@
 {-# LANGUAGE DataKinds, EmptyDataDecls #-}
 {-# LANGUAGE TypeFamilies #-}
 module Smten.Compiled.GHC.TypeLits (
-    KnownNat, DGKnownNat(..), knownNatVal, Nat, type (+),
+    KnownNat(..), SNat(..), knownNatVal, Nat, type (+),
     ) where
 
 import GHC.TypeLits (Nat, type (+))
@@ -10,18 +10,16 @@ import GHC.TypeLits (Nat, type (+))
 import Smten.Runtime.Formula.IntegerF
 import Smten.Runtime.Formula.Finite
 
-type family KnownNat (b :: Nat)
-type instance KnownNat (b :: Nat) = DGKnownNat
+newtype SNat (x :: Nat) = SNat IntegerF
+newtype KnownNat (x :: Nat) = DGKnownNat (SNat x)
 
-newtype DGKnownNat = DGKnownNat IntegerF
-
-knownNatVal :: DGKnownNat -> Integer
-knownNatVal (DGKnownNat x) =
+knownNatVal :: KnownNat x -> Integer
+knownNatVal (DGKnownNat (SNat x)) =
   case deIntegerF x of
      (TrueFF, IntegerFF v, _) -> v
 
-instance Num DGKnownNat where
-    fromInteger = DGKnownNat . fromInteger
+instance Num (KnownNat n) where
+    fromInteger = DGKnownNat . SNat . fromInteger
     (+) = error "No (+) for KnownNat"
     (-) = error "No (-) for KnownNat"
     (*) = error "No (*) for KnownNat"
