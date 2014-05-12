@@ -134,7 +134,7 @@ unknownCastCG p x c = do
   x' <- expCG x
   st' <- castInnerTypeCG st
   dt' <- castOuterTypeCG dt
-  coerce <- usequalified "GHC.Prim" "unsafeCoerce#"
+  coerce <- usequalified "Data.Coerce" "coerce"
   return (S.SigE (S.AppE (S.VarE coerce) (S.SigE x' st')) dt')
    
 
