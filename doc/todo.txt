@@ -3,10 +3,6 @@ Approx::
     Why?
 * Have timeout for select (?)
 
-Release to Public::
-* Make a new github release.
-* Then update the tutorials
-
 Prelude::
 * make it so people can import Prelude instead of Smten.Prelude
 
@@ -25,7 +21,6 @@ Cleanup::
     - by changing model to be grouped by type
 * Switch all solvers to use getModel instead of getFooValue
 * Cache vars in Build traversal, so that 'var_foo' methods can be removed?
-* Use GHC.Prim for primitive char equality and other ops.
 * Understand the interface between Smten.Prelude and GHC.Prelude, and clean
   it up, because I have a feely things are getting sloppy there.
   We have the following kinds of things:
@@ -43,6 +38,8 @@ Cleanup::
         Op_Type   for a constructor.
     But note: the _Type is only needed if it is not clear from op.
 * (let {} in x  ====>  x)    in haskell output syntax 
+* Generally produce prettier haskell output.
+  It will make it easier to read when I need to for debugging.
 * Does smten-base.cabal really need to expose all modules?
 * Why is bv_extract primitive? Why not just shift right and truncate?
 
@@ -50,6 +47,7 @@ Smten Executable::
 * Generate code into temp directory instead of current directory?
 * Remove generated code after generating it?
 * Add a flag for generating a cabal package?
+* Add a flag for context stack, or a general pass-through to GHC.
 
 Performance::
 * switch to using getModel method for all solvers
@@ -67,6 +65,7 @@ Performance::
         assert ((if x < 3 then x else x) == x)
     Will require 200 comparisons, half of which are duplicated.
     See SMT.Opt.IntShare test, which captures this performance bug.
+    Note: This should only be a problem for Char now.
 
 * Concrete Performance
    ** Performance is very sensitive to generation of case expressions for
