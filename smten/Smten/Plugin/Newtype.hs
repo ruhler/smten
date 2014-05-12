@@ -31,7 +31,7 @@ newtypeD t constr = do
         mkcon d = do
           nm <- nameCG (dataConName d)
           fnm <- denewtynmCG (dataConName d)
-          [ty] <- mapM topTypeCG (dataConOrigArgTys d)
+          [ty] <- mapM typeCG (dataConOrigArgTys d)
           return $ S.RecC nm [S.RecField fnm ty]
 
     nm' <- nameCG (tyConName t)

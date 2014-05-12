@@ -19,7 +19,7 @@ classCG t cls dc
       let (vs, mt) = splitForAllTys $ varType fld
           vs' = filter (flip notElem (tyConTyVars t)) vs
           mt' = snd $ splitFunTy mt
-      ft <- topTypeCG $ mkForAllTys vs' mt'
+      ft <- typeCG $ mkForAllTys vs' mt'
       dnm <- denewtynmCG $ dataConName dc
       let denew = S.RecField dnm ft
 
@@ -37,7 +37,7 @@ classCG t cls dc
             let (vs, mt) = splitForAllTys $ varType x
                 vs' = filter (flip notElem (tyConTyVars t)) vs
                 mt' = snd $ splitFunTy mt
-            topTypeCG $ mkForAllTys vs' mt'
+            typeCG $ mkForAllTys vs' mt'
       fields <- mapM mkfield (classAllSelIds cls)
       cn <- nameCG $ dataConName dc
       t' <- nameCG $ tyConName t

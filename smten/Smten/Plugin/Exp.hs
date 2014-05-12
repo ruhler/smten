@@ -24,7 +24,7 @@ bindCG b@(NonRec var body) = do
   --lift $ putMsg (ppr b)
   body' <- expCG body
   nm <- nameCG $ varName var
-  ty' <- topTypeCG $ varType var
+  ty' <- typeCG $ varType var
   return [S.Val nm (Just ty') body']
 
 expCG :: CoreExpr -> CG S.Exp
@@ -35,7 +35,7 @@ expCG (Lit l) = return (S.LitE (litCG l))
 expCG x@(App a t@(Type {})) = do
   let tya = exprType a
       tyb = applyTypeToArg tya t
-  tyb' <- topTypeCG tyb
+  tyb' <- typeCG tyb
   a' <- expCG a
   return (S.SigE a' tyb')
 expCG (App a b) = do
@@ -48,7 +48,7 @@ expCG (Let x body) = do
     return $ S.LetE x' body'
 expCG x@(Lam b body)
  | isTyVar b = do
-    ty <- topTypeCG $ exprType x
+    ty <- typeCG $ exprType x
     body' <- expCG body
     return $ S.SigE body' ty
  | otherwise = do
@@ -113,7 +113,7 @@ castCG p x c =
          _ -> unknownCastCG p x c
     ForAllCo _ c' -> do
       let ty = (if p then snd else fst) (unPair $ coercionKind c)
-      ty' <- topTypeCG ty
+      ty' <- typeCG ty
       x' <- castCG p x c'
       return $ S.SigE x' ty'
     TransCo c1 c2 ->
@@ -131,8 +131,8 @@ unknownCastCG p x c = do
   let (at, bt) = unPair $ coercionKind c
       (st, dt) = if p then (at, bt) else (bt, at)
   x' <- expCG x
-  st' <- castInnerTypeCG st
-  dt' <- castOuterTypeCG dt
+  st' <- typeCG st
+  dt' <- typeCG dt
   coerce <- usequalified "GHC.Prim" "unsafeCoerce#"
   return (S.SigE (S.AppE (S.VarE coerce) (S.SigE x' st')) dt')
    

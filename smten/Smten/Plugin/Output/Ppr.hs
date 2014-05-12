@@ -102,6 +102,10 @@ deTupleNm x =
   in if istpl then Just (length x - 1) else Nothing
 
 instance Ppr Type where
+    -- Note: we need to pretty print function types as: (a -> b),
+    --  and not ((->) a b), because GHC won't accept the later if
+    --  a is unlifted.
+    ppr (ConAppT "(->)" [a, b]) = parens (ppr a <+> ppr "->" <+> ppr b)
     ppr (ConAppT nm tys)
       | Just n <- deTupleNm nm, length tys == n = tupled (map ppr tys)
       | otherwise = parens (hsep (ppr nm : map ppr tys))

@@ -145,7 +145,7 @@ mkConD tynm cs dc = do
   ff <- S.VarE <$> usequalified "Smten.Runtime.Formula" "falseF"
   xx <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "unreachable"
   tynm' <- S.VarE <$> qtynameCG tynm
-  ty <- topTypeCG $ dataConUserType dc
+  ty <- typeCG $ dataConUserType dc
   let mkcon :: DataCon -> CG [S.Field]
       mkcon d
         | d == dc = do
