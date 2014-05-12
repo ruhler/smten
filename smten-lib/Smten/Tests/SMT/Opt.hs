@@ -72,7 +72,6 @@ smttests = do
 tests :: IO ()
 tests = runtest (SMTTestCfg smten [
             "SMT.Opt.InfiniteFormula",
-            "SMT.Opt.PlusBottomBool",
-            "SMT.Opt.IntShare"
+            "SMT.Opt.PlusBottomBool"
             ] []) smttests
 
