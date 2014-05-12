@@ -85,6 +85,7 @@ instance Foo Bool where
     foo _ = 1
 
 newtype NewBool = NewBool Bool
+  deriving (Eq)
 
 newtype NewMaybe a = NewMaybe (Maybe a)
 
@@ -469,6 +470,7 @@ fnewfun n@(NewFun f) = f True n
 testnewtype :: IO ()
 testnewtype = do
     test "newtype0" (fnewbool (NewBool True) == 1)
+    test "newtype0eq" (NewBool True == NewBool True)
     test "newtype1" (fnewmaybe (NewMaybe (Just False)) == 2)
     test "newtype2" (fnewfun (NewFun (\p _ -> if p then 1 else 2)) == 1)
 
