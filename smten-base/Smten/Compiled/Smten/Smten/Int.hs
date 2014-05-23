@@ -2,6 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 module Smten.Compiled.Smten.Smten.Int (
     Int(..), __I#, __applyToInt,
   ) where

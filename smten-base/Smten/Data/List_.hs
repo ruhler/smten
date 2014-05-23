@@ -18,6 +18,8 @@ module Smten.Data.List_ (
     lines, words, unlines, unwords,
     nub,
     sort, sortBy,
+    genericLength, genericTake, genericDrop, genericSplitAt,
+    genericIndex, genericReplicate,
  ) where
 
 -- Note: this module is hardwired in the smten plugin to generate code to
@@ -28,6 +30,7 @@ import GHC.List
 
 import GHC.Classes (Ord(..))
 import GHC.Types(Ordering(..))
+import GHC.Real
 import Smten.Smten.Base
 import Smten.Data.Bool
 import qualified Smten.Data.Char as Char
@@ -57,6 +60,52 @@ maximum xs = foldl1 max xs
 minimum                 :: (Ord a) => [a] -> a
 minimum []              =  errorEmptyList "minimum"
 minimum xs              =  foldl1 min xs
+
+
+-- | The 'genericLength' function is an overloaded version of 'length'.  In
+-- particular, instead of returning an 'Int', it returns any type which is
+-- an instance of 'Num'.  It is, however, less efficient than 'length'.
+genericLength           :: (Num i) => [b] -> i
+genericLength []        =  0
+genericLength (_:l)     =  1 + genericLength l
+
+-- | The 'genericTake' function is an overloaded version of 'take', which
+-- accepts any 'Integral' value as the number of elements to take.
+genericTake             :: (Integral i) => i -> [a] -> [a]
+genericTake n _ | n <= 0 = []
+genericTake _ []        =  []
+genericTake n (x:xs)    =  x : genericTake (n-1) xs
+
+-- | The 'genericDrop' function is an overloaded version of 'drop', which
+-- accepts any 'Integral' value as the number of elements to drop.
+genericDrop             :: (Integral i) => i -> [a] -> [a]
+genericDrop n xs | n <= 0 = xs
+genericDrop _ []        =  []
+genericDrop n (_:xs)    =  genericDrop (n-1) xs
+
+
+-- | The 'genericSplitAt' function is an overloaded version of 'splitAt', which
+-- accepts any 'Integral' value as the position at which to split.
+genericSplitAt          :: (Integral i) => i -> [b] -> ([b],[b])
+genericSplitAt n xs | n <= 0 =  ([],xs)
+genericSplitAt _ []     =  ([],[])
+genericSplitAt n (x:xs) =  (x:xs',xs'') where
+    (xs',xs'') = genericSplitAt (n-1) xs
+
+-- | The 'genericIndex' function is an overloaded version of '!!', which
+-- accepts any 'Integral' value as the index.
+genericIndex :: (Integral a) => [b] -> a -> b
+genericIndex (x:_)  0 = x
+genericIndex (_:xs) n
+ | n > 0     = genericIndex xs (n-1)
+ | otherwise = error "List.genericIndex: negative argument."
+genericIndex _ _      = error "List.genericIndex: index too large."
+
+-- | The 'genericReplicate' function is an overloaded version of 'replicate',
+-- which accepts any 'Integral' value as the number of repetitions to make.
+genericReplicate        :: (Integral i) => i -> a -> [a]
+genericReplicate n x    =  genericTake n (repeat x)
+
 
 
 tails                   :: [a] -> [[a]]
