@@ -30,7 +30,6 @@ library
     Smten.Data.Either
     Smten.Data.Eq
     Smten.Data.EqInteger
-    Smten.Data.Integral0
     Smten.Data.List
     Smten.Data.Maybe
     Smten.Data.Num0
@@ -92,7 +91,6 @@ library
     Smten.Compiled.Smten.Data.Function
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.EqInteger
-    Smten.Compiled.Smten.Data.Integral0
     Smten.Compiled.Smten.Data.List
     Smten.Compiled.Smten.Data.Num0
     Smten.Compiled.Smten.Data.Read

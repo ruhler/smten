@@ -10,9 +10,6 @@ module Smten.GHC.Num (
 -- Smten.Compiled.GHC.Num instead of Smten.Compiled.Smten.GHC.Num
 
 import GHC.Base
-import GHC.Prim
-import GHC.Classes
-import GHC.Types
 import Smten.Smten.Base
 import Smten.Data.Num0
 import Smten.GHC.Integer.Type

@@ -1,4 +1,5 @@
 
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 {-# LANGUAGE RankNTypes #-}
@@ -9,15 +10,18 @@ module Smten.GHC.Base (
     otherwise,
     unsafeChr, ord,
     String, eqString,
+    minInt, maxInt,
     id, (.), const, flip, ($),
+    quotInt, remInt, divInt, modInt,
+    quotRemInt, divModInt,
     ) where
 
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Base instead of Smten.Compiled.Smten.GHC.Base
 
-import GHC.Prim (RealWorld, State#, ord#, chr#)
+import GHC.Prim
 import GHC.Types (Char(..), Int(..), Bool(..), IO(..))
-import GHC.Classes ((&&), (==))
+import GHC.Classes ((||), (&&), (==))
 import GHC.Err (error)
 
 infixr 9 .
@@ -88,6 +92,11 @@ eqString [] [] = True
 eqString (c1:cs1) (c2:cs2) = c1 == c2 && cs1 `eqString` cs2
 eqString _ _ = False
 
+maxInt, minInt :: Int
+minInt  = I# (-0x8000000000000000#)
+maxInt  = I# 0x7FFFFFFFFFFFFFFF#
+
+
 id                      :: a -> a
 id x                    =  x
 
@@ -127,3 +136,91 @@ bindIO (IO m) k = IO $ \ s -> case m s of (# new_s, a #) -> unIO (k a) new_s
 unIO :: IO a -> (State# RealWorld -> (# State# RealWorld, a #))
 unIO (IO a) = a
 
+
+{-# INLINE quotInt #-}
+{-# INLINE remInt #-}
+
+quotInt, remInt, divInt, modInt :: Int -> Int -> Int
+(I# x) `quotInt`  (I# y) = I# (x `quotInt#` y)
+(I# x) `remInt`   (I# y) = I# (x `remInt#`  y)
+(I# x) `divInt`   (I# y) = I# (x `divInt#`  y)
+(I# x) `modInt`   (I# y) = I# (x `modInt#`  y)
+
+quotRemInt :: Int -> Int -> (Int, Int)
+(I# x) `quotRemInt` (I# y) = case x `quotRemInt#` y of
+                             (# q, r #) ->
+                                 (I# q, I# r)
+
+divModInt :: Int -> Int -> (Int, Int)
+(I# x) `divModInt` (I# y) = case x `divModInt#` y of
+                            (# q, r #) -> (I# q, I# r)
+
+divModInt# :: Int# -> Int# -> (# Int#, Int# #)
+x# `divModInt#` y#
+ | (x# ># 0#) && (y# <# 0#) = case (x# -# 1#) `quotRemInt#` y# of
+                              (# q, r #) -> (# q -# 1#, r +# y# +# 1# #)
+ | (x# <# 0#) && (y# ># 0#) = case (x# +# 1#) `quotRemInt#` y# of
+                              (# q, r #) -> (# q -# 1#, r +# y# -# 1# #)
+ | otherwise                = x# `quotRemInt#` y#
+
+{-# RULES
+"x# +# 0#" forall x#. x# +# 0# = x#
+"0# +# x#" forall x#. 0# +# x# = x#
+"x# -# 0#" forall x#. x# -# 0# = x#
+"x# -# x#" forall x#. x# -# x# = 0#
+"x# *# 0#" forall x#. x# *# 0# = 0#
+"0# *# x#" forall x#. 0# *# x# = 0#
+"x# *# 1#" forall x#. x# *# 1# = x#
+"1# *# x#" forall x#. 1# *# x# = x#
+  #-}
+
+{-# RULES
+"x# ># x#"  forall x#. x# >#  x# = False
+"x# >=# x#" forall x#. x# >=# x# = True
+"x# ==# x#" forall x#. x# ==# x# = True
+"x# /=# x#" forall x#. x# /=# x# = False
+"x# <# x#"  forall x#. x# <#  x# = False
+"x# <=# x#" forall x#. x# <=# x# = True
+  #-}
+
+{-# RULES
+"plusFloat x 0.0"   forall x#. plusFloat#  x#   0.0# = x#
+"plusFloat 0.0 x"   forall x#. plusFloat#  0.0# x#   = x#
+"minusFloat x 0.0"  forall x#. minusFloat# x#   0.0# = x#
+"timesFloat x 1.0"  forall x#. timesFloat# x#   1.0# = x#
+"timesFloat 1.0 x"  forall x#. timesFloat# 1.0# x#   = x#
+"divideFloat x 1.0" forall x#. divideFloat# x#  1.0# = x#
+  #-}
+
+{-# RULES
+"plusDouble x 0.0"   forall x#. (+##) x#    0.0## = x#
+"plusDouble 0.0 x"   forall x#. (+##) 0.0## x#    = x#
+"minusDouble x 0.0"  forall x#. (-##) x#    0.0## = x#
+"timesDouble x 1.0"  forall x#. (*##) x#    1.0## = x#
+"timesDouble 1.0 x"  forall x#. (*##) 1.0## x#    = x#
+"divideDouble x 1.0" forall x#. (/##) x#    1.0## = x#
+  #-}
+
+------------------------------------------------------------------------
+-- TODO: divInt# and modInt# are supposed to be in GHC.Classes, but that
+-- causes problems. It's okay to put them here because they get inlined away.
+
+divInt# :: Int# -> Int# -> Int#
+x# `divInt#` y#
+        -- Be careful NOT to overflow if we do any additional arithmetic
+        -- on the arguments...  the following  previous version of this
+        -- code has problems with overflow:
+--    | (x# ># 0#) && (y# <# 0#) = ((x# -# y#) -# 1#) `quotInt#` y#
+--    | (x# <# 0#) && (y# ># 0#) = ((x# -# y#) +# 1#) `quotInt#` y#
+    =      if (x# ># 0#) && (y# <# 0#) then ((x# -# 1#) `quotInt#` y#) -# 1#
+      else if (x# <# 0#) && (y# ># 0#) then ((x# +# 1#) `quotInt#` y#) -# 1#
+      else x# `quotInt#` y#
+
+modInt# :: Int# -> Int# -> Int#
+x# `modInt#` y#
+    = if (x# ># 0#) && (y# <# 0#) ||
+         (x# <# 0#) && (y# ># 0#)
+      then if r# /=# 0# then r# +# y# else 0#
+      else r#
+    where
+    !r# = x# `remInt#` y#

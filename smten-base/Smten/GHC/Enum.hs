@@ -10,6 +10,9 @@ import GHC.Base
 import GHC.Char
 import GHC.Num
 
+class Bounded a where
+    minBound, maxBound :: a
+
 class Enum a where
     succ :: a -> a
     pred :: a -> a
@@ -20,6 +23,22 @@ class Enum a where
     enumFromThen :: a -> a -> [a]
     enumFromTo :: a -> a -> [a]
     enumFromThenTo :: a -> a -> a -> [a]
+
+instance Bounded () where
+    minBound = ()
+    maxBound = ()
+
+instance Bounded Bool where
+    minBound = False
+    maxBound = True
+
+instance Bounded Ordering where
+    minBound = LT
+    maxBound = GT
+
+instance Bounded Int where
+    minBound = minInt
+    maxBound = maxInt
 
 instance Enum Int where
     succ x = x + 1

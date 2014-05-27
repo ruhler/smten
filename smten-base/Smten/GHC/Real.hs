@@ -8,13 +8,12 @@ module Smten.GHC.Real (
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Real instead of Smten.Compiled.Smten.GHC.Real
 
-import GHC.Classes
+import GHC.Base
 import GHC.Enum
+import GHC.Err
 import Smten.GHC.Integer.Type
 import Smten.Smten.Integer
 import GHC.Num (Num(..))
-import GHC.Types
-import Smten.Data.Integral0
 
 data Ratio a = a :% a deriving (Eq)
 type Rational = Ratio Integer
@@ -48,7 +47,43 @@ instance Real Int where
 
 instance Integral Int where
     toInteger (I# i) = smallInteger i
-    quotRem a b = (quot a b, rem a b)
-    quot = int_quot
-    rem = int_rem
 
+    a `quot` b
+     | b == 0                     = divZeroError
+     | b == (-1) && a == minBound = overflowError -- Note [Order of tests]
+                                                  -- in GHC.Int
+     | otherwise                  =  a `quotInt` b
+
+    a `rem` b
+     | b == 0                     = divZeroError
+       -- The quotRem CPU instruction fails for minBound `quotRem` -1,
+       -- but minBound `rem` -1 is well-defined (0). We therefore
+       -- special-case it.
+     | b == (-1)                  = 0
+     | otherwise                  =  a `remInt` b
+
+    a `div` b
+     | b == 0                     = divZeroError
+     | b == (-1) && a == minBound = overflowError -- Note [Order of tests]
+                                                  -- in GHC.Int
+     | otherwise                  =  a `divInt` b
+
+    a `mod` b
+     | b == 0                     = divZeroError
+       -- The divMod CPU instruction fails for minBound `divMod` -1,
+       -- but minBound `mod` -1 is well-defined (0). We therefore
+       -- special-case it.
+     | b == (-1)                  = 0
+     | otherwise                  =  a `modInt` b
+
+    a `quotRem` b
+     | b == 0                     = divZeroError
+       -- Note [Order of tests] in GHC.Int
+     | b == (-1) && a == minBound = (overflowError, 0)
+     | otherwise                  =  a `quotRemInt` b
+
+    a `divMod` b
+     | b == 0                     = divZeroError
+       -- Note [Order of tests] in GHC.Int
+     | b == (-1) && a == minBound = (overflowError, 0)
+     | otherwise                  =  a `divModInt` b
