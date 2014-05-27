@@ -94,5 +94,15 @@ instance (SingI n) => Enum (Bit n) where
         if a > c
             then []
             else a : enumFromThenTo b (b + b - a) c
-    
+
+
+-- TODO: implement these instances
+--instance (SingI n) => Real (Bit n) where
+--    toRational x = toInteger x :% 1
+--
+--instance (SingI n) => Integral (Bit n) where
+--    toInteger x = toInteger (fromEnum x)
+--    quotRem a b = (quot a b, rem a b)
+--    quot = 
+--    rem = 
     

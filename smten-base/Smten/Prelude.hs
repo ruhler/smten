@@ -11,7 +11,7 @@ module Smten.Prelude (
     Ord(compare, (<), (<=), (>=), (>), max, min),
     Enum(..),
     Num((+), (-), (*), negate, abs, signum, fromInteger),
-    Integral(quot, rem, quotRem, toInteger),
+    Integral(..),
     Monad(..),
     Functor(fmap),
     mapM, mapM_, sequence, sequence_,

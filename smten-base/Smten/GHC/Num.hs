@@ -9,6 +9,7 @@ module Smten.GHC.Num (
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Num instead of Smten.Compiled.Smten.GHC.Num
 
+import GHC.Base
 import GHC.Prim
 import GHC.Classes
 import GHC.Types
@@ -42,6 +43,7 @@ instance Num Int where
 
     signum n | n `ltInt` 0 = negate 1
              | n `eqInt` 0 = 0
+             | otherwise = 1
 
     fromInteger = int_fromInteger
 
