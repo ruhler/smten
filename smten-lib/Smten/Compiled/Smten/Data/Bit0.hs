@@ -5,6 +5,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Smten.Compiled.Smten.Data.Bit0 (
     Bit, bv_eq, bv_leq, bv_show, bv_fromInteger, bv_add, bv_sub, bv_mul,
+    bv_sdiv, bv_srem, bv_smod, bv_udiv, bv_urem,
     bv_or, bv_and, bv_shl, bv_lshr, bv_not, bv_concat,
     bv_sign_extend, bv_extract, bv_width, bv_value,
     ) where
@@ -48,6 +49,21 @@ bv_sub = {-# SCC "PRIM_BV_SUB" #-} bit_subF
 
 bv_mul :: BitF n -> BitF n -> BitF n
 bv_mul = {-# SCC "PRIM_BV_MUL" #-} bit_mulF
+
+bv_sdiv :: BitF n -> BitF n -> BitF n
+bv_sdiv = {-# SCC "PRIM_BV_SDIV" #-} bit_sdivF
+
+bv_srem :: BitF n -> BitF n -> BitF n
+bv_srem = {-# SCC "PRIM_BV_SREM" #-} bit_sremF
+
+bv_smod :: BitF n -> BitF n -> BitF n
+bv_smod = {-# SCC "PRIM_BV_SMOD" #-} bit_smodF
+
+bv_udiv :: BitF n -> BitF n -> BitF n
+bv_udiv = {-# SCC "PRIM_BV_UDIV" #-} bit_udivF
+
+bv_urem :: BitF n -> BitF n -> BitF n
+bv_urem = {-# SCC "PRIM_BV_UREM" #-} bit_uremF
 
 bv_or :: BitF n -> BitF n -> BitF n
 bv_or = {-# SCC "PRIM_BV_OR" #-} bit_orF

@@ -103,6 +103,26 @@ build ctx p = do
                 a' <- buildV a
                 b' <- buildV b
                 mul_bit ctx a' b'
+            SDiv_BitFF a b c -> cached c key $ do
+                a' <- buildV a
+                b' <- buildV b
+                sdiv_bit ctx a' b'
+            SRem_BitFF a b c -> cached c key $ do
+                a' <- buildV a
+                b' <- buildV b
+                srem_bit ctx a' b'
+            SMod_BitFF a b c -> cached c key $ do
+                a' <- buildV a
+                b' <- buildV b
+                smod_bit ctx a' b'
+            UDiv_BitFF a b c -> cached c key $ do
+                a' <- buildV a
+                b' <- buildV b
+                udiv_bit ctx a' b'
+            URem_BitFF a b c -> cached c key $ do
+                a' <- buildV a
+                b' <- buildV b
+                urem_bit ctx a' b'
             Or_BitFF a b c -> cached c key $ do
                 a' <- buildV a
                 b' <- buildV b

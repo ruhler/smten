@@ -84,6 +84,11 @@ instance SolverAST SmtenSolver Exp () () where
   add_bit = nobits
   sub_bit = nobits
   mul_bit = nobits
+  sdiv_bit = nobits
+  srem_bit = nobits
+  smod_bit = nobits
+  udiv_bit = nobits
+  urem_bit = nobits
   or_bit = nobits
   and_bit = nobits
   shl_bit = nobits

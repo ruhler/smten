@@ -183,7 +183,12 @@ instance SolverAST STP STP_Expr STP_Expr STP_Expr where
   leq_bit = bprim c_vc_bvLeExpr
   add_bit = blprim c_vc_bvPlusExpr
   sub_bit = blprim c_vc_bvMinusExpr
-  mul_bit = error "TODO: STP mul_bit"
+  mul_bit = blprim c_vc_bvMultExpr
+  sdiv_bit = blprim c_vc_sbvDivExpr
+  srem_bit = blprim c_vc_sbvRemExpr
+  smod_bit = blprim c_vc_sbvModExpr
+  udiv_bit = blprim c_vc_bvDivExpr
+  urem_bit = blprim c_vc_bvModExpr
   or_bit = bprim c_vc_bvOrExpr
   and_bit = bprim c_vc_bvAndExpr
   concat_bit = bprim c_vc_bvConcatExpr

@@ -46,6 +46,11 @@ z3expr (*z3_mk_bvule_f)(z3ctx, z3expr, z3expr) = NULL;
 z3expr (*z3_mk_bvadd_f)(z3ctx, z3expr, z3expr) = NULL;
 z3expr (*z3_mk_bvsub_f)(z3ctx, z3expr, z3expr) = NULL;
 z3expr (*z3_mk_bvmul_f)(z3ctx, z3expr, z3expr) = NULL;
+z3expr (*z3_mk_bvsdiv_f)(z3ctx, z3expr, z3expr) = NULL;
+z3expr (*z3_mk_bvsrem_f)(z3ctx, z3expr, z3expr) = NULL;
+z3expr (*z3_mk_bvsmod_f)(z3ctx, z3expr, z3expr) = NULL;
+z3expr (*z3_mk_bvudiv_f)(z3ctx, z3expr, z3expr) = NULL;
+z3expr (*z3_mk_bvurem_f)(z3ctx, z3expr, z3expr) = NULL;
 z3expr (*z3_mk_bvor_f)(z3ctx, z3expr, z3expr) = NULL;
 z3expr (*z3_mk_bvand_f)(z3ctx, z3expr, z3expr) = NULL;
 z3expr (*z3_mk_concat_f)(z3ctx, z3expr, z3expr) = NULL;
@@ -107,6 +112,11 @@ int z3_load()
     z3_mk_bvadd_f = dlsym(z3h, "Z3_mk_bvadd");
     z3_mk_bvsub_f = dlsym(z3h, "Z3_mk_bvsub");
     z3_mk_bvmul_f = dlsym(z3h, "Z3_mk_bvmul");
+    z3_mk_bvsdiv_f = dlsym(z3h, "Z3_mk_bvsdiv");
+    z3_mk_bvsrem_f = dlsym(z3h, "Z3_mk_bvsrem");
+    z3_mk_bvsmod_f = dlsym(z3h, "Z3_mk_bvsmod");
+    z3_mk_bvudiv_f = dlsym(z3h, "Z3_mk_bvudiv");
+    z3_mk_bvurem_f = dlsym(z3h, "Z3_mk_bvurem");
     z3_mk_bvor_f = dlsym(z3h, "Z3_mk_bvor");
     z3_mk_bvand_f = dlsym(z3h, "Z3_mk_bvand");
     z3_mk_concat_f = dlsym(z3h, "Z3_mk_concat");
@@ -156,6 +166,11 @@ z3expr z3_mk_bvule(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvule_f(a, b, c);
 z3expr z3_mk_bvadd(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvadd_f(a, b, c); }
 z3expr z3_mk_bvsub(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvsub_f(a, b, c); }
 z3expr z3_mk_bvmul(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvmul_f(a, b, c); }
+z3expr z3_mk_bvsdiv(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvsdiv_f(a, b, c); }
+z3expr z3_mk_bvsrem(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvsrem_f(a, b, c); }
+z3expr z3_mk_bvsmod(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvsmod_f(a, b, c); }
+z3expr z3_mk_bvudiv(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvudiv_f(a, b, c); }
+z3expr z3_mk_bvurem(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvurem_f(a, b, c); }
 z3expr z3_mk_bvor(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvor_f(a, b, c); }
 z3expr z3_mk_bvand(z3ctx a, z3expr b, z3expr c) { return z3_mk_bvand_f(a, b, c); }
 z3expr z3_mk_concat(z3ctx a, z3expr b, z3expr c) { return z3_mk_concat_f(a, b, c); }

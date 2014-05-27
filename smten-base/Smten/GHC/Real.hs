@@ -1,7 +1,9 @@
 
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE UnboxedTuples #-}
 module Smten.GHC.Real (
+    Ratio(..), Rational, (%), numerator, denominator, gcd,
     Integral(..),
     ) where
 
@@ -15,8 +17,25 @@ import Smten.GHC.Integer.Type
 import Smten.Smten.Integer
 import GHC.Num (Num(..))
 
+infixl 7 `quot`, `rem`, `div`, `mod`
+infixl 7 %
+
 data Ratio a = a :% a deriving (Eq)
 type Rational = Ratio Integer
+
+(%) :: (Integral a) => a -> a -> Ratio a
+numerator :: (Integral a) => Ratio a -> a
+denominator :: (Integral a) => Ratio a -> a
+
+reduce :: (Integral a) => a -> a -> Ratio a
+reduce _ 0 = ratioZeroDenominatorError
+reduce x y = (x `quot` d) :% (y `quot` d)
+             where d = gcd x y
+
+x % y = reduce (x * signum y) (abs y)
+
+numerator (x :% _) = x
+denominator (_ :% y) = y
 
 class (Num a, Ord a) => Real a where
     toRational :: a -> Rational
@@ -87,3 +106,34 @@ instance Integral Int where
        -- Note [Order of tests] in GHC.Int
      | b == (-1) && a == minBound = (overflowError, 0)
      | otherwise                  =  a `divModInt` b
+
+instance Real Integer where
+    toRational x = x :% 1
+
+instance Integral Integer where
+    toInteger n = n
+
+    _ `quot` 0 = divZeroError
+    n `quot` d = n `quotInteger` d
+
+    _ `rem` 0 = divZeroError
+    n `rem`  d = n `remInteger`  d
+
+    _ `div` 0 = divZeroError
+    n `div` d = n `divInteger` d
+
+    _ `mod` 0 = divZeroError
+    n `mod`  d = n `modInteger`  d
+
+    _ `divMod` 0 = divZeroError
+    a `divMod` b = case a `divModInteger` b of
+                   (# x, y #) -> (x, y)
+
+    _ `quotRem` 0 = divZeroError
+    a `quotRem` b = case a `quotRemInteger` b of
+                    (# q, r #) -> (q, r)
+
+gcd :: (Integral a) => a -> a -> a
+gcd x y = gcd' (abs x) (abs y)
+          where gcd' a 0 = a
+                gcd' a b = gcd' b (a `rem` b)

@@ -34,6 +34,11 @@ module Smten.Runtime.Yices2.FFI (
     c_yices_bvadd,
     c_yices_bvsub,
     c_yices_bvmul,
+    c_yices_bvdiv,
+    c_yices_bvrem,
+    c_yices_bvsdiv,
+    c_yices_bvsrem,
+    c_yices_bvsmod,
     c_yices_bvand,
     c_yices_bvor,
     c_yices_bvnot,
@@ -150,6 +155,21 @@ foreign import ccall unsafe "y2_bvsub"
 
 foreign import ccall unsafe "y2_bvmul"
     c_yices_bvmul :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "y2_bvdiv"
+    c_yices_bvdiv :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "y2_bvrem"
+    c_yices_bvrem :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "y2_bvsdiv"
+    c_yices_bvsdiv :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "y2_bvsrem"
+    c_yices_bvsrem :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "y2_bvsmod"
+    c_yices_bvsmod :: YTerm -> YTerm -> IO YTerm
 
 foreign import ccall unsafe "y2_bvand"
     c_yices_bvand :: YTerm -> YTerm -> IO YTerm

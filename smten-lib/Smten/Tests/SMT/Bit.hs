@@ -107,6 +107,12 @@ smttests = do
         assert (x < (4 :: Bit 12))
         assert (all (/= x) [0..3])
         return x
+
+    symtesteq "SMT.Bit.udiv/urem" (Just (9 :: Bit 8)) $ do
+        x <- free_Bit
+        assert ((x `bv_udiv` 2) == 4)
+        assert ((x `bv_urem` 2) == 1)
+        return x
         
 
 --    symtesteq "SMT.Bit.Cases" (Just True) [Yices1, Yices2, STP] $ do

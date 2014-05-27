@@ -41,6 +41,11 @@ tests = do
     test "Bit.read" (bit3 5 == read "5")
     test "Bit.enum" ([bit3 1, bit3 2, bit3 3] == enumFromTo 1 3)
     test "Bit.arith" ([bit3 1, bit3 2, bit3 3] == [1 .. 3])
+    test "Bit.udiv.p" (4 == bv_udiv (9 :: Bit 8) 2)
+    test "Bit.urem.p" (1 == bv_urem (9 :: Bit 8) 2)
+    test "Bit.sdiv.p" (4 == bv_sdiv (9 :: Bit 8) 2)
+    test "Bit.srem.p" (1 == bv_srem (9 :: Bit 8) 2)
+    test "Bit.smod.p" (1 == bv_smod (9 :: Bit 8) 2)
     putStrLn "Bit PASSED"
 
 

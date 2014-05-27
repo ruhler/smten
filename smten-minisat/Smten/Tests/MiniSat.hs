@@ -19,6 +19,6 @@ main = do
     putStrLn "MiniSat.SMT.Datatype PASSED"
 
     runtest (SMTTestCfg minisat [
-      "SMT.Bit.Lsh", "SMT.Bit.Lshr"] []) Bit.smttests
+      "SMT.Bit.Lsh", "SMT.Bit.Lshr", "SMT.Bit.udiv/urem"] []) Bit.smttests
     putStrLn "MiniSat.SMT.Bit PASSED"
 

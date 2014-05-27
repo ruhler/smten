@@ -28,6 +28,12 @@ module Smten.Runtime.STPFFI (
     c_vc_bvConstExprFromDecStr,
     c_vc_bvPlusExpr,
     c_vc_bvMinusExpr,
+    c_vc_bvMultExpr,
+    c_vc_bvDivExpr,
+    c_vc_bvModExpr,
+    c_vc_sbvDivExpr,
+    c_vc_sbvModExpr,
+    c_vc_sbvRemExpr,
     c_vc_bvOrExpr,
     c_vc_bvAndExpr,
     c_vc_bvNotExpr,
@@ -129,6 +135,24 @@ foreign import ccall "vc_bvPlusExpr"
 
 foreign import ccall "vc_bvMinusExpr"
     c_vc_bvMinusExpr  :: STP_VC -> CInt -> STP_Expr -> STP_Expr -> IO STP_Expr
+
+foreign import ccall "vc_bvMultExpr"
+    c_vc_bvMultExpr  :: STP_VC -> CInt -> STP_Expr -> STP_Expr -> IO STP_Expr
+
+foreign import ccall "vc_bvDivExpr"
+    c_vc_bvDivExpr  :: STP_VC -> CInt -> STP_Expr -> STP_Expr -> IO STP_Expr
+
+foreign import ccall "vc_bvModExpr"
+    c_vc_bvModExpr  :: STP_VC -> CInt -> STP_Expr -> STP_Expr -> IO STP_Expr
+
+foreign import ccall "vc_sbvDivExpr"
+    c_vc_sbvDivExpr  :: STP_VC -> CInt -> STP_Expr -> STP_Expr -> IO STP_Expr
+
+foreign import ccall "vc_sbvRemExpr"
+    c_vc_sbvRemExpr  :: STP_VC -> CInt -> STP_Expr -> STP_Expr -> IO STP_Expr
+
+foreign import ccall "vc_sbvModExpr"
+    c_vc_sbvModExpr  :: STP_VC -> CInt -> STP_Expr -> STP_Expr -> IO STP_Expr
 
 foreign import ccall "vc_bvOrExpr"
     c_vc_bvOrExpr  :: STP_VC -> STP_Expr -> STP_Expr -> IO STP_Expr

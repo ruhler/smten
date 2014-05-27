@@ -116,6 +116,11 @@ instance SolverAST Yices2 YTerm YTerm YTerm where
   add_bit _ = c_yices_bvadd
   sub_bit _ = c_yices_bvsub
   mul_bit _ = c_yices_bvmul
+  sdiv_bit _ = c_yices_bvsdiv
+  smod_bit _ = c_yices_bvsmod
+  srem_bit _ = c_yices_bvsrem
+  udiv_bit _ = c_yices_bvdiv
+  urem_bit _ = c_yices_bvrem
   or_bit _ = c_yices_bvor
   and_bit _ = c_yices_bvand
   concat_bit _ = c_yices_bvconcat

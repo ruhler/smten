@@ -9,7 +9,8 @@ module Smten.Runtime.Formula.Finite (
   eq_IntegerFF, leq_IntegerFF, add_IntegerFF, sub_IntegerFF,
 
   BitFF(..), bitFF, var_BitFF, eq_BitFF, leq_BitFF, add_BitFF, sub_BitFF,
-  mul_BitFF, bit_orFF, bit_andFF, bit_shlFF, bit_lshrFF, bit_concatFF,
+  mul_BitFF, sdiv_BitFF, srem_BitFF, smod_BitFF, udiv_BitFF, urem_BitFF,
+  bit_orFF, bit_andFF, bit_shlFF, bit_lshrFF, bit_concatFF,
   bit_notFF, bit_sign_extendFF, bit_extractFF, ite_BitFF,
   ) where
 
@@ -173,6 +174,11 @@ data BitFF =
   | Add_BitFF BitFF BitFF BuildCache
   | Sub_BitFF BitFF BitFF BuildCache
   | Mul_BitFF BitFF BitFF BuildCache
+  | SDiv_BitFF BitFF BitFF BuildCache   -- truncate toward 0
+  | SRem_BitFF BitFF BitFF BuildCache   -- remainder after SDiv, sign follows dividend
+  | SMod_BitFF BitFF BitFF BuildCache   -- sign follows divisor
+  | UDiv_BitFF BitFF BitFF BuildCache   -- truncate toward -infinity
+  | URem_BitFF BitFF BitFF BuildCache   -- remainder after UDiv
   | Or_BitFF BitFF BitFF BuildCache
   | And_BitFF BitFF BitFF BuildCache
   | Shl_BitFF Integer BitFF BitFF BuildCache  -- ^ Shl bitwidth a b
@@ -221,6 +227,36 @@ mul_BitFF (BitFF a) (BitFF b) = BitFF (a * b)
 mul_BitFF Unreachable_BitFF _ = Unreachable_BitFF
 mul_BitFF _ Unreachable_BitFF = Unreachable_BitFF
 mul_BitFF a b = new (Mul_BitFF a b)
+
+sdiv_BitFF :: BitFF -> BitFF -> BitFF
+sdiv_BitFF (BitFF a) (BitFF b) = BitFF (a `bv_sdiv` b)
+sdiv_BitFF Unreachable_BitFF _ = Unreachable_BitFF
+sdiv_BitFF _ Unreachable_BitFF = Unreachable_BitFF
+sdiv_BitFF a b = new (SDiv_BitFF a b)
+
+srem_BitFF :: BitFF -> BitFF -> BitFF
+srem_BitFF (BitFF a) (BitFF b) = BitFF (a `bv_srem` b)
+srem_BitFF Unreachable_BitFF _ = Unreachable_BitFF
+srem_BitFF _ Unreachable_BitFF = Unreachable_BitFF
+srem_BitFF a b = new (SRem_BitFF a b)
+
+udiv_BitFF :: BitFF -> BitFF -> BitFF
+udiv_BitFF (BitFF a) (BitFF b) = BitFF (a `bv_udiv` b)
+udiv_BitFF Unreachable_BitFF _ = Unreachable_BitFF
+udiv_BitFF _ Unreachable_BitFF = Unreachable_BitFF
+udiv_BitFF a b = new (UDiv_BitFF a b)
+
+smod_BitFF :: BitFF -> BitFF -> BitFF
+smod_BitFF (BitFF a) (BitFF b) = BitFF (a `bv_smod` b)
+smod_BitFF Unreachable_BitFF _ = Unreachable_BitFF
+smod_BitFF _ Unreachable_BitFF = Unreachable_BitFF
+smod_BitFF a b = new (SMod_BitFF a b)
+
+urem_BitFF :: BitFF -> BitFF -> BitFF
+urem_BitFF (BitFF a) (BitFF b) = BitFF (a `bv_urem` b)
+urem_BitFF Unreachable_BitFF _ = Unreachable_BitFF
+urem_BitFF _ Unreachable_BitFF = Unreachable_BitFF
+urem_BitFF a b = new (URem_BitFF a b)
 
 bit_orFF :: BitFF -> BitFF -> BitFF
 bit_orFF (BitFF a) (BitFF b) = BitFF (a .|. b)

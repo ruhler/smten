@@ -4,6 +4,7 @@
 
 module Smten.Runtime.Formula.BitF (
     BitF(..), bitF, bit_eqF, bit_leqF, bit_addF, bit_subF, bit_mulF,
+    bit_sdivF, bit_sremF, bit_smodF, bit_udivF, bit_uremF,
     bit_orF, bit_andF, bit_shlF, bit_lshrF, bit_notF, bit_concatF,
     bit_sign_extendF, bit_extractF,
     finite_BitF, parts_BitF, var_BitF, ite_BitF, unreachable_BitF,
@@ -43,6 +44,21 @@ bit_subF (BitF a) (BitF b) = BitF $ binaryPF sub_BitFF a b
 
 bit_mulF :: BitF n -> BitF n -> BitF n
 bit_mulF (BitF a) (BitF b) = BitF $ binaryPF mul_BitFF a b
+
+bit_sdivF :: BitF n -> BitF n -> BitF n
+bit_sdivF (BitF a) (BitF b) = BitF $ binaryPF sdiv_BitFF a b
+
+bit_sremF :: BitF n -> BitF n -> BitF n
+bit_sremF (BitF a) (BitF b) = BitF $ binaryPF srem_BitFF a b
+
+bit_smodF :: BitF n -> BitF n -> BitF n
+bit_smodF (BitF a) (BitF b) = BitF $ binaryPF smod_BitFF a b
+
+bit_udivF :: BitF n -> BitF n -> BitF n
+bit_udivF (BitF a) (BitF b) = BitF $ binaryPF udiv_BitFF a b
+
+bit_uremF :: BitF n -> BitF n -> BitF n
+bit_uremF (BitF a) (BitF b) = BitF $ binaryPF urem_BitFF a b
 
 bit_orF :: BitF n -> BitF n -> BitF n
 bit_orF (BitF a) (BitF b) = BitF $ binaryPF bit_orFF a b

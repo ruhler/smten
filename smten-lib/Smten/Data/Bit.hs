@@ -6,6 +6,7 @@
 module Smten.Data.Bit (
     Bit,
     bv_and, bv_or, bv_xor, bv_shl, bv_lshr, bv_not, bv_concat,
+    bv_sdiv, bv_srem, bv_smod, bv_udiv, bv_urem,
     bv_extract, bv_truncate, bv_sign_extend,
     bv_sle, bv_slt, bv_sge, bv_sgt, bv_ashr, bv_width, bv_value,
     ) where
@@ -14,6 +15,7 @@ import Smten.Prelude
 import Smten.Smten.TypeLits
 import Smten.Data.Bit0
 import Smten.Data.Ix
+import Smten.Data.Ratio
 
 instance (SingI n) => Eq (Bit n) where
     (==) = bv_eq
@@ -31,8 +33,8 @@ instance (SingI n) => Num (Bit n) where
     (+) = bv_add
     (-) = bv_sub
     (*) = bv_mul
-    abs = error "TODO: Bit.abs"
-    signum = error "TODO: Bit.signum"
+    abs x = x
+    signum x = 1
     fromInteger = bv_fromInteger
 
 bv_xor :: Bit n -> Bit n -> Bit n
@@ -96,13 +98,14 @@ instance (SingI n) => Enum (Bit n) where
             else a : enumFromThenTo b (b + b - a) c
 
 
--- TODO: implement these instances
---instance (SingI n) => Real (Bit n) where
---    toRational x = toInteger x :% 1
---
---instance (SingI n) => Integral (Bit n) where
---    toInteger x = toInteger (fromEnum x)
---    quotRem a b = (quot a b, rem a b)
---    quot = 
---    rem = 
+instance (SingI n) => Real (Bit n) where
+    toRational x = toInteger x % 1
+
+instance (SingI n) => Integral (Bit n) where
+    toInteger x = toEnum (fromEnum x :: Int)
+    quotRem a b = (a `quot` b, a `rem` b)
+    quot = bv_sdiv
+    rem = bv_srem
+    div = bv_udiv
+    mod = bv_smod
     

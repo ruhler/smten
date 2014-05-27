@@ -8,6 +8,7 @@ module Smten.Data.Bit0 (
     bv_eq, bv_leq,
     bv_show,
     bv_fromInteger, bv_add, bv_sub, bv_mul,
+    bv_sdiv, bv_srem, bv_smod, bv_udiv, bv_urem,
     bv_and, bv_or, bv_shl, bv_lshr, bv_not,
     bv_concat, bv_extract, bv_sign_extend,
     bv_width, bv_value,
@@ -42,6 +43,21 @@ bv_sub = primitive "Smten.Data.Bit0.bv_sub"
 
 bv_mul :: Bit n -> Bit n -> Bit n
 bv_mul = primitive "Smten.Data.Bit0.bv_mul"
+
+bv_sdiv :: Bit n -> Bit n -> Bit n
+bv_sdiv = primitive "Smten.Data.Bit0.bv_sdiv"
+
+bv_srem :: Bit n -> Bit n -> Bit n
+bv_srem = primitive "Smten.Data.Bit0.bv_srem"
+
+bv_smod :: Bit n -> Bit n -> Bit n
+bv_smod = primitive "Smten.Data.Bit0.bv_smod"
+
+bv_udiv :: Bit n -> Bit n -> Bit n
+bv_udiv = primitive "Smten.Data.Bit0.bv_udiv"
+
+bv_urem :: Bit n -> Bit n -> Bit n
+bv_urem = primitive "Smten.Data.Bit0.bv_urem"
 
 bv_and :: Bit n -> Bit n -> Bit n
 bv_and = primitive "Smten.Data.Bit0.bv_and"

@@ -32,6 +32,11 @@ int32_t (*y2_parse_bvbin_f)(const char*) = NULL;
 int32_t (*y2_bvadd_f)(int32_t, int32_t) = NULL;
 int32_t (*y2_bvsub_f)(int32_t, int32_t) = NULL;
 int32_t (*y2_bvmul_f)(int32_t, int32_t) = NULL;
+int32_t (*y2_bvdiv_f)(int32_t, int32_t) = NULL;
+int32_t (*y2_bvrem_f)(int32_t, int32_t) = NULL;
+int32_t (*y2_bvsdiv_f)(int32_t, int32_t) = NULL;
+int32_t (*y2_bvsrem_f)(int32_t, int32_t) = NULL;
+int32_t (*y2_bvsmod_f)(int32_t, int32_t) = NULL;
 int32_t (*y2_bvand_f)(int32_t, int32_t) = NULL;
 int32_t (*y2_bvor_f)(int32_t, int32_t) = NULL;
 int32_t (*y2_bvnot_f)(int32_t) = NULL;
@@ -91,6 +96,11 @@ int y2_load()
     y2_bvadd_f = dlsym(y2h, "yices_bvadd");
     y2_bvsub_f = dlsym(y2h, "yices_bvsub");
     y2_bvmul_f = dlsym(y2h, "yices_bvmul");
+    y2_bvdiv_f = dlsym(y2h, "yices_bvdiv");
+    y2_bvrem_f = dlsym(y2h, "yices_bvrem");
+    y2_bvsdiv_f = dlsym(y2h, "yices_bvsdiv");
+    y2_bvsrem_f = dlsym(y2h, "yices_bvsrem");
+    y2_bvsmod_f = dlsym(y2h, "yices_bvsmod");
     y2_bvand_f = dlsym(y2h, "yices_bvand");
     y2_bvor_f = dlsym(y2h, "yices_bvor");
     y2_bvnot_f = dlsym(y2h, "yices_bvnot");
@@ -138,6 +148,11 @@ int32_t y2_parse_bvbin(const char* a) { return y2_parse_bvbin_f(a); }
 int32_t y2_bvadd(int32_t a, int32_t b) { return y2_bvadd_f(a, b); }
 int32_t y2_bvsub(int32_t a, int32_t b) { return y2_bvsub_f(a, b); }
 int32_t y2_bvmul(int32_t a, int32_t b) { return y2_bvmul_f(a, b); }
+int32_t y2_bvdiv(int32_t a, int32_t b) { return y2_bvdiv_f(a, b); }
+int32_t y2_bvrem(int32_t a, int32_t b) { return y2_bvrem_f(a, b); }
+int32_t y2_bvsdiv(int32_t a, int32_t b) { return y2_bvsdiv_f(a, b); }
+int32_t y2_bvsrem(int32_t a, int32_t b) { return y2_bvsrem_f(a, b); }
+int32_t y2_bvsmod(int32_t a, int32_t b) { return y2_bvsmod_f(a, b); }
 int32_t y2_bvand(int32_t a, int32_t b) { return y2_bvand_f(a, b); }
 int32_t y2_bvor(int32_t a, int32_t b) { return y2_bvor_f(a, b); }
 int32_t y2_bvnot(int32_t a) { return y2_bvnot_f(a); }

@@ -144,6 +144,11 @@ instance SolverAST Z3 Z3Expr Z3Expr Z3Expr where
   add_bit = bprim c_Z3_mk_bvadd
   sub_bit = bprim c_Z3_mk_bvsub
   mul_bit = bprim c_Z3_mk_bvmul
+  sdiv_bit = bprim c_Z3_mk_bvsdiv
+  srem_bit = bprim c_Z3_mk_bvsrem
+  smod_bit = bprim c_Z3_mk_bvsmod
+  udiv_bit = bprim c_Z3_mk_bvudiv
+  urem_bit = bprim c_Z3_mk_bvurem
   or_bit = bprim c_Z3_mk_bvor
   and_bit = bprim c_Z3_mk_bvand
   concat_bit = bprim c_Z3_mk_concat

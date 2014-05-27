@@ -33,6 +33,7 @@ library
     Smten.Data.List
     Smten.Data.Maybe
     Smten.Data.Num0
+    Smten.Data.Ratio
     Smten.Data.Read
     Smten.Data.Show
     Smten.Data.Show0

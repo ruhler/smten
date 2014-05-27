@@ -185,6 +185,11 @@ instance SolverAST Yices1 YExpr YExpr YExpr where
   add_bit = bprim c_yices_mk_bv_add
   sub_bit = bprim c_yices_mk_bv_sub
   mul_bit = bprim c_yices_mk_bv_mul
+  sdiv_bit = error "TODO: yices1 sdiv_bit"
+  srem_bit = error "TODO: yices1 srem_bit"
+  smod_bit = error "TODO: yices1 smod_bit"
+  udiv_bit = error "TODO: yices1 udiv_bit"
+  urem_bit = error "TODO: yices1 urem_bit"
   or_bit = bprim c_yices_mk_bv_or
   and_bit = bprim c_yices_mk_bv_and
   concat_bit = bprim c_yices_mk_bv_concat

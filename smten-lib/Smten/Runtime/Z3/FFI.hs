@@ -142,6 +142,21 @@ foreign import ccall "z3_mk_bvsub"
 foreign import ccall "z3_mk_bvmul"
     c_Z3_mk_bvmul :: Z3Context -> Z3Expr -> Z3Expr -> IO Z3Expr
 
+foreign import ccall "z3_mk_bvsdiv"
+    c_Z3_mk_bvsdiv :: Z3Context -> Z3Expr -> Z3Expr -> IO Z3Expr
+
+foreign import ccall "z3_mk_bvsrem"
+    c_Z3_mk_bvsrem :: Z3Context -> Z3Expr -> Z3Expr -> IO Z3Expr
+
+foreign import ccall "z3_mk_bvsmod"
+    c_Z3_mk_bvsmod :: Z3Context -> Z3Expr -> Z3Expr -> IO Z3Expr
+
+foreign import ccall "z3_mk_bvudiv"
+    c_Z3_mk_bvudiv :: Z3Context -> Z3Expr -> Z3Expr -> IO Z3Expr
+
+foreign import ccall "z3_mk_bvurem"
+    c_Z3_mk_bvurem :: Z3Context -> Z3Expr -> Z3Expr -> IO Z3Expr
+
 foreign import ccall "z3_mk_bvor"
     c_Z3_mk_bvor :: Z3Context -> Z3Expr -> Z3Expr -> IO Z3Expr
 

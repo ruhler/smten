@@ -1,7 +1,10 @@
 
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnboxedTuples #-}
 module Smten.Compiled.Smten.GHC.Integer.Type (
    plusInteger, minusInteger, timesInteger,
+   quotInteger, remInteger, divInteger, modInteger,
+   divModInteger, quotRemInteger,
    absInteger, signumInteger, eqInteger, leInteger,
    smallInteger,
     ) where
@@ -37,4 +40,22 @@ leInteger = {-# SCC "PRIM_LE_INTEGER" #-} leq_IntegerF
 
 smallInteger :: Int# -> Integer
 smallInteger i = integerF (P.smallInteger i)
+
+quotInteger :: Integer -> Integer -> Integer
+quotInteger = {-# SCC "PRIM_QUOT_INTEGER" #-} symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) `P.quotInteger` bv
+
+remInteger :: Integer -> Integer -> Integer
+remInteger = {-# SCC "PRIM_REM_INTEGER" #-} symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) `P.remInteger` bv
+
+divInteger :: Integer -> Integer -> Integer
+divInteger = {-# SCC "PRIM_DIV_INTEGER" #-} symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) `P.divInteger` bv
+
+modInteger :: Integer -> Integer -> Integer
+modInteger = {-# SCC "PRIM_MOD_INTEGER" #-} symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) `P.modInteger` bv
+
+quotRemInteger :: Integer -> Integer -> (# Integer, Integer #)
+quotRemInteger a b = {-# SCC "PRIM_QUOTREM_INTEGER" #-} (# quotInteger a b, remInteger a b #)
+
+divModInteger :: Integer -> Integer -> (# Integer, Integer #)
+divModInteger a b  = {-# SCC "PRIM_DIVMOD_INTEGER" #-} (# divInteger a b, modInteger a b #)
 

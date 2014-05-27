@@ -4,6 +4,7 @@
 module Smten.Runtime.Bit (
     Bit(), bv_make, bv_width, bv_value, bv_signed_value,
     bv_concat, bv_extract, bv_truncate,
+    bv_sdiv, bv_srem, bv_smod, bv_udiv, bv_urem,
     bv_zero_extend, bv_sign_extend,
     bv_shl, bv_lshr,
     ) where
@@ -42,8 +43,8 @@ instance Num Bit where
     (*) (Bit w a) (Bit _ b) = bv_make w (a*b)
     (-) (Bit w a) (Bit _ b) = bv_make w (a-b)
     fromInteger i = error $ "fromInteger for Bit with unspecified width"
-    abs = error "todo: abs Bit"
-    signum = error "todo: signum Bit"
+    abs x = x
+    signum x = 1
     
 instance Bits Bit where
     (.&.) (Bit w a) (Bit _ b) = bv_make w (a .&. b)
@@ -94,4 +95,19 @@ bv_shl (Bit w a) (Bit _ b) = bv_make w (a `shiftL` fromInteger b)
 
 bv_lshr :: Bit -> Bit -> Bit
 bv_lshr (Bit w a) (Bit _ b) = bv_make w (a `shiftR` fromInteger b)
+
+bv_sdiv :: Bit -> Bit -> Bit
+bv_sdiv a@(Bit w _) b = bv_make w (bv_signed_value a `quot` bv_signed_value b)
+
+bv_srem :: Bit -> Bit -> Bit
+bv_srem a@(Bit w _) b = bv_make w (bv_signed_value a `rem` bv_signed_value b)
+
+bv_smod :: Bit -> Bit -> Bit
+bv_smod a@(Bit w _) b = bv_make w (bv_signed_value a `mod` bv_signed_value b)
+
+bv_udiv :: Bit -> Bit -> Bit
+bv_udiv (Bit w a) (Bit _ b) = bv_make w (a `div` b)
+
+bv_urem :: Bit -> Bit -> Bit
+bv_urem (Bit w a) (Bit _ b) = bv_make w (a `mod` b)
 

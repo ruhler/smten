@@ -116,6 +116,11 @@ instance (SolverAST s b i v) => SolverAST (Bits s b i v) b i (BitE b) where
     add s tt a b_not
 
   mul_bit = bitstodo "mul"
+  sdiv_bit = bitstodo "sdiv"
+  srem_bit = bitstodo "srem"
+  smod_bit = bitstodo "smod"
+  udiv_bit = bitstodo "udiv"
+  urem_bit = bitstodo "urem"
 
   or_bit (Bits s _) a b = zipWithM (or_bool s) a b
   and_bit (Bits s _) a b = zipWithM (and_bool s) a b

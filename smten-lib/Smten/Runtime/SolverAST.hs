@@ -1,4 +1,5 @@
 
+
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
@@ -68,6 +69,11 @@ class SolverAST ctx boole inte bite
   add_bit :: ctx -> bite -> bite -> IO bite
   sub_bit :: ctx -> bite -> bite -> IO bite
   mul_bit :: ctx -> bite -> bite -> IO bite
+  sdiv_bit :: ctx -> bite -> bite -> IO bite
+  srem_bit :: ctx -> bite -> bite -> IO bite
+  smod_bit :: ctx -> bite -> bite -> IO bite
+  udiv_bit :: ctx -> bite -> bite -> IO bite
+  urem_bit :: ctx -> bite -> bite -> IO bite
   or_bit :: ctx -> bite -> bite -> IO bite
   and_bit :: ctx -> bite -> bite -> IO bite
   concat_bit :: ctx -> bite -> bite -> IO bite
