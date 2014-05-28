@@ -6,13 +6,13 @@ module Smten.Compiled.Smten.GHC.Integer.Type (
    quotInteger, remInteger, divInteger, modInteger,
    divModInteger, quotRemInteger,
    absInteger, signumInteger, eqInteger, leInteger,
-   smallInteger,
+   smallInteger, integerToInt,
     ) where
 
-import GHC.Prim
 import qualified GHC.Integer as P
 import qualified Prelude as P
 import Smten.Compiled.Smten.Smten.Base
+import Smten.Compiled.Smten.Smten.PrimInt
 import Smten.Compiled.GHC.Types
 import Smten.Runtime.SymbolicOf
 import Smten.Runtime.Formula
@@ -39,7 +39,7 @@ leInteger :: Integer -> Integer -> Bool
 leInteger = {-# SCC "PRIM_LE_INTEGER" #-} leq_IntegerF
 
 smallInteger :: Int# -> Integer
-smallInteger i = integerF (P.smallInteger i)
+smallInteger i = primIntApp (\x -> integerF (P.smallInteger x)) i
 
 quotInteger :: Integer -> Integer -> Integer
 quotInteger = {-# SCC "PRIM_QUOT_INTEGER" #-} symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) `P.quotInteger` bv
@@ -58,4 +58,7 @@ quotRemInteger a b = {-# SCC "PRIM_QUOTREM_INTEGER" #-} (# quotInteger a b, remI
 
 divModInteger :: Integer -> Integer -> (# Integer, Integer #)
 divModInteger a b  = {-# SCC "PRIM_DIVMOD_INTEGER" #-} (# divInteger a b, modInteger a b #)
+
+integerToInt :: Integer -> Int#
+integerToInt a = symapp (\x -> int# (P.integerToInt x)) a
 

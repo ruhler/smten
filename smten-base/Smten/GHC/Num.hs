@@ -11,7 +11,6 @@ module Smten.GHC.Num (
 
 import GHC.Base
 import Smten.Smten.Base
-import Smten.Data.Num0
 import Smten.GHC.Integer.Type
 
 infixl 7 *
@@ -42,7 +41,7 @@ instance Num Int where
              | n `eqInt` 0 = 0
              | otherwise = 1
 
-    fromInteger = int_fromInteger
+    fromInteger i = I# (integerToInt i)
 
 instance Num Integer where
     (+) = plusInteger

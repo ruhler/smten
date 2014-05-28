@@ -7,7 +7,7 @@ module Smten.Plugin.Name (
     nullnmCG, qnullnmCG,
     connmCG, qconnmCG,
     denewtynmCG, qdenewtynmCG,
-    qapplytonmCG,
+    qislitnmCG,
     ) where
 
 import Data.Char
@@ -146,10 +146,10 @@ qguardnmCG :: Name -> CG S.Name
 qguardnmCG = nmCG False ("gd" ++) True
 
 fieldnmCG :: Int -> Name -> CG S.Name
-fieldnmCG i = nmCG False (("fl" ++) . (++ show i)) False
+fieldnmCG i = nmCG False (("fl" ++ show i) ++ ) False
 
 qfieldnmCG :: Int -> Name -> CG S.Name
-qfieldnmCG i = nmCG False (("fl" ++) . (++ show i)) True
+qfieldnmCG i = nmCG False (("fl" ++ show i) ++) True
 
 nullnmCG :: Name -> CG S.Name
 nullnmCG = nmCG True ("__Null" ++) False
@@ -170,7 +170,7 @@ denewtynmCG = nmCG True ("__deNewTy" ++) False
 qdenewtynmCG :: Name -> CG S.Name
 qdenewtynmCG = nmCG True ("__deNewTy" ++) True
 
--- Name of applyToXXX function for Int, Char types.
-qapplytonmCG :: Name -> CG S.Name
-qapplytonmCG = nmCG True ("__applyTo" ++) True
+-- Name of isLitXXX function for Int#, Char# types.
+qislitnmCG :: Name -> CG S.Name
+qislitnmCG = nmCG True ("__isLit" ++) True
 

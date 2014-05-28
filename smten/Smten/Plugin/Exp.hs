@@ -6,7 +6,6 @@ module Smten.Plugin.Exp (
   ) where
 
 import Data.Functor
-import Data.Maybe
 
 import CostCentre
 import Pair
@@ -31,6 +30,12 @@ expCG :: CoreExpr -> CG S.Exp
 expCG (Var x)
   | isConstructor x = S.VarE <$> (qconnmCG $ varName x)
   | otherwise = S.VarE <$> (qnameCG $ varName x)
+expCG (Lit l@(MachInt {})) = do
+    mkint <- usequalified "Smten.Compiled.Smten.Smten.PrimInt" "int#"
+    return $ S.AppE (S.VarE mkint) (S.LitE (litCG l))
+expCG (Lit l@(MachChar {})) = do
+    mkchar <- usequalified "Smten.Compiled.Smten.Smten.PrimChar" "char#"
+    return $ S.AppE (S.VarE mkchar) (S.LitE (litCG l))
 expCG (Lit l) = return (S.LitE (litCG l))
 expCG x@(App a t@(Type {})) = do
   let tya = exprType a
@@ -65,8 +70,8 @@ expCG e@(Case x v ty ms) = do
       mkBody | [] <- ms = mkEmptyCase vnm ty
              | isBoolType argty = mkBoolCase vnm def ndefs
              | isConcreteType argty = mkConcreteCase vnm def ndefs
-             | Just alt <- isSmtenPrimCase argty def ndefs = mkSmtenPrimCase vnm argty alt
-             | Just (tycon, _) <- splitTyConApp_maybe argty = mkDataCase vnm tycon def ndefs
+             | Just (tycon, _) <- splitTyConApp_maybe argty
+                 = mkDataCase vnm tycon def ndefs
              | ndefs <- [], Just defval <- def = mkSeqCase vnm defval
              | otherwise = do
                   lift $ errorMsg (text "SMTEN PLUGIN ERROR: TODO: translate " <+> ppr e)
@@ -212,22 +217,6 @@ mkDefault (Just b) = do
   x <- S.Alt S.wildP <$> expCG b
   return [x]
 
--- For "Smten" primitive types: Char and Int
---  case x of
---    X# v -> body
---
--- We generate code:
---   applyToXXX (\v -> body) x
-mkSmtenPrimCase :: S.Name -> Type -> CoreAlt -> CG S.Exp
-mkSmtenPrimCase vnm argty (DataAlt _, [v], body) = do
-  let tycon = fst (fromMaybe (error "mkSymSmtenPrim splitTyConApp failed") $
-                       splitTyConApp_maybe argty)
-      tynm = tyConName tycon
-  v' <- qnameCG $ varName v
-  body' <- expCG body
-  appnm <- qapplytonmCG tynm
-  return $ S.AppE (S.AppE (S.VarE appnm) (S.LamE v' body')) (S.VarE vnm)
-
 -- For regular algebraic data types.
 -- case v of
 --   Foo { gdA = gdA, flA1 = a1, flA2 = a2, ...,
@@ -256,6 +245,11 @@ mkDataCase vnm tycon mdef ms = do
          binds <- mapM mkbind (zip [1..] xs)
          body' <- expCG body
          return (S.VarE gdnm, body', gdfield:binds)
+       mkalt (LitAlt l, [], body) = do
+         islit <- S.VarE <$> qislitnmCG (tyConName tycon)
+         let l' = litCG l
+         body' <- expCG body
+         return (S.AppE (S.AppE islit (S.LitE l')) (S.VarE vnm), body', [])
 
    -- TODO: The performance of concrete evaluation in Smten is very sensitive
    -- to this code, see if we can make it better?
@@ -300,27 +294,7 @@ isBoolType :: Type -> Bool
 isBoolType = isType "Bool" ["Smten.Data.Bool0", "GHC.Types"]
 
 isConcreteType :: Type -> Bool
-isConcreteType t = isType "(#,#)" ["GHC.Prim"] t
-                || isType "Char#" ["GHC.Prim"] t
-                || isType "Int#" ["GHC.Prim"] t
-                || isDictTy t
-
-isSmtenPrimType :: Type -> Bool
-isSmtenPrimType t = isType "Int" ["GHC.Types"] t
-                 || isType "Char" ["GHC.Types"] t
-
--- Test whether a case expression is for Smten primitive types
--- These are case expressions of type Int and Char
--- By how these are constructed, we expect there to be exactly one
--- non-default case.
--- This is because:
---  * We have already taken care of empty case expressions elsewhere
---  * Int and Char both have a single constructor (I# and C# respectively)
---
--- TODO: Why can't we have exactly one default case and no non-default ones?
-isSmtenPrimCase :: Type -> Maybe CoreExpr -> [CoreAlt] -> Maybe CoreAlt
-isSmtenPrimCase t Nothing [alt] | isSmtenPrimType t = Just alt
-isSmtenPrimCase _ _ _ = Nothing
+isConcreteType t = isType "(#,#)" ["GHC.Prim"] t || isDictTy t
 
 isType :: String -> [String] -> Type -> Bool
 isType wnm wmods t = 

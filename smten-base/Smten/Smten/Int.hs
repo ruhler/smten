@@ -1,7 +1,9 @@
 
-module Smten.Smten.Int (Int) where
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+module Smten.Smten.Int (Int(..)) where
 
-import Smten.Plugin.Annotations
+import GHC.Prim
 
-{-# ANN module PrimitiveModule #-}
+data Int = I# Int#
 

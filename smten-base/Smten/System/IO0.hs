@@ -5,7 +5,7 @@ module Smten.System.IO0 (
     linebuffer,
  ) where
 
-import Prelude (IO)
+import Prelude (IO, Char)
 import qualified Prelude as P
 import Smten.Smten.Base
 import Smten.Plugin.Annotations

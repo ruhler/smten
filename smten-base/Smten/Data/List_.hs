@@ -29,7 +29,7 @@ import GHC.Num
 import GHC.List 
 
 import GHC.Classes (Ord(..))
-import GHC.Types(Ordering(..))
+import GHC.Types(Int(..), Ordering(..))
 import GHC.Real
 import Smten.Smten.Base
 import Smten.Data.Bool

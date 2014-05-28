@@ -4,6 +4,7 @@ module Smten.Data.Read (
     ReadS, Read(..), reads, read,
    ) where
 
+import GHC.Types(Int)
 import GHC.Num(Num(..))
 import Smten.Smten.Base
 import Smten.Data.Char

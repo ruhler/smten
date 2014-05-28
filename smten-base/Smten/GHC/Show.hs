@@ -9,7 +9,7 @@ module Smten.GHC.Show (
 -- Note: this module is hardwired in the smten plugin to generate code to
 -- Smten.Compiled.GHC.Show instead of Smten.Compiled.Smten.GHC.Show
 
-import GHC.Types (Int(..))
+import GHC.Types (Int(..), Char(..))
 import GHC.Classes ((>))
 import GHC.Base ((++))
 import Data.Maybe

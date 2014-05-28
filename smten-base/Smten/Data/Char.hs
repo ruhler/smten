@@ -6,6 +6,7 @@ module Smten.Data.Char (
  ) where
 
 import qualified Prelude as P
+import Prelude(Char, Int)
 import Smten.Smten.Base
 import Smten.Data.Bool
 import Smten.Data.Eq

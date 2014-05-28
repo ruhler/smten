@@ -62,6 +62,8 @@ import Smten.GHC.Num ()
 import Smten.GHC.Real ()
 import Smten.GHC.Show ()
 import Smten.System.IO_ ()
+import Smten.Smten.Char ()
+import Smten.Smten.Int ()
 
 -- TODO: Switch to GHC Prelude for these things instead of redefining them.
 import Smten.Data.Read

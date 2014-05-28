@@ -32,7 +32,6 @@ library
     Smten.Data.EqInteger
     Smten.Data.List
     Smten.Data.Maybe
-    Smten.Data.Num0
     Smten.Data.Ratio
     Smten.Data.Read
     Smten.Data.Show
@@ -93,7 +92,6 @@ library
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.EqInteger
     Smten.Compiled.Smten.Data.List
-    Smten.Compiled.Smten.Data.Num0
     Smten.Compiled.Smten.Data.Read
     Smten.Compiled.Smten.Data.Show0
     Smten.Compiled.Smten.Data.Ord
@@ -103,10 +101,13 @@ library
     Smten.Compiled.Smten.GHC.Integer.Type
 
     Smten.Compiled.Smten.Smten.Base
+    Smten.Compiled.Smten.Smten.Bool
     Smten.Compiled.Smten.Smten.Char
     Smten.Compiled.Smten.Smten.Int
     Smten.Compiled.Smten.Smten.Integer
     Smten.Compiled.Smten.Smten.List
+    Smten.Compiled.Smten.Smten.PrimChar
+    Smten.Compiled.Smten.Smten.PrimInt
     Smten.Compiled.Smten.Smten.Tuple
     Smten.Compiled.Smten.Smten.Unit
     Smten.Compiled.Smten.System.IO_

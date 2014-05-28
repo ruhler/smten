@@ -7,16 +7,19 @@ module Smten.GHC.Integer.Type (
    quotInteger, remInteger, divInteger, modInteger,
    divModInteger, quotRemInteger,
    absInteger, signumInteger, eqInteger,
-   leInteger, smallInteger,
+   leInteger, smallInteger, integerToInt,
     ) where
 
 import GHC.Prim
-import GHC.Types(Bool(..))
+import GHC.Types
+import GHC.Integer (Integer)
 import qualified GHC.Integer as P
-import Smten.Smten.Base
 import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}
+
+-- Note: the primitives are redefined here to avoid linking directly
+-- to Smten.Compiled.GHC.Integer.Type, which would cause dependency problems.
 
 {-# NOINLINE plusInteger #-}
 plusInteger :: Integer -> Integer -> Integer
@@ -49,6 +52,10 @@ leInteger = P.leInteger
 {-# NOINLINE smallInteger #-}
 smallInteger :: Int# -> Integer
 smallInteger = P.smallInteger
+
+{-# NOINLINE integerToInt #-}
+integerToInt :: Integer -> Int#
+integerToInt = P.integerToInt
 
 {-# NOINLINE quotInteger #-}
 quotInteger :: Integer -> Integer -> Integer
