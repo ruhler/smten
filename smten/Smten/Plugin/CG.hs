@@ -26,21 +26,10 @@ type CG = StateT CGS CoreM
 
 -- Given the source module, turn it into the generated module
 toGenMod :: String -> String
-toGenMod "Smten.Control.Monad_" = "Smten.Compiled.Control.Monad"
-toGenMod "Smten.Data.Either_" = "Smten.Compiled.Data.Either"
-toGenMod "Smten.Data.Functor_" = "Smten.Compiled.Data.Functor"
-toGenMod "Smten.Data.List_" = "Smten.Compiled.Data.List"
-toGenMod "Smten.Data.Maybe_" = "Smten.Compiled.Data.Maybe"
-toGenMod "Smten.Data.Tuple_" = "Smten.Compiled.Data.Tuple"
-toGenMod "Smten.GHC.Base" = "Smten.Compiled.GHC.Base"
-toGenMod "Smten.GHC.Char" = "Smten.Compiled.GHC.Char"
-toGenMod "Smten.GHC.Classes" = "Smten.Compiled.GHC.Classes"
-toGenMod "Smten.GHC.Enum" = "Smten.Compiled.GHC.Enum"
-toGenMod "Smten.GHC.List" = "Smten.Compiled.GHC.List"
-toGenMod "Smten.GHC.Num" = "Smten.Compiled.GHC.Num"
-toGenMod "Smten.GHC.Real" = "Smten.Compiled.GHC.Real"
-toGenMod "Smten.GHC.Show" = "Smten.Compiled.GHC.Show"
-toGenMod s = "Smten.Compiled." ++ s
+toGenMod s = "Smten.Compiled." ++ 
+  if "Smten.Base." == take (length "Smten.Base.") s
+     then drop (length "Smten.Base.") s
+     else s
 
 
 -- | Use the given qualified id.

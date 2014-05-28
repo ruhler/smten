@@ -1,13 +1,10 @@
 
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.GHC.Show (
+module Smten.Base.GHC.Show (
     ShowS, Show(..), showList__, shows, showChar, showString, showParen,
     showSpace, appPrec, appPrec1,
     ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.GHC.Show instead of Smten.Compiled.Smten.GHC.Show
 
 import GHC.Types (Int(..), Char(..))
 import GHC.Classes ((>))

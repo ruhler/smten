@@ -1,10 +1,7 @@
 
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.GHC.Enum (Enum(..)) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.GHC.Enum instead of Smten.Compiled.Smten.GHC.Enum
+module Smten.Base.GHC.Enum (Enum(..)) where
 
 import GHC.Base
 import GHC.Char

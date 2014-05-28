@@ -28,7 +28,12 @@ import qualified Smten.Plugin.Output.Ppr as S
 -- For each smten module, a haskell module will be generated using the name of
 -- the smten module prefixed with \"Smten.Compiled\". The generated haskell files
 -- can be found in the Smten\/Compiled directory. For the main module, a
--- file called Smten\/Compiled\/Main.hs will be generated.
+-- file called Smten\/Compiled\/Main.hs will be generated. As a special case,
+-- any modules belonging to \"Smten.Base.\" will be compiled with the
+-- \"Smten.Base.\" prefix stripped. For example \"Smten.Base.Foo\" is compiled
+-- to \"Smten.Compiled.Foo\" instead of the usual
+-- \"Smten.Compiled.Smten.Base.Foo\".
+--
 --  
 -- After the haskell files have been generated, call ghc in ordinary fashion to
 -- generate an executable:

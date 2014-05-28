@@ -4,7 +4,7 @@
 module Smten.Data.EqInteger () where
 
 import Smten.Smten.Base
-import Smten.GHC.Classes
+import Smten.Base.GHC.Classes
 import Smten.GHC.Integer.Type
 
 instance Eq Integer where

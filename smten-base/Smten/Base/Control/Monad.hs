@@ -1,6 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Control.Monad_ (
+module Smten.Base.Control.Monad (
    Functor(fmap), Monad((>>=), (>>), return, fail),
    MonadPlus (mzero, mplus),
    mapM, mapM_, forM, forM_, sequence, sequence_,
@@ -11,9 +11,6 @@ module Smten.Control.Monad_ (
    liftM, liftM2, liftM3, liftM4, liftM5,
    ap
  ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.Control.Monad instead of Smten.Compiled.Smten.Control.Monad_
 
 import Data.Maybe
 import GHC.List

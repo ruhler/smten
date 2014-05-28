@@ -1,13 +1,10 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Data.Maybe_ (
+module Smten.Base.Data.Maybe (
     Maybe(Nothing, Just), maybe,
     isJust, isNothing, fromJust, fromMaybe,
     listToMaybe, maybeToList, catMaybes, mapMaybe,
     ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.Data.Maybe instead of Smten.Compiled.Smten.Data.Maybe_
 
 import GHC.Base
 

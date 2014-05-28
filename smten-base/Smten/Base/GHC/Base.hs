@@ -3,7 +3,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 {-# LANGUAGE RankNTypes #-}
-module Smten.GHC.Base (
+module Smten.Base.GHC.Base (
     Functor(..),
     Monad(..),
     foldr, build, map, (++),
@@ -15,9 +15,6 @@ module Smten.GHC.Base (
     quotInt, remInt, divInt, modInt,
     quotRemInt, divModInt,
     ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.GHC.Base instead of Smten.Compiled.Smten.GHC.Base
 
 import GHC.Prim
 import GHC.Types (Char(..), Int(..), Bool(..), IO(..))

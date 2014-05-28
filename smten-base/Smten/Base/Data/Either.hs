@@ -1,11 +1,8 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Data.Either_ (
+module Smten.Base.Data.Either (
     Either(..), either, lefts, rights, partitionEithers,
     ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.Data.Either instead of Smten.Compiled.Smten.Data.Either_
 
 import GHC.Classes
 import GHC.Base

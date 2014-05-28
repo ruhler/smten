@@ -30,6 +30,7 @@ Cleanup::
                      code for stage 2
   - Primitive code: uses "primitive" for stage 1, hand written code used for
                      stage 2.
+  See doc/prim.txt for more discussion.
 * Naming conventions are all over the place for formulas. Fix it please.
     Typically we combine an operation (ite, add, etc...) with a type (BitF,
     BitFF, IntegerF, ...). Functions must start lower, constructors upper, but

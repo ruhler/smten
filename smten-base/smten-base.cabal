@@ -41,21 +41,22 @@ library
     Smten.Data.Ordering
     Smten.Data.Tuple
 
-    Smten.Control.Monad_
-    Smten.Data.Either_
-    Smten.Data.Functor_
-    Smten.Data.List_
-    Smten.Data.Maybe_
-    Smten.Data.Tuple_
-    Smten.GHC.Base
-    Smten.GHC.Char
-    Smten.GHC.Classes
-    Smten.GHC.Enum
+    Smten.Base.Control.Monad
+    Smten.Base.Data.Either
+    Smten.Base.Data.Functor
+    Smten.Base.Data.List
+    Smten.Base.Data.Maybe
+    Smten.Base.Data.Tuple
+    Smten.Base.GHC.Base
+    Smten.Base.GHC.Char
+    Smten.Base.GHC.Classes
+    Smten.Base.GHC.Enum
+    Smten.Base.GHC.List
+    Smten.Base.GHC.Num
+    Smten.Base.GHC.Real
+    Smten.Base.GHC.Show
+
     Smten.GHC.Integer.Type
-    Smten.GHC.List
-    Smten.GHC.Num
-    Smten.GHC.Real
-    Smten.GHC.Show
 
     Smten.Smten.Base
     Smten.Smten.Char

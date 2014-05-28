@@ -2,12 +2,9 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RebindableSyntax #-}
-module Smten.GHC.Num (
+module Smten.Base.GHC.Num (
     Num(..)
      ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.GHC.Num instead of Smten.Compiled.Smten.GHC.Num
 
 import GHC.Base
 import Smten.Smten.Base

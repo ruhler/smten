@@ -1,11 +1,8 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Data.Tuple_ (
+module Smten.Base.Data.Tuple (
     fst, snd, curry, uncurry, swap
  ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.Data.Tuple instead of Smten.Compiled.Smten.Data.Tuple_
 
 fst :: (a, b) -> a
 fst (x, _) = x

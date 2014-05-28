@@ -1,0 +1,233 @@
+
+Wed May 28 13:44:58 EDT 2014
+
+The interface between Smten user land and Smten runtime land has gotten quit
+messy. The goal here is to figure out what it looks like, and how it can be
+cleaned up.
+
+First, some background:
+
+There are two different worlds I think about:
+  smten user - The haskell code which is a smten program
+               Like: Foo, Smten.Data.Map, etc... 
+
+  smten gen  - The haskell code generated for smten to execute the smten
+               program.
+               Like: Smten.Compiled.Foo, Smten.Compiled.Smten.Data.Map, etc...
+
+
+Let me name these worlds.
+smten user: S world
+smten gen : H world
+
+We have the following kinds of sources:
+ * Pure smten runtime - only appears in the H world.
+   In Smten.Runtime.* and friends.
+   Call this R
+
+ * Pure smten user
+   Appears at S world, and smten compiler generates corresponding H world.
+   Call this U
+
+ * Primitive smten user
+   A dummy version appears at S world. This just declares the prototype.
+   A manual version appears at H world which implements it.
+   Call this P
+
+ * Base smten
+   There are three versions:
+   1. Original definition: in GHC libraries, linked into things. [S]
+      Sometimes we reexport these under Smten. namespace.
+      ex: Control.Monad from GHC re-exported as Smten.Control.Monad
+   2. Smten copy: a copy of original definition [S]
+      Linked against originals.
+      ex: Smten.Control.Monad_
+   3. Version generated from (2) meant to work with (1) [H]
+      ex: Smten.Compiled.Control.Monad
+   Call this B1, B2, and B3
+
+ * Base funny
+   When part of a base smten is generated with approach in (B), and
+   part generated with approach in (P).
+   This gets hard because of module dependency issues.
+
+Questions we have:
+ * Do we need to define Smten.Prelude, or can we use Prelude directly?
+   That is, do we every have a different smten implementation of a 
+   prelude thing which is incompatible with the GHC base implementation?
+ 
+   One benefit to the distinction is as a form of documentation about
+   what Smten supports, but it might be cool, and cleaner, if we don't
+   have to make this distinction.
+ * What files can we move to nicer locations or coalesce or remove?
+
+
+Classification of current smten-base:
+
+Smten.Runtime.*: R
+
+Smten.Control.Monad: B1
+Smten.Data.Bool: B1
+Smten.Data.Either: B1
+Smten.Data.Eq: B1
+Smten.Data.Functor: B1
+Smten.Data.List: B1
+Smten.Data.Maybe: B1
+Smten.Data.Ratio: B1
+Smten.Data.Show: B1
+Smten.Data.Tuple: B1
+Smten.System.IO: B1
+
+Smten.Control.Monad_: B2
+Smten.Data.Functor_: B2
+Smten.Data.Either_: B2
+Smten.Data.Maybe_: B2
+Smten.Data.List_: B2
+Smten.Data.Tuple_: B2
+
+Smten.Smten.Unit: B2 (special for syntactic reasons)
+Smten.Smten.List: B2 (special for syntactic reasons)
+Smten.Smten.Tuple: B2 (special for syntactic reasons)
+
+Smten.GHC.Base: B2
+Smten.GHC.Char: B2
+Smten.GHC.Classes: B2
+Smten.GHC.Enum: B2
+Smten.GHC.List: B2
+Smten.GHC.Num: B2
+Smten.GHC.Real: B2
+Smten.GHC.Show: B2
+
+Smten.Compiled.GHC.CString: PH
+Smten.Compiled.GHC.Err: PH
+Smten.Compiled.Control.Exception.Base: PH
+Smten.Compiled.GHC.TopHandler: PH
+Smten.Compiled.GHC.Tuple: PH (but it doesn't export anything?)
+
+Generated Code (Ordinary):
+    Smten.Compiled.Smten.Prelude
+    Smten.Compiled.Smten.Control.Monad
+    Smten.Compiled.Smten.Data.Bool
+    Smten.Compiled.Smten.Data.Char
+    Smten.Compiled.Smten.Data.Function
+    Smten.Compiled.Smten.Data.Eq
+    Smten.Compiled.Smten.Data.EqInteger
+    Smten.Compiled.Smten.Data.List
+    Smten.Compiled.Smten.Data.Read
+    Smten.Compiled.Smten.Data.Ord
+    Smten.Compiled.Smten.Data.OrdInteger
+    Smten.Compiled.Smten.Data.Ordering
+    Smten.Compiled.Smten.Smten.Int
+    Smten.Compiled.Smten.Smten.List
+    Smten.Compiled.Smten.Smten.Tuple
+    Smten.Compiled.Smten.Smten.Unit
+    Smten.Compiled.Smten.System.IO_
+
+Generated Code (Renamed):
+    Smten.Compiled.Control.Monad
+    Smten.Compiled.Data.Either
+    Smten.Compiled.Data.Functor
+    Smten.Compiled.Data.List
+    Smten.Compiled.Data.Maybe
+    Smten.Compiled.Data.Tuple
+    Smten.Compiled.GHC.Base
+    Smten.Compiled.GHC.Char
+    Smten.Compiled.GHC.Classes
+    Smten.Compiled.GHC.Enum
+    Smten.Compiled.GHC.List
+    Smten.Compiled.GHC.Num
+    Smten.Compiled.GHC.Real
+    Smten.Compiled.GHC.Show
+
+
+Smten.Data.Char: US
+  Why not match ghc base?
+Smten.Data.Function: US
+  Why not match ghc base?
+Smten.Data.Ord: US
+  Why not match ghc base?
+
+
+Smten.Compiled.Smten.Smten.PrimChar: PH (for GHC.Prim)
+Smten.Compiled.Smten.Smten.PrimInt: PH (for GHC.Prim)
+Smten.Compiled.GHC.Prim: PH
+
+Smten.System.IO_: B2
+Smten.System.IO0: PS
+Smten.Compiled.System.IO: PH
+  Implemented by rexporting IO0 and compiled IO_.
+Smten.Compiled.System.IO0: PH (for System.IO)
+
+Smten.GHC.Integer.Type: 
+  Smten export of GHC.Integer.Type, but redefines exported things to
+  avoid an issue with dependencies
+Smten.Smten.Integer: B1/PS (re-exports Prelude.Integer)
+Smten.Compiled.Smten.Smten.Integer: PH for GHC.Integer.Type
+Smten.Data.EqInteger: B2 (for GHC.Integer.Type)
+Smten.Data.OrdInteger: B2 (for GHC.Integer.Type)
+Smten.Compiled.GHC.Integer.Type: ??
+  Implements H world GHC.Integer.Type by reexporting 
+    EqInteger, OrdInteger, GHC.Integer.Type
+  Because it's partially manual, and partially generated.
+
+Smten.Data.Show0: PS
+Smten.Compiled.Smten.Data.Show0: PH
+
+Smten.Smten.Char: B2 (for GHC.Types)
+Smten.Smten.Int: B2 (for GHC.Types)
+Smten.Data.Ordering: B2 (for GHC.Types)
+Smten.Compiled.Smten.Smten.Bool: PH for GHC.Types
+Smten.Compiled.GHC.Types: ??
+  Reexports Data.Ording, Smten.Smten.Bool, Smten.Smten.Char, Smten.Smten.Int
+  Partially manual, partially generated.
+
+
+
+Smten.Smten.Base: PS
+  exports: String, Integer, P.error. What's this for?
+Smten.Compiled.Smten.Smten.Base: PH?
+  Re-exports a bunch.
+  Defines error.
+  Do we need this? Why?
+  
+  
+Smten.Prelude: 
+  Re-exports many prelude things (B1)
+  Defines 'undefined', 'primitive' (B2)
+  Smten.Data.Read remains as a non-ghc impl for Prelude
+
+
+
+
+Notes:
+ * We have lots of inconsistencies in naming:
+    ex: Smten.Control.Monad (B1), Smten.Control.Monad_ (B2)
+        vs Smten.GHC.List (B2)
+ * Should B1 be annotated as a PrimitiveModule?
+ * Who should require B2 are compiled?
+   Smten.Prelude? or the corresponding B1?
+
+Summary of review:
+ * Most modules use B method, that works well.
+ * In some cases we have a B1, in others we don't.
+   Personally I would love to have no B1, but then, how do we know when
+   to use the direct prelude, and when we need a substituted version?
+   Currently required substitutions:
+    Data.Char, Data.Function, Data.Ord, Data.Read
+   I think only Data.Read is a real problem.
+ * The following are split into manual and automatic generated code.
+   I should see if I can simplify their organization.
+    System.IO, GHC.Integer.Type, Data.Show, GHC.Types
+
+Action Items:
+ * Move Data.Char to B1/B2 split.
+ * Move Data.Function to B1/B2 split.
+ * Move Data.Ord to B1/B2 split.
+ * Move Smten.Compiled.Smten.Smten.Prim* to Smten.Runtime.Prim*
+   There's no reason to pretend its a compiled thing.
+ * Create a smten-base.hs as list of things to compile for generated code.
+ + Come up with a new convention for placement of B2 things
+    Perhaps: Smten.Base.* 
+    Which gets compiled to Smten.Compiled.* instead of
+    Smten.Compiled.Smten.Base.*
+    

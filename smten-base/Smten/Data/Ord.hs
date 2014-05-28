@@ -9,7 +9,6 @@ module Smten.Data.Ord (
  ) where
 
 import Prelude(Ord(..), Ordering(..))
-import Smten.GHC.Classes ()
 import Smten.Data.Ordering ()
 import Smten.Data.OrdInteger ()
 

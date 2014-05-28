@@ -2,13 +2,10 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE UnboxedTuples #-}
-module Smten.GHC.Real (
+module Smten.Base.GHC.Real (
     Ratio(..), Rational, (%), numerator, denominator, gcd,
     Integral(..),
     ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.GHC.Real instead of Smten.Compiled.Smten.GHC.Real
 
 import GHC.Base
 import GHC.Enum

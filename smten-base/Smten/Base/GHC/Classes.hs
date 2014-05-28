@@ -3,13 +3,10 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -O #-}
-module Smten.GHC.Classes (
+module Smten.Base.GHC.Classes (
     (&&), (||), not,
     Eq(..), Ord(..),
     ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.GHC.Classes instead of Smten.Compiled.Smten.GHC.Classes
 
 import qualified GHC.Classes as P
 import GHC.Prim

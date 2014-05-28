@@ -1,6 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Data.List_ (
+module Smten.Base.Data.List (
     (++), head, last, tail, init, null, length,
     map, reverse,
     foldl, foldl1, foldr, foldr1,
@@ -21,9 +21,6 @@ module Smten.Data.List_ (
     genericLength, genericTake, genericDrop, genericSplitAt,
     genericIndex, genericReplicate,
  ) where
-
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.Data.List instead of Smten.Compiled.Smten.Data.List_
 
 import GHC.Num
 import GHC.List 

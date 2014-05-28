@@ -1,6 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.GHC.List (
+module Smten.Base.GHC.List (
     map, (++), filter, concat,
     head, last, tail, init, null, length, (!!),
     foldl, scanl, scanl1, foldr, foldr1, scanr, scanr1,
@@ -13,8 +13,6 @@ module Smten.GHC.List (
     errorEmptyList,
      ) where
 
--- Note: this module is hardwired in the smten plugin to generate code to
--- Smten.Compiled.GHC.List instead of Smten.Compiled.Smten.GHC.List
 import Data.Maybe
 import GHC.Base
 import GHC.Num
