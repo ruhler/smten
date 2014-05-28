@@ -233,7 +233,9 @@ Action Items:
     Smten.Compiled.Smten.Base.*
  * remove as many references to Smten.Smten.Base as we can, and see if
    they all go away
- * move Smten.Compiled.Smten.Smten.Integer to Smten.Runtime.Integer
+ + move Smten.Compiled.Smten.Smten.Integer to Smten.Runtime.Integer
+ * look at all uses of toHSChar and fromHSChar and see if they are needed or
+   can be avoided some other way.
 
 A note about Smten.Smten.Base:
 

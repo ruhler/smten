@@ -60,7 +60,6 @@ library
 
     Smten.Smten.Char
     Smten.Smten.Int
-    Smten.Smten.Integer
     Smten.Smten.List
     Smten.Smten.Tuple
     Smten.Smten.Unit
@@ -82,6 +81,7 @@ library
     Smten.Runtime.Formula.Type
     Smten.Runtime.FreeID
     Smten.Runtime.Int
+    Smten.Runtime.Integer
     Smten.Runtime.Select
     Smten.Runtime.SmtenHS
     Smten.Runtime.StableNameEq
@@ -106,7 +106,6 @@ library
     Smten.Compiled.Smten.Smten.Base
     Smten.Compiled.Smten.Smten.Char
     Smten.Compiled.Smten.Smten.Int
-    Smten.Compiled.Smten.Smten.Integer
     Smten.Compiled.Smten.Smten.List
     Smten.Compiled.Smten.Smten.Tuple
     Smten.Compiled.Smten.Smten.Unit

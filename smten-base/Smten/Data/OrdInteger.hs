@@ -4,7 +4,7 @@
 {-# LANGUAGE PatternGuards #-}
 module Smten.Data.OrdInteger () where
 
-import Smten.Smten.Integer
+import GHC.Integer (Integer)
 import Smten.Data.EqInteger ()
 import Smten.Base.GHC.Classes
 import Smten.GHC.Integer.Type

@@ -15,7 +15,7 @@ import Smten.Compiled.GHC.Types
 import Smten.Runtime.Int
 import Smten.Runtime.SymbolicOf
 import Smten.Runtime.Formula
-import Smten.Compiled.Smten.Smten.Integer
+import Smten.Runtime.Integer
 
 plusInteger :: Integer -> Integer -> Integer
 plusInteger = {-# SCC "PRIM_PLUS_INTEGER" #-} add_IntegerF

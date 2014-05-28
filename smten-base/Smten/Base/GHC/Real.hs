@@ -10,8 +10,8 @@ module Smten.Base.GHC.Real (
 import GHC.Base
 import GHC.Enum
 import GHC.Err
+import GHC.Integer (Integer)
 import Smten.GHC.Integer.Type
-import Smten.Smten.Integer
 import GHC.Num (Num(..))
 
 infixl 7 `quot`, `rem`, `div`, `mod`

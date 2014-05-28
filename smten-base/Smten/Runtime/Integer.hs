@@ -2,7 +2,9 @@
 
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Compiled.Smten.Smten.Integer (
+
+-- | Implementation of Smten primitive Integer type
+module Smten.Runtime.Integer (
     Integer(..),
   ) where
 

@@ -7,7 +7,7 @@ module Smten.Compiled.GHC.Integer.Type (
     module Smten.Compiled.Smten.GHC.Integer.Type,
     ) where
 
-import Smten.Compiled.Smten.Smten.Integer
+import Smten.Runtime.Integer
 import Smten.Compiled.Smten.Data.EqInteger
 import Smten.Compiled.Smten.Data.OrdInteger
 import Smten.Compiled.Smten.GHC.Integer.Type
