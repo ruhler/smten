@@ -58,7 +58,6 @@ library
 
     Smten.GHC.Integer.Type
 
-    Smten.Smten.Base
     Smten.Smten.Char
     Smten.Smten.Int
     Smten.Smten.Integer

@@ -6,9 +6,8 @@ module Smten.System.IO_ (
     print,
  ) where
 
-import Prelude (FilePath, Show(..))
+import Prelude (FilePath, String, Show(..))
 
-import Smten.Smten.Base
 import Smten.Control.Monad
 import Smten.System.IO0
 

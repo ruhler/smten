@@ -5,8 +5,7 @@ module Smten.Data.Show0 (
     ) where
 
 import qualified Prelude as P
-import Prelude(Char, Int)
-import Smten.Smten.Base
+import Prelude(String, Char, Int, Integer)
 import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}

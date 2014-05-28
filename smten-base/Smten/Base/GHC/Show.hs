@@ -6,11 +6,11 @@ module Smten.Base.GHC.Show (
     showSpace, appPrec, appPrec1,
     ) where
 
+import Prelude (String, Integer)
 import GHC.Types (Int(..), Char(..))
 import GHC.Classes ((>))
 import GHC.Base ((++))
 import Data.Maybe
-import Smten.Smten.Base
 import Smten.Data.Bool
 import Smten.Data.Function
 import Smten.Data.Show0

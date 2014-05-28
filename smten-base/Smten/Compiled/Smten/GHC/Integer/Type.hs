@@ -11,11 +11,11 @@ module Smten.Compiled.Smten.GHC.Integer.Type (
 
 import qualified GHC.Integer as P
 import qualified Prelude as P
-import Smten.Compiled.Smten.Smten.Base
 import Smten.Compiled.GHC.Types
 import Smten.Runtime.Int
 import Smten.Runtime.SymbolicOf
 import Smten.Runtime.Formula
+import Smten.Compiled.Smten.Smten.Integer
 
 plusInteger :: Integer -> Integer -> Integer
 plusInteger = {-# SCC "PRIM_PLUS_INTEGER" #-} add_IntegerF

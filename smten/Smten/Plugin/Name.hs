@@ -33,15 +33,15 @@ qnameis mod str nm = and [
 --   nm - the name.
 dename :: Bool -> Name -> (Maybe String, String, String)
 dename ty nm
-  | nameis "[]" nm = (Just "Smten.Smten.Base",
+  | nameis "[]" nm = (Just "Smten.Smten.List",
                       if ty then "List__" else "Nil__",
                       error "uniqnm for []")
-  | nameis ":" nm = (Just "Smten.Smten.Base", "Cons__", error "uniqnm for :")
-  | nameis "()" nm = (Just "Smten.Smten.Base", "Unit__", error "uniqnm for ()")
-  | nameis "(,)" nm = (Just "Smten.Smten.Base", "Tuple2__", error "uniqnm for (,)")
-  | nameis "(,,)" nm = (Just "Smten.Smten.Base", "Tuple3__", error "uniqnm for (,,)")
-  | nameis "(,,,)" nm = (Just "Smten.Smten.Base", "Tuple4__", error "uniqnm for (,,,)")
-  | qnameis "GHC.Integer.Type" "Integer" nm = (Just "Smten.Smten.Base", "Integer", error "uniqnm for Integer")
+  | nameis ":" nm = (Just "Smten.Smten.List", "Cons__", error "uniqnm for :")
+  | nameis "()" nm = (Just "Smten.Smten.Unit", "Unit__", error "uniqnm for ()")
+  | nameis "(,)" nm = (Just "Smten.Smten.Tuple", "Tuple2__", error "uniqnm for (,)")
+  | nameis "(,,)" nm = (Just "Smten.Smten.Tuple", "Tuple3__", error "uniqnm for (,,)")
+  | nameis "(,,,)" nm = (Just "Smten.Smten.Tuple", "Tuple4__", error "uniqnm for (,,,)")
+  | qnameis "GHC.Integer.Type" "Integer" nm = (Just "Smten.Smten.Integer", "Integer", error "uniqnm for Integer")
   | otherwise = 
       let modnm = moduleNameString . moduleName <$> nameModule_maybe nm
           occnm = occNameString $ nameOccName nm

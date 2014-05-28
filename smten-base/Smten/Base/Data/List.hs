@@ -22,13 +22,13 @@ module Smten.Base.Data.List (
     genericIndex, genericReplicate,
  ) where
 
-import GHC.Num
-import GHC.List 
-
+import GHC.Base(String)
 import GHC.Classes (Ord(..))
+import GHC.Err(error)
+import GHC.List 
+import GHC.Num
 import GHC.Types(Int(..), Ordering(..))
 import GHC.Real
-import Smten.Smten.Base
 import Smten.Data.Bool
 import qualified Smten.Data.Char as Char
 import Smten.Data.Eq

@@ -5,8 +5,8 @@ module Smten.Compiled.Smten.Data.Show0 (
  ) where
 
 import qualified Prelude as P
-import Smten.Compiled.Smten.Smten.Base
 import Smten.Runtime.SymbolicOf
+import Smten.Compiled.Smten.Smten.Base
 
 -- TODO: These convert between P.String and List__ Char all over the place.
 -- Surely something more efficient can be done?

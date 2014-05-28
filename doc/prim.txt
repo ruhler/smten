@@ -223,7 +223,7 @@ Action Items:
  * Move Data.Char to B1/B2 split.
  * Move Data.Function to B1/B2 split.
  * Move Data.Ord to B1/B2 split.
- * Move Smten.Compiled.Smten.Smten.Prim* to Smten.Runtime.Prim*
+ + Move Smten.Compiled.Smten.Smten.Prim* to Smten.Runtime.Prim*
    And Move Smten.Compiled.Smten.Smten.Bool as well.
    There's no reason to pretend its a compiled thing.
  * Create a smten-base.hs as list of things to compile for generated code.
@@ -233,4 +233,17 @@ Action Items:
     Smten.Compiled.Smten.Base.*
  * remove as many references to Smten.Smten.Base as we can, and see if
    they all go away
+ * move Smten.Compiled.Smten.Smten.Integer to Smten.Runtime.Integer
+
+A note about Smten.Smten.Base:
+
+It looks like I used to want it as an abstract place for everything, so we
+could refer to it for all primitive types.
+I'm now thinking that's more abstraction than we need.
+It's just not that hard to point to the latest place for primitives.
+
+But we do have a question about toHSChar and fromHSChar, which seem to show up
+a number of place. Where should these be defined?
+Why do we need these at all?
+
     

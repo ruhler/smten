@@ -1,12 +1,11 @@
 
-{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Read (
     ReadS, Read(..), reads, read,
    ) where
 
+import Prelude (String, Integer, error)
 import GHC.Types(Int)
 import GHC.Num(Num(..))
-import Smten.Smten.Base
 import Smten.Data.Char
 import Smten.Data.Function
 import Smten.Data.List

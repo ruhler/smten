@@ -6,8 +6,8 @@ module Smten.Compiled.Smten.System.IO0 (
 
 import qualified Prelude as P
 import qualified System.IO as P
-import Smten.Compiled.Smten.Smten.Base
 import Smten.Runtime.SymbolicOf
+import Smten.Compiled.Smten.Smten.Base
 
 putChar :: Char -> P.IO Unit__
 putChar c = {-# SCC "PRIM_PUT_CHAR" #-} P.putChar (toHSChar c) P.>> P.return __Unit__
