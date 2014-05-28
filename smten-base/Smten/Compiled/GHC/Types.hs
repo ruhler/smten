@@ -4,7 +4,7 @@
 
 module Smten.Compiled.GHC.Types (
     module Smten.Compiled.Smten.Data.Ordering,
-    module Smten.Compiled.Smten.Smten.Bool,
+    module Smten.Runtime.Bool,
     module Smten.Compiled.Smten.Smten.Char,
     module Smten.Compiled.Smten.Smten.Int,
     IO, __deNewTyIO,
@@ -13,7 +13,7 @@ module Smten.Compiled.GHC.Types (
 import GHC.Prim (RealWorld, State#)
 import GHC.Types (IO(..))
 import Smten.Compiled.Smten.Data.Ordering
-import Smten.Compiled.Smten.Smten.Bool
+import Smten.Runtime.Bool
 import Smten.Compiled.Smten.Smten.Char
 import Smten.Compiled.Smten.Smten.Int
 

@@ -12,8 +12,8 @@ module Smten.Compiled.Smten.GHC.Integer.Type (
 import qualified GHC.Integer as P
 import qualified Prelude as P
 import Smten.Compiled.Smten.Smten.Base
-import Smten.Compiled.Smten.Smten.PrimInt
 import Smten.Compiled.GHC.Types
+import Smten.Runtime.Int
 import Smten.Runtime.SymbolicOf
 import Smten.Runtime.Formula
 

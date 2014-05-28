@@ -35,9 +35,9 @@ proc hrun {args} {
 set ::env(HOME) [pwd]/build/home
 
 # Create and set up a build directory for the build if needed
-if {![file exists "build/home/cabal"]} {
+if {![file exists "build/home/.cabal"]} {
     puts "Creating local home directory..."
-    hrun mkdir -p build/home/cabal
+    hrun mkdir -p build/home/.cabal
     hrun cabal update
     exec echo "extra-lib-dirs: $::env(LD_LIBRARY_PATH)" >> build/home/.cabal/config
     exec echo "library-profiling: True" >> build/home/.cabal/config

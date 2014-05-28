@@ -31,10 +31,10 @@ expCG (Var x)
   | isConstructor x = S.VarE <$> (qconnmCG $ varName x)
   | otherwise = S.VarE <$> (qnameCG $ varName x)
 expCG (Lit l@(MachInt {})) = do
-    mkint <- usequalified "Smten.Compiled.Smten.Smten.PrimInt" "int#"
+    mkint <- usequalified "Smten.Runtime.Int" "int#"
     return $ S.AppE (S.VarE mkint) (S.LitE (litCG l))
 expCG (Lit l@(MachChar {})) = do
-    mkchar <- usequalified "Smten.Compiled.Smten.Smten.PrimChar" "char#"
+    mkchar <- usequalified "Smten.Runtime.Char" "char#"
     return $ S.AppE (S.VarE mkchar) (S.LitE (litCG l))
 expCG (Lit l) = return (S.LitE (litCG l))
 expCG x@(App a t@(Type {})) = do

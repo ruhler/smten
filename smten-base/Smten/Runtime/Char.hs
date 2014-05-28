@@ -2,7 +2,9 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Compiled.Smten.Smten.PrimChar (
+
+-- | Implementation of Smten primitive Char# type.
+module Smten.Runtime.Char (
     Char#(..), eqChar#, neChar#, gtChar#, geChar#, ltChar#, leChar#,
     primCharApp, toHSChar#, char#, __isLitChar#,
   ) where
@@ -10,11 +12,11 @@ module Smten.Compiled.Smten.Smten.PrimChar (
 import qualified Prelude as P
 import qualified GHC.Prim as P
 
+import Smten.Runtime.Bool
 import Smten.Runtime.Formula
 import Smten.Runtime.Select
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.StableNameEq
-import Smten.Compiled.Smten.Smten.Bool
 
 data Char# =
     Char# P.Char#

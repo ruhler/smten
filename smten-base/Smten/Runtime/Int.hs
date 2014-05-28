@@ -4,7 +4,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE UnboxedTuples #-}
-module Smten.Compiled.Smten.Smten.PrimInt (
+
+-- | Implementation of primitive Int# type for Smten.
+module Smten.Runtime.Int (
     Int#(..), __isLitInt#,
     (/=#), (==#), (>=#), (<=#), (>#), (<#),
     (+#), (-#), (*#), negateInt#,
@@ -17,11 +19,11 @@ import qualified GHC.Types as P
 import qualified GHC.Prim as P
 import qualified Data.IntMap as M
 
+import Smten.Runtime.Bool
 import Smten.Runtime.Formula.PartialF
 import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula
 import Smten.Runtime.SmtenHS
-import Smten.Compiled.Smten.Smten.Bool
 
 data IntFF =
    IntFF P.Int#

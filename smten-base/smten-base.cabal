@@ -71,7 +71,9 @@ library
 
     Smten.Runtime.AnyMap
     Smten.Runtime.Bit
+    Smten.Runtime.Bool
     Smten.Runtime.BuildCache
+    Smten.Runtime.Char
     Smten.Runtime.Formula
     Smten.Runtime.Formula.BitF
     Smten.Runtime.Formula.BoolF
@@ -80,6 +82,7 @@ library
     Smten.Runtime.Formula.Finite
     Smten.Runtime.Formula.Type
     Smten.Runtime.FreeID
+    Smten.Runtime.Int
     Smten.Runtime.Select
     Smten.Runtime.SmtenHS
     Smten.Runtime.StableNameEq
@@ -102,13 +105,10 @@ library
     Smten.Compiled.Smten.GHC.Integer.Type
 
     Smten.Compiled.Smten.Smten.Base
-    Smten.Compiled.Smten.Smten.Bool
     Smten.Compiled.Smten.Smten.Char
     Smten.Compiled.Smten.Smten.Int
     Smten.Compiled.Smten.Smten.Integer
     Smten.Compiled.Smten.Smten.List
-    Smten.Compiled.Smten.Smten.PrimChar
-    Smten.Compiled.Smten.Smten.PrimInt
     Smten.Compiled.Smten.Smten.Tuple
     Smten.Compiled.Smten.Smten.Unit
     Smten.Compiled.Smten.System.IO_

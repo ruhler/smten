@@ -1,6 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Compiled.Smten.Smten.Bool (
+-- | Implementation of primitive Bool type in Smten.
+module Smten.Runtime.Bool (
     Bool, __True, __False,
     ) where
 

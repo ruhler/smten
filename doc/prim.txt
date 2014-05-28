@@ -224,10 +224,13 @@ Action Items:
  * Move Data.Function to B1/B2 split.
  * Move Data.Ord to B1/B2 split.
  * Move Smten.Compiled.Smten.Smten.Prim* to Smten.Runtime.Prim*
+   And Move Smten.Compiled.Smten.Smten.Bool as well.
    There's no reason to pretend its a compiled thing.
  * Create a smten-base.hs as list of things to compile for generated code.
  + Come up with a new convention for placement of B2 things
     Perhaps: Smten.Base.* 
     Which gets compiled to Smten.Compiled.* instead of
     Smten.Compiled.Smten.Base.*
+ * remove as many references to Smten.Smten.Base as we can, and see if
+   they all go away
     

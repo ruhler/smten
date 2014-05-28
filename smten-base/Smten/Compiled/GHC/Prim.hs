@@ -3,14 +3,14 @@
 {-# LANGUAGE MagicHash #-}
 module Smten.Compiled.GHC.Prim (
     GHC.Prim.realWorld#, GHC.Prim.State#, GHC.Prim.RealWorld, GHC.Prim.Addr#,
-    module Smten.Compiled.Smten.Smten.PrimChar,
-    module Smten.Compiled.Smten.Smten.PrimInt,
+    module Smten.Runtime.Char,
+    module Smten.Runtime.Int,
     ord#, chr#,
     ) where
 
 import qualified GHC.Prim
-import Smten.Compiled.Smten.Smten.PrimChar
-import Smten.Compiled.Smten.Smten.PrimInt
+import Smten.Runtime.Char
+import Smten.Runtime.Int
 
 ord# :: Char# -> Int#
 ord# c = primCharApp (\v -> int# (GHC.Prim.ord# v)) c
