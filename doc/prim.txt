@@ -220,20 +220,21 @@ Summary of review:
     System.IO, GHC.Integer.Type, Data.Show, GHC.Types
 
 Action Items:
- * Move Data.Char to B1/B2 split.
- * Move Data.Function to B1/B2 split.
- * Move Data.Ord to B1/B2 split.
  + Move Smten.Compiled.Smten.Smten.Prim* to Smten.Runtime.Prim*
    And Move Smten.Compiled.Smten.Smten.Bool as well.
    There's no reason to pretend its a compiled thing.
- * Create a smten-base.hs as list of things to compile for generated code.
  + Come up with a new convention for placement of B2 things
     Perhaps: Smten.Base.* 
     Which gets compiled to Smten.Compiled.* instead of
     Smten.Compiled.Smten.Base.*
+ + move Smten.Compiled.Smten.Smten.Integer to Smten.Runtime.Integer
+
+ * Move Data.Char to B1/B2 split.
+ * Move Data.Function to B1/B2 split.
+ * Move Data.Ord to B1/B2 split.
+ * Create a smten-base.hs as list of things to compile for generated code.
  * remove as many references to Smten.Smten.Base as we can, and see if
    they all go away
- + move Smten.Compiled.Smten.Smten.Integer to Smten.Runtime.Integer
  * look at all uses of toHSChar and fromHSChar and see if they are needed or
    can be avoided some other way.
 
@@ -248,4 +249,3 @@ But we do have a question about toHSChar and fromHSChar, which seem to show up
 a number of place. Where should these be defined?
 Why do we need these at all?
 
-    

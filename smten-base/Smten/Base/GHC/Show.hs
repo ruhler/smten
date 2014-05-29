@@ -1,18 +1,20 @@
 
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE UnboxedTuples #-}
 module Smten.Base.GHC.Show (
-    ShowS, Show(..), showList__, shows, showChar, showString, showParen,
-    showSpace, appPrec, appPrec1,
+    ShowS, Show(..),
+
+    shows, showChar, showString,
+    showParen, showList__, showSpace,
+    intToDigit, showSignedInt,
+    appPrec, appPrec1,
     ) where
 
-import Prelude (String, Integer)
-import GHC.Types (Int(..), Char(..))
-import GHC.Classes ((>))
-import GHC.Base ((++))
+import GHC.Base
+import GHC.Num
 import Data.Maybe
-import Smten.Data.Bool
-import Smten.Data.Function
 import Smten.Data.Show0
 
 type ShowS = String -> String
@@ -36,6 +38,48 @@ appPrec, appPrec1 :: Int
 appPrec = I# 10#
 appPrec1 = I# 11#
 
+
+instance Show () where
+    show () = "()"
+
+instance (Show a) => Show [a] where
+    showsPrec p = showList
+
+instance Show Bool where
+    show True = "True"
+    show False = "False"
+
+instance Show Ordering where
+  showsPrec _ LT = showString "LT"
+  showsPrec _ EQ = showString "EQ"
+  showsPrec _ GT = showString "GT"
+
+-- TODO: Implement this like they do in GHC.Show, not with
+-- char_showsPrec and char_showList as primitives.
+instance Show Char where
+    showsPrec = char_showsPrec
+    showList = char_showList
+
+instance Show Int where
+    showsPrec = showSignedInt
+
+instance Show a => Show (Maybe a) where
+    showsPrec _p Nothing s = showString "Nothing" s
+    showsPrec p (Just x) s
+                          = (showParen (p > appPrec) $
+                             showString "Just " .
+                             showsPrec appPrec1 x) s
+
+instance (Show a, Show b) => Show (a, b) where
+    show (a, b) = "(" ++ show a ++ "," ++ show b ++ ")"
+
+instance (Show a, Show b, Show c) => Show (a, b, c) where
+    show (a, b, c) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ ")"
+
+instance (Show a, Show b, Show c, Show d) => Show (a, b, c, d) where
+    show (a, b, c, d) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ ")"
+
+
 shows :: (Show a) => a -> ShowS
 shows = showsPrec 0
 
@@ -54,40 +98,41 @@ showParen b p =
 showSpace :: ShowS
 showSpace = \ xs -> ' ' : xs
 
-instance Show () where
-    show () = "()"
+intToDigit :: Int -> Char
+intToDigit (I# i)
+    | i >=# 0#  && i <=#  9# =  unsafeChr (ord '0' + I# i)
+    | i >=# 10# && i <=# 15# =  unsafeChr (ord 'a' + I# i - 10)
+    | otherwise           =  error ("Char.intToDigit: not a digit " ++ show (I# i))
 
-instance Show Bool where
-    show True = "True"
-    show False = "False"
+showSignedInt :: Int -> Int -> ShowS
+showSignedInt (I# p) (I# n) r
+    | n <# 0# && p ># 6# = '(' : itos n (')' : r)
+    | otherwise          = itos n r
 
-instance Show Int where
-    showsPrec = int_showsPrec
+itos :: Int# -> String -> String
+itos n# cs
+    | n# <# 0# =
+        let !(I# minInt#) = minInt in
+        if n# ==# minInt#
+                -- negateInt# minInt overflows, so we can't do that:
+           then '-' : (case n# `quotRemInt#` 10# of
+                       (# q, r #) ->
+                           itos' (negateInt# q) (itos' (negateInt# r) cs))
+           else '-' : itos' (negateInt# n#) cs
+    | otherwise = itos' n# cs
+    where
+    itos' :: Int# -> String -> String
+    itos' x# cs'
+        | x# <# 10#  = C# (chr# (ord# '0'# +# x#)) : cs'
+        | otherwise = case x# `quotRemInt#` 10# of
+                      (# q, r #) ->
+                          case chr# (ord# '0'# +# r) of
+                          c# ->
+                              itos' q (C# c# : cs')
 
-instance Show a => Show (Maybe a) where
-    showsPrec _p Nothing s = showString "Nothing" s
-    showsPrec p (Just x) s
-                          = (showParen (p > appPrec) $
-                             showString "Just " .
-                             showsPrec appPrec1 x) s
-
-instance Show Char where
-    showsPrec = char_showsPrec
-    showList = char_showList
-
-instance (Show a) => Show [a] where
-    showsPrec p = showList
-
+-- TODO: Implement this like they do in GHC.Show, not with integer_showsPrec
+-- as a primitive
 instance Show Integer where
     showsPrec = integer_showsPrec
-
-instance (Show a, Show b) => Show (a, b) where
-    show (a, b) = "(" ++ show a ++ "," ++ show b ++ ")"
-
-instance (Show a, Show b, Show c) => Show (a, b, c) where
-    show (a, b, c) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ ")"
-
-instance (Show a, Show b, Show c, Show d) => Show (a, b, c, d) where
-    show (a, b, c, d) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ ")"
 
 

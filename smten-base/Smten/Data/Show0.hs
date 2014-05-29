@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Show0 (
-   int_showsPrec, char_showsPrec, char_showList, integer_showsPrec
+   char_showsPrec, char_showList, integer_showsPrec
     ) where
 
 import qualified Prelude as P
@@ -9,10 +9,6 @@ import Prelude(String, Char, Int, Integer)
 import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}
-
-{-# NOINLINE int_showsPrec #-}
-int_showsPrec :: Int -> Int -> String -> String
-int_showsPrec = {-# SCC "PRIM_INT_SHOWSPREC" #-} P.showsPrec
 
 {-# NOINLINE integer_showsPrec #-}
 integer_showsPrec :: Int -> Integer -> String -> String
