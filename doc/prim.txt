@@ -257,3 +257,44 @@ yuckiness there.
 Now the only place toHSChar is used is in IO0.
 Can we generate all the code for IO like we do for Show?
 
+What we need for IO to work:
+ I currently just want to expose:
+    putChar, readFile, getContents
+
+Using GHC's implementation, this means we need:
+  hPutChar, stdout
+  hGetContents, stdin
+  openFile ReadMode
+
+This means we need at least:
+  handles,
+  IOMode
+
+IOMode is a simple enum. That's easily doable.
+
+The rest requires a whole slew of things:
+ IORefs, MVars,
+
+In other words, it's a big mess. I don't think now is the time to try and
+tackle it.
+
+But I should note: I don't expect IO computations to be used with symbolic
+arguments? Yes. I can ensure there will not be any symbolic arguments to
+operations of type IO. Does that help any?
+
+I think it means I need something like what I have: split IO into manual and
+generated implementation.
+Can we do this cleanly?
+
+But the answer is: people can't use Prelude operations for IO, right?
+putChar, etc... won't work? Or can I still make them work somehow?
+
+No. That's not true. It just means the implementation of
+Smten.Compiled.System.IO is partially manual, so I have to split it up.
+
+What's the cleanest way to split it up?
+
+* Manually implement Smten.Compiled.System.IO
+    I can put primitive implementations here directly, if they
+    don't depend on generated things.
+

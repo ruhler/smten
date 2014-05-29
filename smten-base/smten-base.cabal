@@ -80,6 +80,7 @@ library
     Smten.Runtime.Formula.Type
     Smten.Runtime.FreeID
     Smten.Runtime.Int
+    Smten.Runtime.IntFF
     Smten.Runtime.Integer
     Smten.Runtime.Select
     Smten.Runtime.SmtenHS
