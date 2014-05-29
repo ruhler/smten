@@ -35,7 +35,6 @@ library
     Smten.Data.Ratio
     Smten.Data.Read
     Smten.Data.Show
-    Smten.Data.Show0
     Smten.Data.Ord
     Smten.Data.OrdInteger
     Smten.Data.Ordering
@@ -96,7 +95,6 @@ library
     Smten.Compiled.Smten.Data.EqInteger
     Smten.Compiled.Smten.Data.List
     Smten.Compiled.Smten.Data.Read
-    Smten.Compiled.Smten.Data.Show0
     Smten.Compiled.Smten.Data.Ord
     Smten.Compiled.Smten.Data.OrdInteger
     Smten.Compiled.Smten.Data.Ordering

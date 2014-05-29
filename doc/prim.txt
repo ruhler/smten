@@ -249,3 +249,11 @@ But we do have a question about toHSChar and fromHSChar, which seem to show up
 a number of place. Where should these be defined?
 Why do we need these at all?
 
+Thu May 29 08:29:36 EDT 2014
+
+I moved Show entirely to generated code. We no longer need toHSChar and that
+yuckiness there.
+
+Now the only place toHSChar is used is in IO0.
+Can we generate all the code for IO like we do for Show?
+
