@@ -14,6 +14,7 @@ import qualified GHC.Prim as P
 
 import Smten.Runtime.Bool
 import Smten.Runtime.Formula
+import Smten.Runtime.Formula.PartialF
 import Smten.Runtime.Select
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.StableNameEq
@@ -44,6 +45,13 @@ instance SmtenHS0 Char# where
            _ -> Ite_Char# p a b
 
     unreachable0 = Unreachable_Char#
+
+-- TODO: This is a bit of a hack.
+-- Can we avoid this? Perhaps by splitting Char into a finite and partial
+-- parts like we do for Int?
+instance Finite Char# where
+    ite_finite p a b = ite0 (finiteF p) a b
+    unreachable_finite = Unreachable_Char#
 
 primCharApp :: (SmtenHS0 a) => (P.Char# -> a) -> Char# -> a
 primCharApp f x =

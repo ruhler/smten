@@ -12,10 +12,15 @@ import qualified Prelude as P
 
 import Smten.Runtime.Formula
 import Smten.Runtime.Formula.Finite
+import Smten.Runtime.Formula.PartialF
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 
 type Integer = IntegerF
+
+instance Finite IntegerF where
+    ite_finite p a b = ite (finiteF p) a b
+    unreachable_finite = unreachable
 
 -- Do integer symapp for integers not in ite form.
 -- This works by making an ite tree which (lazily) enumerates the entire space

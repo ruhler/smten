@@ -67,8 +67,8 @@ instance SymbolicOf P.Char Char where
 instance SymbolicOf P.Int Int where
    tosym (P.I# v) = __I# (int# v)
    symapp f i =
-      let g v = f (P.I# v)
-      in primIntApp g (fl1I# i)
+     let g v = f (P.I# v)
+     in primIntApp g (fl1I# i)
 
 toHSChar :: Char -> P.Char
 toHSChar c = P.C# (toHSChar# (fl1C# c))

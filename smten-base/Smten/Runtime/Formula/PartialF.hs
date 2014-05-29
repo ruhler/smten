@@ -31,6 +31,10 @@ instance Finite BoolFF where
     ite_finite = iteFF
     unreachable_finite = Unreachable_BoolFF
 
+instance (Finite b) => Finite (a -> b) where
+    ite_finite p a b = \x -> ite_finite p (a x) (b x)
+    unreachable_finite = \x -> unreachable_finite
+
 finitePF :: a -> PartialF a
 finitePF x = PartialF trueFF x unreachablePF
 
