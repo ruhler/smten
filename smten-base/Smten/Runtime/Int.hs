@@ -2,6 +2,7 @@
 
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 
 -- | Implementation of primitive Int# type for Smten.
 module Smten.Runtime.Int (

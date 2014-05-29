@@ -41,6 +41,7 @@ finitePF x = PartialF trueFF x unreachablePF
 unreachablePF :: PartialF a
 unreachablePF = Unreachable_PartialF
 
+{-# INLINEABLE approxPF #-}
 approxPF :: (Finite a) => PartialF a -> PartialF a
 approxPF x = PartialF falseFF unreachable_finite x
 
@@ -49,15 +50,18 @@ approxPF x = PartialF falseFF unreachable_finite x
 --   x_, y_ may be infinite.
 -- The select call waits for at least one of x_ or y_ to reach weak head
 -- normal form, then returns WHNF representations for both x_ and y_.
+{-# INLINEABLE selectPF #-}
 selectPF :: (Finite a, Finite b) => PartialF a -> PartialF b -> (PartialF a, PartialF b)
 selectPF x_ y_ = S.approximate (approxPF x_) (approxPF y_) x_ y_
 
 -- Apply a unary function which is strict and finite
+{-# INLINEABLE unaryPF #-}
 unaryPF :: (a -> b) -> PartialF a -> PartialF b
 unaryPF f Unreachable_PartialF = unreachablePF
 unaryPF f (PartialF p a b) = PartialF p (f a) (unaryPF f b)
 
 -- Apply a binary function which is strict and finite
+{-# INLINEABLE binaryPF #-}
 binaryPF :: (Finite a, Finite b, Finite c) => (a -> b -> c) -> PartialF a -> PartialF b -> PartialF c
 binaryPF f x_ y_ = 
   case selectPF x_ y_ of
@@ -94,6 +98,7 @@ andPF Unreachable_PartialF _ = unreachablePF
 -- This is strict in the first argument.
 -- Corresponding to the fact that:
 --  if _|_ then x else x    is  _|_, not x
+{-# INLINEABLE itePF #-}
 itePF :: (Finite a) => PartialF BoolFF -> PartialF a -> PartialF a -> PartialF a
 itePF (PartialF TrueFF p _) x_ y_ = itePF_ p x_ y_
 itePF (PartialF pp pa pb) x_ y_ =
@@ -108,6 +113,7 @@ itePF (PartialF pp pa pb) x_ y_ =
        (_, Unreachable_PartialF) -> x_
 itePF Unreachable_PartialF _ _ = Unreachable_PartialF
 
+{-# INLINEABLE itePF_ #-}
 itePF_ :: (Finite a) => BoolFF -> PartialF a -> PartialF a -> PartialF a
 itePF_ TrueFF x_ _ = x_
 itePF_ FalseFF _ y_ = y_

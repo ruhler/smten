@@ -1,5 +1,6 @@
 
 {-# LANGUAGE MagicHash #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Runtime.IntFF (
     IntFF(..), ite_IntFF, applyToIntFF, applyToIntFF',
@@ -69,70 +70,62 @@ applyToIntFF' f x =
     Unreachable_IntFF -> unreachable
 
 neq_IntFF :: IntFF -> IntFF -> BoolFF
-neq_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      boolFF (x /=# y))) a b
+neq_IntFF a b = notFF (eq_IntFF a b)
 
 eq_IntFF :: IntFF -> IntFF -> BoolFF
 eq_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      boolFF (x ==# y))) a b
+  case a of
+     IntFF x -> 
+        case b of
+          IntFF y -> boolFF (x ==# y)
+          Symbolic_IntFF y -> M.findWithDefault falseFF (I# x) y
+          Unreachable_IntFF -> Unreachable_BoolFF
+     Symbolic_IntFF x ->
+        case b of
+          IntFF y -> M.findWithDefault falseFF (I# y) x
+          Symbolic_IntFF y -> M.foldr orFF falseFF (M.intersectionWith andFF x y)
+          Unreachable_IntFF -> Unreachable_BoolFF
+     Unreachable_IntFF -> Unreachable_BoolFF
+
+iii :: (Int# -> Int# -> Int#) -> IntFF -> IntFF -> IntFF
+iii f (IntFF a) (IntFF b) = IntFF (f a b)
+iii f Unreachable_IntFF _ = Unreachable_IntFF
+iii f _ Unreachable_IntFF = Unreachable_IntFF
+iii f a b = applyToIntFF (\x -> applyToIntFF (\y -> IntFF (f x y))) a b
+
+iib :: (Int# -> Int# -> Bool) -> IntFF -> IntFF -> BoolFF
+iib f (IntFF a) (IntFF b) = boolFF (f a b)
+iib f Unreachable_IntFF _ = Unreachable_BoolFF
+iib f _ Unreachable_IntFF = Unreachable_BoolFF
+iib f a b = applyToIntFF (\x -> applyToIntFF (\y -> boolFF (f x y))) a b
 
 leq_IntFF :: IntFF -> IntFF -> BoolFF
-leq_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      boolFF (x <=# y))) a b
+leq_IntFF = iib (<=#)
 
 geq_IntFF :: IntFF -> IntFF -> BoolFF
-geq_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      boolFF (x >=# y))) a b
+geq_IntFF = iib (>=#)
 
 lt_IntFF :: IntFF -> IntFF -> BoolFF
-lt_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      boolFF (x <# y))) a b
+lt_IntFF = iib (<#)
 
 gt_IntFF :: IntFF -> IntFF -> BoolFF
-gt_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      boolFF (x ># y))) a b
+gt_IntFF = iib (>#)
 
 add_IntFF :: IntFF -> IntFF -> IntFF
-add_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      IntFF (x +# y))) a b
+add_IntFF = iii (+#)
 
 sub_IntFF :: IntFF -> IntFF -> IntFF
-sub_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      IntFF (x -# y))) a b
+sub_IntFF = iii (-#)
 
 mul_IntFF :: IntFF -> IntFF -> IntFF
-mul_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      IntFF (x *# y))) a b
+mul_IntFF = iii (*#)
 
 negate_IntFF :: IntFF -> IntFF
 negate_IntFF a = applyToIntFF (\x -> IntFF (negateInt# x)) a
 
 quot_IntFF :: IntFF -> IntFF -> IntFF
-quot_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      IntFF (quotInt# x y))) a b
+quot_IntFF = iii quotInt#
 
 rem_IntFF :: IntFF -> IntFF -> IntFF
-rem_IntFF a b =
-   applyToIntFF (\x ->
-   applyToIntFF (\y ->
-      IntFF (remInt# x y))) a b
+rem_IntFF = iii remInt#
+
