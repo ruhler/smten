@@ -31,6 +31,11 @@ instance Finite IntegerF where
 --        then f 1
 --        else ...
 --
+-- TODO: Because this is infinite, and we don't actually perform lazy
+-- evaluation, this will never work.
+-- We can make it work more often by bounding the range we enumerate, and
+-- having an explicit error outside that range with a hopefully useful error
+-- message.
 nonIteIntegerSymapp :: SmtenHS0 a => (P.Integer -> a) -> IntegerFF -> a
 nonIteIntegerSymapp f y =
   let -- allin l h x
@@ -69,8 +74,12 @@ instance SymbolicOf P.Integer IntegerFF where
     symapp f x =
       case x of
         IntegerFF i -> f i
+        Add_IntegerFF a b _ -> symapp (\av -> (symapp (\bv -> f (av P.+ bv))) b) a
+        Sub_IntegerFF a b _ -> symapp (\av -> (symapp (\bv -> f (av P.- bv))) b) a
         Ite_IntegerFF p a b _ -> ite (finiteF p) (symapp f a) (symapp f b)
-        _ -> nonIteIntegerSymapp f x
+        Var_IntegerFF {} -> nonIteIntegerSymapp f x
+        Unreachable_IntegerFF -> unreachable
+        
 
 instance SymbolicOf P.Integer IntegerF where
     tosym = integerF

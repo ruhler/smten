@@ -3,6 +3,7 @@
 module Smten.Tests.SMT.Integer(smttests) where
 
 import Smten.Prelude
+import Smten.Control.Monad
 import Smten.Symbolic
 import Smten.Tests.SMT.Test
 
@@ -71,4 +72,11 @@ smttests = do
        x <- free_Integer
        assert (x == negate 5)
        return (fromInteger x)
+
+    -- At one point this caused a stack overflow.
+    symtesteq "SMT.Integer.SMul" Nothing $ do
+       x <- mplus (return 0) (return 1)
+       assert (((x+1) * 2) /= ((x+1) * 2))
+       return x
+    
 
