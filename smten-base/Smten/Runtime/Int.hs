@@ -46,7 +46,7 @@ int# :: P.Int# -> Int#
 int# v = Int# (finitePF (IntFF v))
 
 __isLitInt# :: P.Int# -> Int# -> Bool
-__isLitInt# v s = int# v ==# s
+__isLitInt# v (Int# a) = BoolF (unaryPF (isLit_IntFF v) a)
 
 instance P.Num Int# where
     fromInteger x =

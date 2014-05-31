@@ -8,6 +8,7 @@ module Smten.Runtime.IntFF (
     leq_IntFF, geq_IntFF, lt_IntFF, gt_IntFF,
     add_IntFF, sub_IntFF, mul_IntFF, negate_IntFF,
     quot_IntFF, rem_IntFF,
+    isLit_IntFF,
   ) where
 
 import GHC.Prim
@@ -75,17 +76,20 @@ neq_IntFF a b = notFF (eq_IntFF a b)
 eq_IntFF :: IntFF -> IntFF -> BoolFF
 eq_IntFF a b =
   case a of
-     IntFF x -> 
-        case b of
-          IntFF y -> boolFF (x ==# y)
-          Symbolic_IntFF y -> M.findWithDefault falseFF (I# x) y
-          Unreachable_IntFF -> Unreachable_BoolFF
+     IntFF x -> isLit_IntFF x b
      Symbolic_IntFF x ->
         case b of
           IntFF y -> M.findWithDefault falseFF (I# y) x
           Symbolic_IntFF y -> M.foldr orFF falseFF (M.intersectionWith andFF x y)
           Unreachable_IntFF -> Unreachable_BoolFF
      Unreachable_IntFF -> Unreachable_BoolFF
+
+isLit_IntFF :: Int# -> IntFF -> BoolFF
+isLit_IntFF x b =
+  case b of
+    IntFF y -> boolFF (x ==# y)
+    Symbolic_IntFF y -> M.findWithDefault falseFF (I# x) y
+    Unreachable_IntFF -> Unreachable_BoolFF
 
 iii :: (Int# -> Int# -> Int#) -> IntFF -> IntFF -> IntFF
 iii f (IntFF a) (IntFF b) = IntFF (f a b)
