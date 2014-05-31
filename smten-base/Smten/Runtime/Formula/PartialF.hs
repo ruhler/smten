@@ -64,7 +64,7 @@ unaryPF f (PartialF p a b) = PartialF p (f a) (unaryPF f b)
 {-# INLINEABLE binaryPF #-}
 binaryPF :: (Finite a, Finite b, Finite c) => (a -> b -> c) -> PartialF a -> PartialF b -> PartialF c
 binaryPF f x_ y_ = 
-  case selectPF x_ y_ of
+  case (x_, y_) of
     (PartialF xp xa xb_, PartialF yp ya yb_) ->
       let p = xp * yp
           a = f xa ya
@@ -131,5 +131,4 @@ itePF_ p x_ y_
 
 itePF__ :: BoolFF -> a -> PartialF a -> PartialF a
 itePF__ = PartialF
-
 
