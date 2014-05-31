@@ -31,6 +31,8 @@ tests = do
   test "p.Show.Tuple2" ("(True,False)" == show (True,False))
   test "p.Show.Tuple3" ("(True,False,True)" == show (True,False,True))
   test "p.Show.Tuple4" ("(True,False,True,False)" == show (True,False,True,False))
+  test "p.seq" (True == seq False True)
+  test "p.$!" (not $! False)
 
   x <- tgc True
   test "p.tgc" (x == "hi")

@@ -63,12 +63,12 @@ unaryPF f (PartialF p a b) = PartialF p (f a) (unaryPF f b)
 -- Apply a binary function which is strict and finite
 {-# INLINEABLE binaryPF #-}
 binaryPF :: (Finite a, Finite b, Finite c) => (a -> b -> c) -> PartialF a -> PartialF b -> PartialF c
-binaryPF f x_ y_ = 
+binaryPF f x_ y_ = {-# SCC "binaryPF" #-}
   case (x_, y_) of
     (PartialF xp xa xb_, PartialF yp ya yb_) ->
-      let p = xp * yp
-          a = f xa ya
-          c_ = itePF_ xp (unaryPF (f xa) yb_)
+      let p = {-# SCC "binaryPF_p" #-} xp * yp
+          a = {-# SCC "binaryPF_a" #-} f xa ya
+          c_ = {-# SCC "binaryPF_c" #-} itePF_ xp (unaryPF (f xa) yb_)
                     (itePF_ yp (unaryPF (flip f ya) xb_) (binaryPF f xb_ yb_))
       in itePF__ p a c_
     (Unreachable_PartialF, _) -> unreachablePF

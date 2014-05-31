@@ -54,6 +54,7 @@ library
     Smten.Base.GHC.Num
     Smten.Base.GHC.Real
     Smten.Base.GHC.Show
+    Smten.Base.Prelude
 
     Smten.GHC.Integer.Type
 
@@ -133,6 +134,7 @@ library
     Smten.Compiled.GHC.TopHandler
     Smten.Compiled.GHC.Tuple
     Smten.Compiled.GHC.Types
+    Smten.Compiled.Prelude
     Smten.Compiled.System.IO
 
   build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten ==@VERSIONMAJOR@.*,

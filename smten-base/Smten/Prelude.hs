@@ -20,6 +20,7 @@ module Smten.Prelude (
     fst, snd, curry, uncurry,
     id, const, (.), flip, ($),
     error, undefined,
+    seq, ($!),
 
     -- PreludeList
     map, (++), filter, concat, concatMap,
@@ -61,6 +62,7 @@ import Smten.Base.GHC.List ()
 import Smten.Base.GHC.Num ()
 import Smten.Base.GHC.Real ()
 import Smten.Base.GHC.Show ()
+import Smten.Base.Prelude ()
 
 import Smten.System.IO_ ()
 import Smten.Smten.Char ()
