@@ -36,7 +36,7 @@ library
     Smten.Compiled.Smten.Symbolic.Solver.STP
 
   other-modules:
-    Smten.Runtime.STPFFI
+    Smten.Runtime.STP.FFI
   
     Smten.Tests.STP
     Smten.Compiled.Smten.Tests.STP
@@ -44,6 +44,7 @@ library
   build-depends: base ==4.6.*, hashtables ==1.0.*,
                  smten ==@VERSIONMAJOR@.*, smten-base ==@VERSIONMAJOR@.*,
                  smten-lib ==@VERSIONMAJOR@.*
+  c-sources: Smten/Runtime/STP/stp.cc
   extra-libraries: stp stdc++
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
@@ -52,5 +53,6 @@ Test-Suite test-smten-stp
   main-is: tests.hs
   build-depends: base ==4.6.*, hashtables ==1.0.*,
                  smten-base ==@VERSIONMAJOR@.*, smten-lib ==@VERSIONMAJOR@.*
+  c-sources: Smten/Runtime/STP/stp.cc
   extra-libraries: stp stdc++
 

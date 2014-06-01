@@ -43,14 +43,6 @@ if {![file exists "build/home/.cabal"]} {
     exec echo "library-profiling: True" >> build/home/.cabal/config
 }
 
-# Uninstall all the smten libraries already installed.
-catch {hrun ghc-pkg unregister smten-yices1}
-catch {hrun ghc-pkg unregister smten-minisat}
-catch {hrun ghc-pkg unregister smten-stp}
-catch {hrun ghc-pkg unregister smten-lib}
-catch {hrun ghc-pkg unregister smten-base}
-catch {hrun ghc-pkg unregister smten}
-
 # Any occurrences of these variables surrounded by @ signs are substituted 
 # into the .cabal files before running cabal.
 set ::VERSIONMAJOR "4.2"
@@ -169,7 +161,13 @@ proc smten-minisat {} {
     }
 }
 
-
+# Uninstall all the smten libraries already installed.
+catch {hrun ghc-pkg unregister smten-yices1}
+catch {hrun ghc-pkg unregister smten-minisat}
+catch {hrun ghc-pkg unregister smten-stp}
+catch {hrun ghc-pkg unregister smten-lib}
+catch {hrun ghc-pkg unregister smten-base}
+catch {hrun ghc-pkg unregister smten}
 
 smten
 smten-base
