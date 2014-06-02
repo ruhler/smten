@@ -47,6 +47,7 @@ instance Finite IntFF where
     ite_finite = ite_IntFF
     unreachable_finite = Unreachable_IntFF
 
+-- TODO: Don't use this, because it has terrible performance!
 applyToIntFF :: (Finite a) => (Int# -> a) -> IntFF -> a
 applyToIntFF f x =
   case x of
@@ -60,6 +61,7 @@ applyToIntFF f x =
 
 -- Version of applyToIntFF with SmtenHS context instead of Finite.
 -- TODO: This is annoying. Must we have this?
+-- TODO: Don't use this, because it has terrible performance!
 applyToIntFF' :: (SmtenHS0 a) => (Int# -> a) -> IntFF -> a
 applyToIntFF' f x =
   case x of
@@ -95,7 +97,17 @@ iii :: (Int# -> Int# -> Int#) -> IntFF -> IntFF -> IntFF
 iii f (IntFF a) (IntFF b) = IntFF (f a b)
 iii f Unreachable_IntFF _ = Unreachable_IntFF
 iii f _ Unreachable_IntFF = Unreachable_IntFF
-iii f a b = applyToIntFF (\x -> applyToIntFF (\y -> IntFF (f x y))) a b
+iii f (IntFF a) (Symbolic_IntFF m) = 
+  let g (I# b) = I# (f a b)
+  in Symbolic_IntFF (M.mapKeysWith orFF g m)
+iii f (Symbolic_IntFF m) (IntFF b) = 
+  let g (I# a) = I# (f a b)
+  in Symbolic_IntFF (M.mapKeysWith orFF g m)
+iii f (Symbolic_IntFF a) (Symbolic_IntFF b) =
+  let g (I# ka, pa) =
+        let g' (I# kb) = I# (f ka kb)
+        in M.map (andFF pa) (M.mapKeysWith orFF g' b)
+  in Symbolic_IntFF (M.unionsWith orFF (map g (M.assocs a)))
 
 iib :: (Int# -> Int# -> Bool) -> IntFF -> IntFF -> BoolFF
 iib f (IntFF a) (IntFF b) = boolFF (f a b)
