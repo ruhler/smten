@@ -51,6 +51,7 @@ library
     Smten.Smten.TypeLits
 
     Smten.Search
+    Smten.Searches
     Smten.Symbolic0
     Smten.Symbolic
     Smten.Symbolic.SMT
@@ -102,6 +103,7 @@ library
     Smten.Compiled.Smten.Smten.TypeLits
 
     Smten.Compiled.Smten.Search
+    Smten.Compiled.Smten.Searches
     Smten.Compiled.Smten.Symbolic0
     Smten.Compiled.Smten.Symbolic
     Smten.Compiled.Smten.Symbolic.SMT

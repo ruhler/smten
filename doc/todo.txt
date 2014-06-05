@@ -1,3 +1,12 @@
+Search IFC::
+* Export solvers at Smten.Search.Solver.*
+* Export SMT at Smten.Searches
+   With: Searches, search, runSearches
+    Yes, we overload 'search'. 
+    But I think, if you are using Searches, you aren't using Space,
+    So it should be fine.
+* Export Free somehow
+
 Approx::
 * Getting rid of Unreachable_PartialF leads to blowup in sketch
     Why?

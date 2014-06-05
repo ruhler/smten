@@ -6,9 +6,11 @@
 module Smten.Search (
   Space, Solver, search,
   empty, single, union,
+  guard,
   ) where
 
 import Smten.Prelude
+import Smten.Control.Monad
 import Smten.Symbolic
 
 type Space = Symbolic
