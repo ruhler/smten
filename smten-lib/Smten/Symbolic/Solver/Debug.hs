@@ -1,6 +1,8 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-module Smten.Symbolic.Solver.Debug (debug) where
+module Smten.Symbolic.Solver.Debug
+  {-# DEPRECATED "Use Smten.Search.Solver.Debug instead" #-}
+ (debug) where
 
 import Smten.Plugin.Annotations
 import Smten.Prelude

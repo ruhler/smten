@@ -3,7 +3,9 @@
 
 -- | This module provides the Symbolic monad, for orchestration of symbolic
 -- computations.
-module Smten.Symbolic (
+module Smten.Symbolic
+  {-# DEPRECATED "Use Smten.Search instead" #-}
+  (
     Symbolic, Solver, run_symbolic,
     MonadPlus(..),
     free_Bool, free_Integer, free_Bit, assert,

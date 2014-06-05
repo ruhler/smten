@@ -1,7 +1,9 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 -- | This module provides the yices1 solver for smten.
-module Smten.Symbolic.Solver.Yices1 (yices1) where
+module Smten.Symbolic.Solver.Yices1
+  {-# DEPRECATED "Use Smten.Search.Solver.Yices1 instead" #-}
+  (yices1) where
 
 import Smten.Plugin.Annotations
 import Smten.Prelude

@@ -1,6 +1,3 @@
-Search IFC::
-* Export solvers at Smten.Search.Solver.*
-
 Approx::
 * Getting rid of Unreachable_PartialF leads to blowup in sketch
     Why?
@@ -15,6 +12,9 @@ Runtime::
     they should be bounded in size somehow to allow for incremental queries
                 
 Cleanup::
+* deprecate Smten.Symbolic, and move primary implementation of those things
+  into Smten.Search
+* Rename "SMT" test cases to "Search" test cases.
 * Why is smten-minisat in a separate package?
     If we can move it to smten, we can use it as the default solver and
     get rid of the 'smten' solver.

@@ -33,6 +33,7 @@ source-repository this
 library
   exposed-modules:
     Smten.Symbolic.Solver.Yices1
+    Smten.Search.Solver.Yices1
     Smten.Compiled.Smten.Symbolic.Solver.Yices1
 
   other-modules:

@@ -52,6 +52,9 @@ library
 
     Smten.Search
     Smten.Searches
+    Smten.Search.Solver.Debug
+    Smten.Search.Solver.Yices2
+    Smten.Search.Solver.Z3
     Smten.Symbolic0
     Smten.Symbolic
     Smten.Symbolic.SMT
