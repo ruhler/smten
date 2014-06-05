@@ -6,7 +6,8 @@
 module Smten.Search (
   Space, Solver, search,
   empty, single, union,
-  guard,
+  MonadPlus(..), guard,
+  Free(..), free_Bool, free_Integer, free_Bit,
   ) where
 
 import Smten.Prelude
