@@ -3,7 +3,7 @@
 
 -- | Representation of a finite SMT Formula
 module Smten.Runtime.Formula.Finite (
-  BoolFF(..), trueFF, falseFF, boolFF, andFF, orFF, notFF, iteFF, varFF,
+  BoolFF(..), trueFF, falseFF, boolFF, andFF, orFF, orsFF, notFF, iteFF, varFF,
 
   IntegerFF(..), integerFF, ite_IntegerFF, var_IntegerFF,
   eq_IntegerFF, leq_IntegerFF, add_IntegerFF, sub_IntegerFF,
@@ -82,6 +82,9 @@ orFF _ Unreachable_BoolFF = trueFF
 orFF a b
  | a `stableNameEq` b = a
  | otherwise = new (OrFF a b)
+
+orsFF :: [BoolFF] -> BoolFF
+orsFF xs = foldr orFF falseFF xs
 
 iteFF :: BoolFF -> BoolFF -> BoolFF -> BoolFF
 iteFF TrueFF a _ = a

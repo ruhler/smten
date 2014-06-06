@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Runtime.IntFF (
-    IntFF(..), ite_IntFF, applyToIntFF, applyToIntFF',
+    IntFF(..), ite_IntFF, applyToIntFF',
     neq_IntFF, eq_IntFF,
     leq_IntFF, geq_IntFF, lt_IntFF, gt_IntFF,
     add_IntFF, sub_IntFF, mul_IntFF, negate_IntFF,
@@ -46,18 +46,6 @@ ite_IntFF p a b =
 instance Finite IntFF where
     ite_finite = ite_IntFF
     unreachable_finite = Unreachable_IntFF
-
--- TODO: Don't use this, because it has terrible performance!
-applyToIntFF :: (Finite a) => (Int# -> a) -> IntFF -> a
-applyToIntFF f x =
-  case x of
-    IntFF i -> f i
-    Symbolic_IntFF m ->
-      let g [] = unreachable_finite
-          g ((I# k,v):xs) = ite_finite v (f k) (g xs)
-      in g (M.assocs m)
-    Unreachable_IntFF -> unreachable_finite
-
 
 -- Version of applyToIntFF with SmtenHS context instead of Finite.
 -- TODO: This is annoying. Must we have this?
@@ -109,23 +97,71 @@ iii f (Symbolic_IntFF a) (Symbolic_IntFF b) =
         in M.map (andFF pa) (M.mapKeysWith orFF g' b)
   in Symbolic_IntFF (M.unionsWith orFF (map g (M.assocs a)))
 
-iib :: (Int# -> Int# -> Bool) -> IntFF -> IntFF -> BoolFF
-iib f (IntFF a) (IntFF b) = boolFF (f a b)
-iib f Unreachable_IntFF _ = Unreachable_BoolFF
-iib f _ Unreachable_IntFF = Unreachable_BoolFF
-iib f a b = applyToIntFF (\x -> applyToIntFF (\y -> boolFF (f x y))) a b
-
 leq_IntFF :: IntFF -> IntFF -> BoolFF
-leq_IntFF = iib (<=#)
-
-geq_IntFF :: IntFF -> IntFF -> BoolFF
-geq_IntFF = iib (>=#)
+leq_IntFF a b = geq_IntFF b a
 
 lt_IntFF :: IntFF -> IntFF -> BoolFF
-lt_IntFF = iib (<#)
+lt_IntFF a b = gt_IntFF b a
+
+geq_IntFF :: IntFF -> IntFF -> BoolFF
+geq_IntFF a b =
+  case a of
+    IntFF x -> 
+      case b of
+        IntFF y -> boolFF (x >=# y)
+        Symbolic_IntFF y -> gef falseFF [(I# x, trueFF)] (M.toAscList y)
+        Unreachable_IntFF -> Unreachable_BoolFF
+    Symbolic_IntFF x ->
+      case b of
+        IntFF y -> gef falseFF (M.toAscList x) [(I# y, trueFF)]
+        Symbolic_IntFF y -> gef falseFF (M.toAscList x) (M.toAscList y)
+        Unreachable_IntFF -> Unreachable_BoolFF
+    Unreachable_IntFF -> Unreachable_BoolFF
 
 gt_IntFF :: IntFF -> IntFF -> BoolFF
-gt_IntFF = iib (>#)
+gt_IntFF a b =
+  case a of
+    IntFF x -> 
+      case b of
+        IntFF y -> boolFF (x ># y)
+        Symbolic_IntFF y -> gtf falseFF [(I# x, trueFF)] (M.toAscList y)
+        Unreachable_IntFF -> Unreachable_BoolFF
+    Symbolic_IntFF x ->
+      case b of
+        IntFF y -> gtf falseFF (M.toAscList x) [(I# y, trueFF)]
+        Symbolic_IntFF y -> gtf falseFF (M.toAscList x) (M.toAscList y)
+        Unreachable_IntFF -> Unreachable_BoolFF
+    Unreachable_IntFF -> Unreachable_BoolFF
+
+-- gtf p as bs
+--   as - a list of (va, pa) uniquely ascending in va's
+--         'a' has value va when 'pa' is satisfied
+--   bs - a list of (vb, pb) uniquely ascending in vb's
+--         'b' has value vb when 'pb' is satisfied
+--   p - A formula which is satisfied for all values vb
+--        which are less than the head 'va' and less than the head 'vb'
+--   Produces: The boolean formula for (a > b)
+gtf :: BoolFF -> [(Int, BoolFF)] -> [(Int, BoolFF)] -> BoolFF
+gtf p [] _ = falseFF
+gtf p as [] = p `andFF` (orsFF (map snd as)) -- All remaining as are greater than b when 'p' holds
+gtf p a@((va, pa):as) b@((vb, pb):bs)
+ | vb < va = gtf (p `orFF` pb) a bs
+ | otherwise = (p `andFF` pa) `orFF` gtf p as b
+
+-- gef p as bs
+--   as - a list of (va, pa) uniquely ascending in va's
+--         'a' has value va when 'pa' is satisfied
+--   bs - a list of (vb, pb) uniquely ascending in vb's
+--         'b' has value vb when 'pb' is satisfied
+--   p - A formula which is satisfied for all values vb
+--        which are less than or equal the head 'va' and less than the head 'vb'
+--   Produces: The boolean formula for (a >= b)
+gef :: BoolFF -> [(Int, BoolFF)] -> [(Int, BoolFF)] -> BoolFF
+gef p [] _ = falseFF
+gef p as [] = p `andFF` (orsFF (map snd as)) -- All remaining as are greater than b when 'p' holds
+gef p a@((va, pa):as) b@((vb, pb):bs)
+ | vb <= va = gef (p `orFF` pb) a bs
+ | otherwise = (p `andFF` pa) `orFF` gef p as b
 
 add_IntFF :: IntFF -> IntFF -> IntFF
 add_IntFF = iii (+#)
@@ -137,7 +173,11 @@ mul_IntFF :: IntFF -> IntFF -> IntFF
 mul_IntFF = iii (*#)
 
 negate_IntFF :: IntFF -> IntFF
-negate_IntFF a = applyToIntFF (\x -> IntFF (negateInt# x)) a
+negate_IntFF (IntFF a) = IntFF (negateInt# a)
+negate_IntFF (Symbolic_IntFF m) =
+  let g (I# a) = I# (negateInt# a)
+  in Symbolic_IntFF (M.mapKeys g m)
+negate_IntFF Unreachable_IntFF = Unreachable_IntFF
 
 quot_IntFF :: IntFF -> IntFF -> IntFF
 quot_IntFF = iii quotInt#

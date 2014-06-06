@@ -144,7 +144,45 @@ smttests = do
        idx <- msum (map return [0, 1, 2 :: Int])
        assert (arr ! idx == 19)
        return idx
-   
+
+   symtesteq "SMT.Core.Int.<.sc" (Just (2 :: Int)) $ do
+       x <- mplus (return 2) (return 3)
+       assert (x < 3)
+       return x
+
+   symtesteq "SMT.Core.Int.<.ss" (Just (1, 2 :: Int)) $ do
+       x <- mplus (return 1) (return 2)
+       y <- mplus (return 0) (return 2)
+       assert (x < y)
+       return (x, y)
+
+   symtesteq "SMT.Core.Int.<=" (Just (2 :: Int)) $ do
+       x <- mplus (return 2) (return 3)
+       assert (x <= 2)
+       return x
+
+   symtesteq "SMT.Core.Int.<=.ss" (Just (2, 2 :: Int)) $ do
+       x <- mplus (return 2) (return 3)
+       y <- mplus (return 1) (return 2)
+       assert (x <= y)
+       return (x, y)
+
+   symtesteq "SMT.Core.Int.==.ss" (Just (2, 2 :: Int)) $ do
+       x <- mplus (return 2) (return 3)
+       y <- mplus (return 1) (return 2)
+       assert (x == y)
+       return (x, y)
+
+   symtesteq "SMT.Core.Int.>" (Just (3 :: Int)) $ do
+       x <- mplus (return 2) (return 3)
+       assert (x > 2)
+       return x
+
+   symtesteq "SMT.Core.Int.>=" (Just (3 :: Int)) $ do
+       x <- mplus (return 2) (return 3)
+       assert (x >= 3)
+       return x
+
 tests :: IO ()
 tests = do
    runtest (SMTTestCfg smten [] []) smttests
