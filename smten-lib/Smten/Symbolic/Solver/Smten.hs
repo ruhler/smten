@@ -4,7 +4,7 @@ module Smten.Symbolic.Solver.Smten (smten) where
 
 import Smten.Plugin.Annotations
 import Smten.Prelude
-import Smten.Symbolic
+import Smten.Symbolic0
 
 {-# ANN module PrimitiveModule #-}
 

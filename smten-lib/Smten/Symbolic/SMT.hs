@@ -7,7 +7,7 @@ module Smten.Symbolic.SMT
    (SMT, query, runSMT) where
 
 import Smten.Prelude
-import Smten.Symbolic
+import Smten.Symbolic0
 import Smten.Searches
 
 type SMT = Searches

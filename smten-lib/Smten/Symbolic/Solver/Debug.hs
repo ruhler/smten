@@ -6,7 +6,7 @@ module Smten.Symbolic.Solver.Debug
 
 import Smten.Plugin.Annotations
 import Smten.Prelude
-import Smten.Symbolic
+import Smten.Symbolic0
 
 {-# ANN module PrimitiveModule #-}
 
