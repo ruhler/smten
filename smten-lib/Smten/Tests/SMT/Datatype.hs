@@ -4,14 +4,14 @@ module Smten.Tests.SMT.Datatype (smttests, tests) where
 
 import Smten.Prelude
 import Smten.Control.Monad
-import Smten.Symbolic
-import Smten.Symbolic.Solver.Smten
+import Smten.Search
+import Smten.Search.Solver.Smten
 import Smten.Tests.SMT.Test
 
 data MyEnum = E1 | E2 | E3 | E4
     deriving (Eq)
 
-free_MyEnum :: Symbolic MyEnum
+free_MyEnum :: Space MyEnum
 free_MyEnum = msum (map return [E1, E2, E3, E4])
 
 rotateenum :: MyEnum -> MyEnum
@@ -23,7 +23,7 @@ rotateenum _ = E3
 data MyStruct = MyStruct MyEnum Bool
     deriving (Eq)
 
-free_MyStruct :: Symbolic MyStruct
+free_MyStruct :: Space MyStruct
 free_MyStruct = do
     a <- free_MyEnum
     b <- free_Bool
@@ -37,7 +37,7 @@ data MyMix = Mix1 Bool Bool
            | Mix2 Bool
     deriving (Eq)
 
-free_MyMix :: Symbolic MyMix
+free_MyMix :: Space MyMix
 free_MyMix = 
   let f1 = do
         a <- free_Bool
@@ -59,22 +59,22 @@ smttests :: SMTTest ()
 smttests = do
     symtesteq "Datatype.Enum" (Just E4) $ do
         a <- free_MyEnum
-        assert (rotateenum a == E3)
+        guard (rotateenum a == E3)
         return a
 
     symtesteq "Datatype.Struct" (Just (MyStruct E1 True)) $ do
         b <- free_MyStruct
-        assert (changestruct b == MyStruct E2 False)
+        guard (changestruct b == MyStruct E2 False)
         return b
     
     symtesteq "Datatype.Mix" (Just (Mix2 True)) $ do
         c <- free_MyMix
-        assert (mixval c == E3)
+        guard (mixval c == E3)
         return c
 
     symtesteq "Datatype.Caseoflet" (Just False) $ do
         d <- free_Bool
-        assert (case (let v = d || d
+        guard (case (let v = d || d
                       in if v then E1 else E2) of
                    E1 -> False
                    E2 -> True

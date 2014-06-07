@@ -5,7 +5,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- | Implementation of the Yices2 backend for smten.
-module Smten.Compiled.Smten.Symbolic.Solver.Yices2 (yices2) where
+module Smten.Compiled.Smten.Search.Solver.Yices2 (yices2) where
 
 import Foreign
 

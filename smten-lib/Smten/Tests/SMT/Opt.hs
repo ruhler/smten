@@ -4,8 +4,8 @@ module Smten.Tests.SMT.Opt (tests) where
 
 import Smten.Prelude
 import Smten.Control.Monad
-import Smten.Symbolic
-import Smten.Symbolic.Solver.Smten
+import Smten.Search
+import Smten.Search.Solver.Smten
 import Smten.Tests.SMT.Test
 
 -- If the given argument is concretely True, this returns True, otherwise it
@@ -23,50 +23,50 @@ smttests = do
    -- We should not introduce any symbolic variables from redundant mzero.
    symtesteq "SMT.Opt.PlusZero" (Just ()) $ do
       p <- mplus (return True) mzero
-      assert (isTrueConcrete p)
+      guard (isTrueConcrete p)
 
    -- We should not introduce any symbolic variables from the mplus,
    -- because we have no mzeros and no _|_.
    symtesteq "SMT.Opt.PlusSelf" (Just ()) $ do
       u <- mplus (return ()) (return ())
-      assert (isTrueConcrete (u == ()))
+      guard (isTrueConcrete (u == ()))
 
    symtesteq "SMT.Opt.PlusSelfInt" (Just ()) $ do
       x <- mplus (return (1 :: Int)) (return (1 :: Int))
-      assert (isTrueConcrete (x <= 5))
+      guard (isTrueConcrete (x <= 5))
 
    symtesteq "SMT.Opt.PlusSelfInteger" (Just ()) $ do
       x <- mplus (return (1 :: Integer)) (return (1 :: Integer))
-      assert (isTrueConcrete (x <= 5))
+      guard (isTrueConcrete (x <= 5))
 
    symtesteq "SMT.Opt.PlusUnreachableInteger" (Just ()) $ do
       p <- free_Bool
       let x = if p then Just (1 :: Integer) else Nothing
       case x of
-        Just v -> assert (isTrueConcrete (v <= 5))
+        Just v -> guard (isTrueConcrete (v <= 5))
         Nothing -> return ()
 
    symtesteq "SMT.Opt.PlusBottomBool" (Just ()) $ do
       p <- mplus (return True) (return (error "SMT.Opt.PlusBottomBool._|_"))
-      assert (isTrueConcrete p)
+      guard (isTrueConcrete p)
 
    symtesteq "SMT.Opt.InfiniteFormula" (Just ()) $ do
       x <- mplus (return 0) (return (1 :: Integer))
-      assert (isTrueConcrete (x <= 5))
+      guard (isTrueConcrete (x <= 5))
 
    symtesteq "SMT.Opt.UnreachableError" (Just ()) $ do
-      x <- mplus (return 0) (return 1) :: Symbolic Int
+      x <- mplus (return 0) (return 1) :: Space Int
       let p = case x of
                 0 -> True
                 1 -> True
                 _ -> error "_|_"
-      assert (isTrueConcrete p)
+      guard (isTrueConcrete p)
 
    symtesteq "SMT.Opt.IntShare" (Just ()) $ do
       x <- msum (map return [1..10 :: Int])
       let y = x + x + x + x
           z = y + y + y + y
-      assert ({-# SCC "SMT_OPT_INTSHARE" #-} z == z)
+      guard ({-# SCC "SMT_OPT_INTSHARE" #-} z == z)
 
    
 tests :: IO ()

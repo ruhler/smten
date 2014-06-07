@@ -53,6 +53,7 @@ library
     Smten.Search
     Smten.Searches
     Smten.Search.Solver.Debug
+    Smten.Search.Solver.Smten
     Smten.Search.Solver.Yices2
     Smten.Search.Solver.Z3
     Smten.Symbolic0
@@ -106,14 +107,14 @@ library
     Smten.Compiled.Smten.Smten.TypeLits
 
     Smten.Compiled.Smten.Search
+    Smten.Compiled.Smten.Search.Solver.Debug
+    Smten.Compiled.Smten.Search.Solver.Smten
+    Smten.Compiled.Smten.Search.Solver.Yices2
+    Smten.Compiled.Smten.Search.Solver.Z3
     Smten.Compiled.Smten.Searches
     Smten.Compiled.Smten.Symbolic0
     Smten.Compiled.Smten.Symbolic
     Smten.Compiled.Smten.Symbolic.SMT
-    Smten.Compiled.Smten.Symbolic.Solver.Debug
-    Smten.Compiled.Smten.Symbolic.Solver.Smten
-    Smten.Compiled.Smten.Symbolic.Solver.Yices2
-    Smten.Compiled.Smten.Symbolic.Solver.Z3
     Smten.Compiled.Smten.System.Environment
     Smten.Compiled.Smten.System.Exit
     Smten.Compiled.Smten.System.Timeout

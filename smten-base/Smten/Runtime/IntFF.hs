@@ -109,11 +109,15 @@ geq_IntFF a b =
     IntFF x -> 
       case b of
         IntFF y -> boolFF (x >=# y)
-        Symbolic_IntFF y -> gef falseFF [(I# x, trueFF)] (M.toAscList y)
+        Symbolic_IntFF y -> 
+           case M.split (I# (x +# 1#)) y of
+              (low, _) -> orsFF (M.elems low)
         Unreachable_IntFF -> Unreachable_BoolFF
     Symbolic_IntFF x ->
       case b of
-        IntFF y -> gef falseFF (M.toAscList x) [(I# y, trueFF)]
+        IntFF y -> 
+           case M.split (I# (y -# 1#)) x of
+              (_, high) -> orsFF (M.elems high)
         Symbolic_IntFF y -> gef falseFF (M.toAscList x) (M.toAscList y)
         Unreachable_IntFF -> Unreachable_BoolFF
     Unreachable_IntFF -> Unreachable_BoolFF
@@ -124,11 +128,15 @@ gt_IntFF a b =
     IntFF x -> 
       case b of
         IntFF y -> boolFF (x ># y)
-        Symbolic_IntFF y -> gtf falseFF [(I# x, trueFF)] (M.toAscList y)
+        Symbolic_IntFF y ->
+           case M.split (I# x) y of
+             (low, _) -> orsFF (M.elems low)
         Unreachable_IntFF -> Unreachable_BoolFF
     Symbolic_IntFF x ->
       case b of
-        IntFF y -> gtf falseFF (M.toAscList x) [(I# y, trueFF)]
+        IntFF y ->
+           case M.split (I# y) x of
+             (_, high) -> orsFF (M.elems high)
         Symbolic_IntFF y -> gtf falseFF (M.toAscList x) (M.toAscList y)
         Unreachable_IntFF -> Unreachable_BoolFF
     Unreachable_IntFF -> Unreachable_BoolFF

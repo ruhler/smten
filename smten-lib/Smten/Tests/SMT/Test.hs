@@ -8,8 +8,8 @@ module Smten.Tests.SMT.Test (
 import Smten.Prelude
 
 import Smten.Control.Monad.Reader
-import Smten.Symbolic
-import Smten.Symbolic.Solver.Debug
+import Smten.Search
+import Smten.Search.Solver.Debug
 import Smten.Tests.Test
 
 data SMTTestCfg = SMTTestCfg {
@@ -24,10 +24,10 @@ data SMTTestCfg = SMTTestCfg {
 
 type SMTTest = ReaderT SMTTestCfg IO
 
-symtesteq :: (Eq a) => String -> Maybe a -> Symbolic a -> SMTTest ()
+symtesteq :: (Eq a) => String -> Maybe a -> Space a -> SMTTest ()
 symtesteq nm wnt q = symtest nm ((==) wnt) q
 
-symtest :: String -> (Maybe a -> Bool) -> Symbolic a -> SMTTest ()
+symtest :: String -> (Maybe a -> Bool) -> Space a -> SMTTest ()
 symtest nm tst q = do
   cfg <- ask
   if nm `elem` ss_skips cfg 
@@ -38,7 +38,7 @@ symtest nm tst q = do
         slvr <- if nm `elem` ss_debugs cfg
                       then debug (nm ++ ".dbg") (ss_solver cfg)
                       else return $ ss_solver cfg
-        got <- run_symbolic slvr q
+        got <- search slvr q
         test nm (tst got)
 
 runtest :: SMTTestCfg -> SMTTest () -> IO ()

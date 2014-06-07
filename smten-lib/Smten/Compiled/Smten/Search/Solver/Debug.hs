@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Smten.Compiled.Smten.Symbolic.Solver.Debug (debug) where
+module Smten.Compiled.Smten.Search.Solver.Debug (debug) where
 
 import System.IO
 

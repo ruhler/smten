@@ -6,7 +6,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- | Backend for the Z3 Solver
-module Smten.Compiled.Smten.Symbolic.Solver.Z3 (z3) where
+module Smten.Compiled.Smten.Search.Solver.Z3 (z3) where
 
 import Foreign hiding (bit)
 import Foreign.C.String

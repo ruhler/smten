@@ -13,11 +13,8 @@ module Smten.Symbolic
     ) where
 
 import Smten.Prelude
-import Smten.Data.Bit
-import Smten.Smten.TypeLits
 import Smten.Symbolic0
 import Smten.Search
-import Smten.Control.Monad
 
 -- | Assert the given predicate is satisfied.
 assert :: Bool -> Space ()

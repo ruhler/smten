@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fprof-auto-top #-}
 
-module Smten.Compiled.Smten.Symbolic.Solver.Smten (smten) where
+module Smten.Compiled.Smten.Search.Solver.Smten (smten) where
 
 import Data.IORef
 import Data.Functor

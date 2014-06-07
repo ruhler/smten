@@ -10,7 +10,7 @@ import qualified Smten.Tests.SMT.Error as Error
 import qualified Smten.Tests.SMT.Integer as Integer
 import qualified Smten.Tests.SMT.Bit as Bit
 import Smten.Tests.SMT.Test
-import Smten.Symbolic.Solver.Yices2
+import Smten.Search.Solver.Yices2
 
 main :: IO ()
 main = do

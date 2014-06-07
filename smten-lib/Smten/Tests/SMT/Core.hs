@@ -6,7 +6,7 @@ import Smten.Prelude
 import Smten.Control.Monad
 import Smten.Data.Array
 import Smten.Search
-import Smten.Symbolic.Solver.Smten
+import Smten.Search.Solver.Smten
 import Smten.Tests.SMT.Test
 
 smttests :: SMTTest ()
