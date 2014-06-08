@@ -14,7 +14,7 @@ import Smten.Prelude
 import Smten.Data.Bit
 import Smten.Smten.TypeLits
 import Smten.Control.Monad
-import Smten.Symbolic0
+import Smten.Search.Prim
 
 type Space = Symbolic
 

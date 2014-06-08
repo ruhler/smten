@@ -5,7 +5,7 @@ module Smten.Search.Solver.STP (stp) where
 
 import Smten.Plugin.Annotations
 import Smten.Prelude
-import Smten.Symbolic0
+import Smten.Search.Prim
 
 {-# ANN module PrimitiveModule #-}
 

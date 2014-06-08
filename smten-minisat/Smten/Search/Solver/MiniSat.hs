@@ -6,7 +6,7 @@ module Smten.Search.Solver.MiniSat (minisat) where
 
 import Smten.Plugin.Annotations
 import Smten.Prelude
-import Smten.Symbolic0
+import Smten.Search.Prim
 
 {-# ANN module PrimitiveModule #-}
 

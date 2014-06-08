@@ -12,10 +12,7 @@ Runtime::
     they should be bounded in size somehow to allow for incremental queries
                 
 Cleanup::
-* deprecate Smten.Symbolic, and move primary implementation of those things
-  into Smten.Search
-  - rename Smten.Symbolic0 Smten.Search0, or Smten.Search.Search, or
-    Smten.Search.Prim, or something like that.
+* Rename functions in Smten.Search.Prim to be based on "Space", not "Symbolic"
 * Make a single smten-lib.hs file which lists the modules we need to compile
   just for purposes of generating files.
 * Rename "SMT" test cases to "Search" test cases.

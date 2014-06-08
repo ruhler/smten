@@ -1,7 +1,7 @@
 
 {-# LANGUAGE PatternGuards #-}
 
-module Smten.Compiled.Smten.Symbolic0 (
+module Smten.Compiled.Smten.Search.Prim (
     Symbolic, Solver,
     return_symbolic, bind_symbolic, run_symbolic,
     mzero_symbolic, mplus_symbolic,

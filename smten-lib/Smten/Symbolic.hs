@@ -13,7 +13,7 @@ module Smten.Symbolic
     ) where
 
 import Smten.Prelude
-import Smten.Symbolic0
+import Smten.Search.Prim
 import Smten.Search
 
 -- | Assert the given predicate is satisfied.

@@ -6,7 +6,7 @@ module Smten.Search.Solver.Yices2 (yices2) where
 
 import Smten.Plugin.Annotations
 import Smten.Prelude
-import Smten.Symbolic0
+import Smten.Search.Prim
 
 {-# ANN module PrimitiveModule #-}
 

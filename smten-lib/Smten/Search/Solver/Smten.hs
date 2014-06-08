@@ -4,7 +4,7 @@ module Smten.Search.Solver.Smten (smten) where
 
 import Smten.Plugin.Annotations
 import Smten.Prelude
-import Smten.Symbolic0
+import Smten.Search.Prim
 
 {-# ANN module PrimitiveModule #-}
 
