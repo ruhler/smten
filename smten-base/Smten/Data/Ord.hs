@@ -9,8 +9,6 @@ module Smten.Data.Ord (
  ) where
 
 import Prelude(Ord(..), Ordering(..))
-import Smten.Data.Ordering ()
-import Smten.Data.OrdInteger ()
 
 comparing :: (Ord a) => (b -> a) -> b -> b -> Ordering
 comparing p x y = compare (p x) (p y)

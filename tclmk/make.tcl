@@ -77,7 +77,7 @@ proc smten-base {} {
     substcabal smten-base
     indir build/smten-base {
         hrun $::GHC --make -osuf o_smten -hisuf hi_smten -c \
-            -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
+            -fplugin=Smten.Plugin.Plugin smten-base.hs
 
         hrun cabal install --with-compiler=$::GHC
         hrun cabal sdist

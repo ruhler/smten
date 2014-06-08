@@ -48,26 +48,6 @@ import Prelude hiding (
   ReadS, Read(..), reads, read,
  )
 
--- These are imported to ensure they are compiled.
-import Smten.Base.Control.Monad ()
-import Smten.Base.Data.Functor ()
-import Smten.Base.Data.Either ()
-import Smten.Base.Data.List ()
-import Smten.Base.Data.Maybe ()
-import Smten.Base.Data.Tuple ()
-import Smten.Base.GHC.Base ()
-import Smten.Base.GHC.Char ()
-import Smten.Base.GHC.Enum ()
-import Smten.Base.GHC.List ()
-import Smten.Base.GHC.Num ()
-import Smten.Base.GHC.Real ()
-import Smten.Base.GHC.Show ()
-import Smten.Base.Prelude ()
-
-import Smten.System.IO_ ()
-import Smten.Smten.Char ()
-import Smten.Smten.Int ()
-
 -- TODO: Switch to GHC Prelude for these things instead of redefining them.
 import Smten.Data.Read
 
