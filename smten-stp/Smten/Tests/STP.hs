@@ -8,7 +8,7 @@ import qualified Smten.Tests.SMT.Core as Core
 import qualified Smten.Tests.SMT.Datatype as Datatype
 import qualified Smten.Tests.SMT.Bit as Bit
 import Smten.Tests.SMT.Test
-import Smten.Symbolic.Solver.STP
+import Smten.Search.Solver.STP
 
 main :: IO ()
 main = do

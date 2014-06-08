@@ -5,7 +5,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- | Implementation of the MiniSat backend for smten.
-module Smten.Compiled.Smten.Symbolic.Solver.MiniSat (minisat) where
+module Smten.Compiled.Smten.Search.Solver.MiniSat (minisat) where
 
 import qualified Data.HashTable.IO as H
 

@@ -5,13 +5,5 @@ module Smten.Symbolic.Solver.Yices1
   {-# DEPRECATED "Use Smten.Search.Solver.Yices1 instead" #-}
   (yices1) where
 
-import Smten.Plugin.Annotations
-import Smten.Prelude
-import Smten.Symbolic
-
-{-# ANN module PrimitiveModule #-}
-
--- | The yices1 smten solver.
-yices1 :: Solver
-yices1 = primitive "Smten.Symbolic.Solver.Yices1.yices1"
+import Smten.Search.Solver.Yices1
 

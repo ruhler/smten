@@ -5,7 +5,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 {-# OPTIONS_GHC -auto-all #-}
 
-module Smten.Compiled.Smten.Symbolic.Solver.STP (stp) where
+module Smten.Compiled.Smten.Search.Solver.STP (stp) where
 
 import qualified Data.HashTable.IO as H
 

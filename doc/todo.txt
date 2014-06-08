@@ -14,6 +14,13 @@ Runtime::
 Cleanup::
 * deprecate Smten.Symbolic, and move primary implementation of those things
   into Smten.Search
+  - rename Smten.Symbolic0 Smten.Search0, or Smten.Search.Search, or
+    Smten.Search.Prim, or something like that.
+  - move stp solver to Smten.Search.Solver
+  - move minisat solver to Smten.Search.Solver
+  - move yices1 solver to Smten.Search.Solver
+* Make a single smten-lib.hs file which lists the modules we need to compile
+  just for purposes of generating files.
 * Rename "SMT" test cases to "Search" test cases.
 * Why is smten-minisat in a separate package?
     If we can move it to smten, we can use it as the default solver and

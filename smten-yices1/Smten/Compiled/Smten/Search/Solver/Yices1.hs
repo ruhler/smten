@@ -6,7 +6,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- | Backend for the Yices1 Solver
-module Smten.Compiled.Smten.Symbolic.Solver.Yices1 (yices1) where
+module Smten.Compiled.Smten.Search.Solver.Yices1 (yices1) where
 
 import Data.Functor
 import qualified Data.HashTable.IO as H
