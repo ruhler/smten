@@ -28,7 +28,7 @@ library
     Smten.Runtime.MiniSat.FFI
     Smten.Symbolic.Solver.MiniSat
     Smten.Search.Solver.MiniSat
-    Smten.Compiled.Smten.Symbolic.Solver.MiniSat
+    Smten.Compiled.Smten.Search.Solver.MiniSat
   
   other-modules:
 

@@ -34,7 +34,7 @@ library
   exposed-modules:
     Smten.Symbolic.Solver.STP
     Smten.Search.Solver.STP
-    Smten.Compiled.Smten.Symbolic.Solver.STP
+    Smten.Compiled.Smten.Search.Solver.STP
 
   other-modules:
     Smten.Runtime.STP.FFI
