@@ -21,7 +21,7 @@ proc unreg {x} {
 }   
 
 proc install {x} {
-    indir build/$x "hrun cabal install --builddir ../build/$x-$::USER"
+    indir build/$x "hrun cabal install --builddir ../$x-$::USER"
 }
 
 unreg smten-yices1

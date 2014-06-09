@@ -339,3 +339,10 @@ system anymore to know.
 
 Let's try a type synonym. See if that does anything. I suspect it won't.
 
+Mon Jun  9 10:41:16 EDT 2014
+
+The solution: define a newtype in Smten.GHC.Integer.Type
+Both Smten.GHC.Integer.Type and now Smten.GHC.Integer.EqOrd use that newtype
+for the implementation of Smten.Compiled.GHC.Integer.Type, which is part
+manual and part generated code.
+
