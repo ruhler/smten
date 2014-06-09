@@ -6,9 +6,8 @@ module Smten.Base.GHC.Num (
     Num(..)
      ) where
 
-import Prelude(Integer)
 import GHC.Base
-import Smten.GHC.Integer.Type
+import GHC.Integer
 
 infixl 7 *
 infixl 6 +, -

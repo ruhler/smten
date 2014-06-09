@@ -298,3 +298,44 @@ What's the cleanest way to split it up?
     I can put primitive implementations here directly, if they
     don't depend on generated things.
 
+Mon Jun  9 09:53:38 EDT 2014
+
+There's a problem with Integer. I broke something without realizing it.
+
+module  Smten.Compiled.Smten.Data.EqInteger
+imports Smten.Compiled.GHC.Integer.Type
+imports Smten.Compield.Smten.Data.EqInteger
+
+Why? Is this what we expect?
+
+Yes,
+ module Smten.Compiled.GHC.Integer.Type
+imports Smten.Compiled.Smten.Data.EqInteger.
+
+As it should.
+
+But how do we make it so Smten.Compiled.Smten.Data.EqInteger does not
+import Smten.Compiled.GHC.Integer.Type?
+
+It must have worked before.
+Before it linked to Smten.Compiled.Smten.Smten.Base.
+
+If I re-export the type Integer, I don't think it will work.
+I need to define my own type.
+
+But, if we define our own type...
+That must be the type used to implement eqInteger.
+In other words, Smten.GHC.Integer.Type should use a different type.
+And probably just export that type too.
+
+I don't understand how it used to work.
+But let me try:
+
+export "Integer" from Smten.GHC.Integer.Type, and see if that is enough to fix
+the problem. I can't believe it will be.
+
+I didn't work. At least, I don't think it worked. I don't trust my build
+system anymore to know.
+
+Let's try a type synonym. See if that does anything. I suspect it won't.
+

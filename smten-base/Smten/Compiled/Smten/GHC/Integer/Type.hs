@@ -2,6 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
 module Smten.Compiled.Smten.GHC.Integer.Type (
+   Integer,
    plusInteger, minusInteger, timesInteger,
    quotInteger, remInteger, divInteger, modInteger,
    divModInteger, quotRemInteger,

@@ -13,8 +13,6 @@ Runtime::
                 
 Cleanup::
 * Rename functions in Smten.Search.Prim to be based on "Space", not "Symbolic"
-* Make a smten-lib.hs, smten-minisat.hs, smten-stp.hs, and smten-yices1.hs
-  like we have a smten-base.hs.
 * Rename "SMT" test cases to "Search" test cases (?)
 * Why is smten-minisat in a separate package?
     If we can move it to smten, we can use it as the default solver and
