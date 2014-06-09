@@ -1,7 +1,7 @@
 Tutorial 3 - SMT Backends
 =========================
 Richard Uhler <ruhler@csail.mit.edu>
-March 2014
+June 2014
 
 Goals
 -----
@@ -27,19 +27,19 @@ install a separate smten cabal package that integrates the SMT solver into
 smten.
 
 Once the backend is installed, you simply need to import the solver, and pass
-it as the argument to the +run_symbolic+ function. Solvers have type +Solver+
-in smten, and by convention they live at the Smten.Symbolic.Solver.* part of
+it as the argument to the +search+ function. Solvers have type +Solver+
+in smten, and by convention they live at the Smten.Search.Solver.* part of
 the module hierarchy.
 
 For example, assuming the Yices2 solver has been installed, it can be used in
 the nqueens from the previous tutorial by importing
-+Smten.Symbolic.Solver.Yices2+ and changing the line:
++Smten.Search.Solver.Yices2+ and changing the line:
 
-   result <- run_symbolic minisat $ do 
+   result <- search minisat $ do 
 
 To the line:
    
-   result <- run_symbolic yices2 $ do
+   result <- search yices2 $ do
 
 
 The remainder of this tutorial provides more details about how to install and
@@ -54,9 +54,12 @@ syntax and the resulting model, if any. The debug solver takes another
 solver as an argument to do the actual solving. Note that rendering the
 generated SMT query in text can be costly in terms of time and memory.
 
+If multiple searches are performed using the same instantiated debug solver,
+subsequent searches will be appended to the debug file.
+
 Package:: smten-lib
 
-Module:: Smten.Symbolic.Solver.Debug
+Module:: Smten.Search.Solver.Debug
 
 Solver Name:: debug
 
@@ -68,7 +71,8 @@ Native Theories::
 
 Sample Usage::
 
-   result <- run_symbolic (debug "nqueens.dbg" yices2) $ do
+   solver <- debug "nqueens.dbg" yices2
+   result <- search solver $ do { ... }
 
 Yices1
 ------
@@ -77,20 +81,30 @@ be obsoleted by Yices2 eventually, but is still useful nonetheless.
 
 Package:: smten-yices1
 
-Module:: Smten.Symbolic.Solver.Yices1
+Module:: Smten.Search.Solver.Yices1
 
 Solver Name:: yices1
 
 Installation::
   The yices1 solver must be installed before it can be used. It can be
-  downloaded from http://yices.csl.sri.com.
+  downloaded from http://yices.csl.sri.com. Download a version of yices1
+  with gmp dynamically linked. For example, version 1.0.40 should work.
   +
+  To install the yices1 library, extract the tar file and move
+  lib/libyices1.so to the desired library directory. You may also have to
+  change permissions on the file. For example:
+  +
+     $ tar xf yices-1.0.40-i686-pc-linux-gnu.tar.gz
+     $ sudo cp yices-1.0.40/lib/libyices.so /usr/local/lib
+     $ sudo chmod +r /usr/local/lib/libyices.so
   + 
-  Once the Yices1 solver is installed, install the smten-yices1 cabal package
+  Once the Yices1 library is installed, install the smten-yices1 cabal package
   available at http://github.com/ruhler/smten/releases. You may need to add
-  the path containing +libyices.a+ to the +extra_lib_dirs+ option in your
+  the path containing +libyices.so+ to the +extra-lib-dirs+ option in your
   ~/.cabal/config file in order for cabal to find the Yices1 library to build
-  the smten-yices1 package.
+  the smten-yices1 package. For example:
+  +
+     extra-lib-dirs: /usr/local/lib
 
 Native Theories::
     Yices1 supports booleans, bit vectors, and integers natively.
@@ -102,7 +116,7 @@ good all around solver to use with Smten.
 
 Package:: smten-lib
 
-Module:: Smten.Symbolic.Solver.Yices2
+Module:: Smten.Search.Solver.Yices2
 
 Solver Name:: yices2
 
@@ -131,7 +145,7 @@ The STP solver is a solver with good support for bit-vectors.
 
 Package:: smten-stp
 
-Module:: Smten.Symbolic.Solver.STP
+Module:: Smten.Search.Solver.STP
 
 Solver Name:: stp
 
@@ -144,7 +158,7 @@ Installation::
   +
   Once the STP solver is installed, install the smten-stp cabal package
   available at http://github.com/ruhler/smten/releases. You may need to add
-  the path containing +libstp.a+ to the +extra_lib_dirs+ option in your
+  the path containing +libstp.a+ to the +extra-lib-dirs+ option in your
   ~/.cabal/config file in order for cabal to find the STP library to build the
   smten-stp package.
  
@@ -159,7 +173,7 @@ use with Smten.
 
 Package:: smten-lib
 
-Module:: Smten.Symbolic.Solver.Z3
+Module:: Smten.Search.Solver.Z3
 
 Solver Name:: z3
 
@@ -183,7 +197,7 @@ The MiniSat solver is a SAT solver which can be used with Smten.
 
 Package:: smten-minisat
 
-Module:: Smten.Symbolic.Solver.MiniSat
+Module:: Smten.Search.Solver.MiniSat
 
 Solver Name:: minisat
 

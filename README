@@ -1,7 +1,16 @@
-Smten (Developer) ReadMe
+Smten (Developer) README
 ========================
 Richard Uhler <ruhler@csail.mit.edu>
-March 2014
+June 2014
+
+Non-Developer Smten Installation
+--------------------------------
+If you do not wish to modify the smten implementation, it is easier to build
+and install smten using distributed cabal packages.
+See tutorials/T1-GettingStarted.txt for how to do this.
+
+This document describes how to build the distributed cabal packages, which is
+only needed if you desire to modify the smten implementation.
 
 Configuring Smten for Development Build
 ---------------------------------------
@@ -35,7 +44,10 @@ it can be built by running `make`. The following targets are supported:
 
 all::
   Build all the smten packages locally and run the test suites for them.
-
+  For the location of the generated cabal distribution packages, run:
+  +
+    find build -name "smten*.tar.gz"
+ 
 userinstall::
   Build all the smten packages locally, run the test suites, and
   then install the packages into the current users account.
@@ -53,10 +65,10 @@ fullclean::
 
 Documentation
 -------------
-The 'doc' directory contains mostly out-of-date documents. The only relevant
+The 'doc' directory contains mostly out-of-date documents. The most relevant
 documents now are:
 
-doc/todo.txt:: contains a brief list of known issues and plan work to do.
+doc/todo.txt:: contains a brief list of known issues and planned work to do.
 doc/history.txt:: contains the release history of smten.
 
 For user documentation, consult the generated haddock documentation after

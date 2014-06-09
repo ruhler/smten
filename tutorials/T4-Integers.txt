@@ -1,12 +1,12 @@
 Tutorial 4 - Integers
 =====================
 Richard Uhler <ruhler@csail.mit.edu>
-March 2014
+June 2014
 
 Goals
 -----
 The goal of this tutorial is to demonstrate how native support for Integers in
-the backend solvers can be leveraged for improved symbolic computation.
+the backend solvers can be leveraged for improved search space computation.
 
 Introduction
 ------------
@@ -18,7 +18,7 @@ Integers to improve performance even more.
 Using Integers for NQueens
 --------------------------
 In the nqueens solution we gave in tutorial 2, we used the 'Int' type to
-represent the symbolic column position of each queen. Because the 'Int' type
+represent the column position of each queen. Because the 'Int' type
 has no native support in the SMT backends, Smten must eliminate all occurrences
 of Int when generating SMT queries. This is why it is possible to use, for
 instance, a SAT solver to solve the nqueens problem. Eliminating all
@@ -31,14 +31,14 @@ To reduce the cost of generating the SMT query, we can switch to using the
 
     type Placement = [(Integer, Integer)]
 
-Now, to produce a symbolic column, rather than enumerating all possible values
+Now, to produce a column, rather than enumerating all possible values
 of the column, we can create a free integer and assert it is in bounds:
 
 ------------
-mkcol :: Int -> Symbolic Integer
+mkcol :: Int -> Space Integer
 mkcol n = do
     x <- free_Integer
-    assert (x >= 0 && x < toInteger n)
+    guard (x >= 0 && x < toInteger n)
     return x
 ------------
 
@@ -53,11 +53,11 @@ and Integer where needed:
 
     nqueens :: Int -> IO ()
     nqueens n = do
-      result <- run_symbolic yices2 $ do
+      result <- search yices2 $ do
              let rows = [0..(toInteger n-1)]
-             cols <- sequence $ replicate n (mkcol n)
+             cols <- replicateM n (mkcol n)
              let places = zip rows cols
-             assert (islegal places)
+             guard (islegal places)
              return places
       case result of
         Nothing -> putStrLn "no solution"

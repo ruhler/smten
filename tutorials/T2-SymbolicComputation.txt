@@ -1,24 +1,24 @@
 Tutorial 2 - Symbolic Computation
 =================================
 Richard Uhler <ruhler@csail.mit.edu>
-March 2014
+June 2014
 
 Goals
 -----
-The goal of this tutorial is to demonstrate how the +Symbolic+ monad in Smten
-can be used to perform symbolic computations, making it much easier to solve
+The goal of this tutorial is to demonstrate how the +Space+ monad in Smten
+can be used to perform search, making it much easier to solve
 problems like nqueens than using a custom solver.
 
 Introduction
 ------------
 In this tutorial we develop a solver for the nqueens problem leveraging
-symbolic computation in Smten. The nqueens problem is to place n queens on an
-n by n chess board so that no queen can attack another. In other words, no two
-queens may occupy the same row, column, or diagonal.
+search space computation in Smten. The nqueens problem is to place n queens on
+an n by n chess board so that no queen can attack another. In other words, no
+two queens may occupy the same row, column, or diagonal.
 
 The Smten approach to implementing an nqueens solver is to implement a
-predicate describing which placements of queens are legal, and to use symbolic
-computation to automatically synthesis a placement which satisfies the
+predicate describing which placements of queens are legal, and to use search
+space computation to automatically synthesis a placement which satisfies the
 predicate.
 
 Legal Placements
@@ -98,80 +98,81 @@ We will assume all n queens have been placed somewhere on the board, so we
 don't have to check for the length of +places+ or the bounds of rows and
 columns for each place.
 
-Symbolic Computation
---------------------
+Search Space Computation
+------------------------
 Now that we have defined what it means for a placement to be legal, we can use
-symbolic computation to automatically synthesize a legal placement. Symbolic
-computation is orchestrated using the builtin +Symbolic+ monad in Smten, which
-is exported by the module +Smten.Symbolic+. The type +Symbolic a+ can be
-interpreted as a set of values of type +a+, or alternatively as a
-non-deterministic computation which returns a result of type +a+. The
-+Smten.Symbolic+ monad is an instance of +MonadPlus+, which supports failure
-and choice:
+search space computation to automatically synthesize a legal placement. Search
+space computation is orchestrated using the builtin +Space+ monad in Smten,
+which is exported by the module +Smten.Search+. The type +Space a+ can be
+interpreted as a set of values of type +a+ (a search space of elements of type
++a+), or alternatively as a non-deterministic computation which returns a
+result of type +a+. The +Smten.Space+ monad is an instance of +MonadPlus+,
+which supports failure and choice:
 
 ---------
--- mzero: failing computation
-mzero :: Symbolic a    
+-- mzero: empty set / failing computation
+mzero :: Space a    
 
--- mplus: nondeterministically choose between the given arguments
-mplus :: Symbolic a -> Symbolic a -> Symbolic a
+-- mplus: union / nondeterministic choice
+mplus :: Space a -> Space a -> Space a
 ----------
 
 On top of the +MonadPlus+ instance we can define two convenient functions:
-+msum+, which chooses among more than two arguments, and assert, which
++msum+, which chooses among more than two arguments, and guard, which
 forces the computation to satisfy the given predicate:
 
 -----------------
-msum :: [Symbolic a] -> Symbolic a
+msum :: [Space a] -> Space a
 msum xs = foldr mplus mzero
 
-assert :: Bool -> Symbolic ()
-assert p = if p then return () else mzero
+guard :: Bool -> Space ()
+guard p = if p then return () else mzero
 -----------------
  
-Additionally we have a function to run a symbolic computation:
+Additionally we have a function to search a search space:
 
 --------------
-run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
+search :: Solver -> Space a -> IO (Maybe a)
 --------------
 
-The +run_symbolic+ function takes as input a symbolic computation and returns
+The +search+ function takes as input a symbolic computation and returns
 any arbitrary result of that computation if there is any, or +Nothing+ to
-indicate that all paths of the computation fail. The +run_symbolic+ function
+indicate that all paths of the computation fail. The +search+ function
 also takes as an argument a solver to use in performing the symbolic
 computation. For now we'll use the MiniSat solver exported by
-+Smten.Symbolic.Solver.MiniSat+.
++Smten.Search.Solver.MiniSat+.
 
-How will we use the +Symbolic+ monad for +nqueens+? We will first construct
-symbolic values for the placement of the columns of each queen, chosen from 0
-to (n-1). We can make a single symbolic column using the following +mkcol+
-function, which selects a value from 0 to n-1.
+How will we use the +Space+ monad for +nqueens+? We will first construct
+a search space of placements of the columns of each queen, chosen from 0
+to (n-1). We can make a search space for a single column using the following
++mkcol+ function, which selects a value from 0 to n-1.
 
 ---------------------
-mkcol :: Int -> Symbolic Int
+mkcol :: Int -> Space Int
 mkcol n = msum (map return [0..(n-1)])
 ---------------------
 
-To form a placement using symbolic columns, we replicate +mkcol+ n times to
-produce n symbolic columns, and zip the columns with the set of rows:
+To form a placement using these columns, we replicate +mkcol+ n times using
+the library function replicateM to produce a search space for n columns, and
+zip the columns with the set of rows:
 
 -----------------
     let rows = [0..(n-1)]
-    cols <- sequence $ replicate n (mkcol n)
+    cols <- replicateM n (mkcol n)
 -----------------
 
-Then we will assert the resulting placement is legal. The result of
-running the symbolic computation is a legal placement of the queens, which we
-can print to the user. Overall, the nqueens solver is implemented as:
+Then we will use a guard to ensure the resulting placement is legal. The
+result of running the search is a legal placement of the queens, which we can
+print to the user. Overall, the nqueens solver is implemented as:
 
 -----------------------
 nqueens :: Int -> IO ()
 nqueens n = do
-  result <- run_symbolic minisat $ do
+  result <- search minisat $ do
               let rows = [0..(n-1)]
-              cols <- sequence $ replicate n (mkcol n)
+              cols <- replicateM n (mkcol n)
               let places = zip rows cols
-              assert (islegal places)
+              guard (islegal places)
               return places
   case result of
     Nothing -> putStrLn "no solution"
@@ -186,8 +187,8 @@ which reads the number n from the command line:
 -----------------
 import Smten.Prelude
 import Smten.Control.Monad
-import Smten.Symbolic
-import Smten.Symbolic.Solver.MiniSat
+import Smten.Search
+import Smten.Search.Solver.MiniSat
 import Smten.System.Environment
 
 -- Placement: A list of locations (row, col) for each queen.
@@ -210,16 +211,16 @@ islegal places = and [
   distinct (map (uncurry (+)) places),
   distinct (map (uncurry (-)) places)]
 
-mkcol :: Int -> Symbolic Int
+mkcol :: Int -> Space Int
 mkcol n = msum (map return [0..(n-1)])
 
 nqueens :: Int -> IO ()
 nqueens n = do
-  result <- run_symbolic minisat $ do
+  result <- search minisat $ do
               let rows = [0..(n-1)]
-              cols <- sequence $ replicate n (mkcol n)
+              cols <- replicateM n (mkcol n)
               let places = zip rows cols
-              assert (islegal places)
+              guard (islegal places)
               return places
   case result of
     Nothing -> putStrLn "no solution"
@@ -254,13 +255,13 @@ This produces the executable +nqueens+ which we can now run:
       ....X...
 
 Note that you may get a different placement from that shown here, because the
-+run_symbolic+ function is non-deterministic. It may return *any* one of the
++search+ function is non-deterministic. It may return *any* one of the
 possible answers.
 
 Conclusion
 ----------
-In this tutorial you wrote an nqueens solver by leveraging the +Symbolic+
-monad for symbolic computation. The next tutorial shows how you can use
+In this tutorial you wrote an nqueens solver by leveraging the +Space+
+monad for search space computation. The next tutorial shows how you can use
 different solver backends to improve the performance and scaling of your
 nqueens solver.
 
