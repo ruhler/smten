@@ -151,9 +151,11 @@ Solver Name:: stp
 
 Installation::
   The STP solver must be installed before it can be used. The source for
-  STP can be downloaded from sites.google.com/site/stpfastprover/. Follow the
-  instructions in the INSTALL file provided along with the STP source code to
-  build and install the STP solver.
+  STP can be downloaded from github.com/stp/stp.
+  The smten-stp package has been tested using stp git revision
+  c7dc4807e5df54bd9f8b6ba32e6df78057e6f251.
+  Follow the instructions in the INSTALL file provided along with the STP
+  source code to build and install the STP solver.
   +
   +
   Once the STP solver is installed, install the smten-stp cabal package
@@ -161,6 +163,7 @@ Installation::
   the path containing +libstp.a+ to the +extra-lib-dirs+ option in your
   ~/.cabal/config file in order for cabal to find the STP library to build the
   smten-stp package.
+
  
 Native Theories::
     STP supports booleans and bit vectors natively. 
