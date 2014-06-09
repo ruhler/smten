@@ -29,14 +29,12 @@ library
     Smten.Data.Functor
     Smten.Data.Either
     Smten.Data.Eq
-    Smten.Data.EqInteger
     Smten.Data.List
     Smten.Data.Maybe
     Smten.Data.Ratio
     Smten.Data.Read
     Smten.Data.Show
     Smten.Data.Ord
-    Smten.Data.OrdInteger
     Smten.Data.Ordering
     Smten.Data.Tuple
 
@@ -56,6 +54,7 @@ library
     Smten.Base.GHC.Show
     Smten.Base.Prelude
 
+    Smten.GHC.Integer.EqOrd
     Smten.GHC.Integer.Type
 
     Smten.Smten.Char
@@ -94,13 +93,12 @@ library
     Smten.Compiled.Smten.Data.Char
     Smten.Compiled.Smten.Data.Function
     Smten.Compiled.Smten.Data.Eq
-    Smten.Compiled.Smten.Data.EqInteger
     Smten.Compiled.Smten.Data.List
     Smten.Compiled.Smten.Data.Read
     Smten.Compiled.Smten.Data.Ord
-    Smten.Compiled.Smten.Data.OrdInteger
     Smten.Compiled.Smten.Data.Ordering
 
+    Smten.Compiled.Smten.GHC.Integer.EqOrd
     Smten.Compiled.Smten.GHC.Integer.Type
 
     Smten.Compiled.Smten.Smten.Base
