@@ -87,6 +87,10 @@ smttests = do
       p <- free_Bool
       guard ((if p then error "SMT.Error.IntFair1 error hit" else 1) == (1 :: Int))
 
+   symtesteq "SMT.Error.IntDiv0" (Just ()) $ do
+      x <- union (single 0) (single 1) :: Space Int
+      guard (if (x == 0) then True else (3 `quot` x) == 1)
+
    symtesteq "SMT.Error.CharNoFair" (Just ()) $ do
       p <- free_Bool
       guard p

@@ -110,6 +110,9 @@ Known Bugs::
     Implement it like we implement symapp for Integer
 * add support for free integers to minisat.
 * add support for free integers to 'smten' solver.
+* 4 `div` 0  for Integer type causes a floating point exception, when it
+  should cause an explicit "divide by zero" error. This has consequences for
+  symbolic computation
 
 Suspected Bugs::
 * I suspect problems with using a function called 'main' as a normal function

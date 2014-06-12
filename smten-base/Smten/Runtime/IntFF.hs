@@ -187,9 +187,15 @@ negate_IntFF (Symbolic_IntFF m) =
   in Symbolic_IntFF (M.mapKeys g m)
 negate_IntFF Unreachable_IntFF = Unreachable_IntFF
 
+-- TODO: We should not crash if the second argument is 0, because it may be
+-- speculative execution. Really we should return an explict error. For now
+-- I'm just returning 0#.
 quot_IntFF :: IntFF -> IntFF -> IntFF
-quot_IntFF = iii quotInt#
+quot_IntFF = iii (\a b -> if b ==# 0# then 0# else quotInt# a b)
 
+-- TODO: We should not crash if the second argument is 0, because it may be
+-- speculative execution. Really we should return an explict error. For now
+-- I'm just returning 0#.
 rem_IntFF :: IntFF -> IntFF -> IntFF
-rem_IntFF = iii remInt#
+rem_IntFF = iii (\a b -> if b ==# 0# then 0# else remInt# a b)
 
