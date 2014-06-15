@@ -108,16 +108,33 @@ geq_IntFF a b =
   case a of
     IntFF x -> 
       case b of
-        IntFF y -> boolFF (x >=# y)
+        IntFF y ->
+           -- x and y are both concrete. Easy.
+           boolFF (x >=# y)
+
         Symbolic_IntFF y -> 
-           case M.split (I# (x +# 1#)) y of
-              (low, _) -> orsFF (M.elems low)
+           -- x is concrete, y is symbolic.
+           -- Is there any y > x?
+           --   if not, then all y <= x, so x >= y
+           -- Note: we have this special case, because it's not always obvious
+           -- that big_OR of all y predicates is True
+           case M.lookupGT (I# x) y of
+              Nothing -> trueFF
+              _ -> -- Otherwise, find all y <= x, because for all
+                   -- y <= x, x >= y.
+                   case M.split (I# (x +# 1#)) y of
+                      (low, _) -> orsFF (M.elems low)
         Unreachable_IntFF -> Unreachable_BoolFF
     Symbolic_IntFF x ->
       case b of
         IntFF y -> 
-           case M.split (I# (y -# 1#)) x of
-              (_, high) -> orsFF (M.elems high)
+           -- x is symbolic, y is concrete.
+           -- Is there any x < y? If not, for all x, x >= y
+           case M.lookupLT (I# y) x of
+              Nothing -> trueFF
+              _ -> -- Otherwise: find all x such that x >= y.
+                   case M.split (I# (y -# 1#)) x of
+                      (_, high) -> orsFF (M.elems high)
         Symbolic_IntFF y -> gef falseFF (M.toAscList x) (M.toAscList y)
         Unreachable_IntFF -> Unreachable_BoolFF
     Unreachable_IntFF -> Unreachable_BoolFF
@@ -129,14 +146,18 @@ gt_IntFF a b =
       case b of
         IntFF y -> boolFF (x ># y)
         Symbolic_IntFF y ->
-           case M.split (I# x) y of
-             (low, _) -> orsFF (M.elems low)
+           case M.lookupGE (I# x) y of
+             Nothing -> trueFF
+             _ -> case M.split (I# x) y of
+                    (low, _) -> orsFF (M.elems low)
         Unreachable_IntFF -> Unreachable_BoolFF
     Symbolic_IntFF x ->
       case b of
         IntFF y ->
-           case M.split (I# y) x of
-             (_, high) -> orsFF (M.elems high)
+           case M.lookupLE (I# y) x of
+             Nothing -> trueFF
+             _ -> case M.split (I# y) x of
+                     (_, high) -> orsFF (M.elems high)
         Symbolic_IntFF y -> gtf falseFF (M.toAscList x) (M.toAscList y)
         Unreachable_IntFF -> Unreachable_BoolFF
     Unreachable_IntFF -> Unreachable_BoolFF
