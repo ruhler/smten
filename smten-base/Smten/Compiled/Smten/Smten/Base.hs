@@ -35,13 +35,13 @@ instance (SmtenHS0 a) => SymbolicOf [a] (List__ a) where
     tosym [] = __Nil__
     tosym (x:xs) = __Cons__ x (tosym xs)
 
-    symapp f x = ite (gdNil__ x) (f []) (symapp (\xsl -> f ((fl1Cons__ x) : xsl)) (fl2Cons__ x))
+    symapp f x = ite0 (gdNil__ x) (f []) (symapp (\xsl -> f ((fl1Cons__ x) : xsl)) (fl2Cons__ x))
 
 instance SymbolicOf [P.Char] (List__ Char) where
     tosym [] = __Nil__
     tosym (x:xs) = __Cons__ (tosym x) (tosym xs)
 
-    symapp f x = ite (gdNil__ x) (f []) (symapp2 (\xv xsv -> f (xv : xsv)) (fl1Cons__ x) (fl2Cons__ x))
+    symapp f x = ite0 (gdNil__ x) (f []) (symapp2 (\xv xsv -> f (xv : xsv)) (fl1Cons__ x) (fl2Cons__ x))
                     
 fromList__ :: List__ a -> [a]
 fromList__ x
@@ -52,10 +52,10 @@ error :: (SmtenHS0 a) => List__ Char -> a
 error msg = {-# SCC "PRIM_ERROR" #-} P.error (toHSString msg)
 
 -- Because there is no way to make use of an IO computation in constructing a
--- formula, it doesn't matter what we do with ite1 and unreachable1. So just
--- do nothing.
+-- formula, it doesn't matter what we do with ite1 and unreachable1 when p is
+-- not concrete.
 instance SmtenHS1 P.IO where
-  ite1 _ _ _ = P.return unreachable
+  ite1 p a b = iteS p a b (P.return unreachable)
   unreachable1 = P.return unreachable
 
 instance SymbolicOf P.Char Char where

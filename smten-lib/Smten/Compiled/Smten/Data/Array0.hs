@@ -22,7 +22,7 @@ data PrimArray a = PrimArray (Array P.Int a)
                  | PrimArray_Unreachable
 
 instance SmtenHS1 PrimArray where
-    ite1 = PrimArray_Ite
+    ite1 p a b = iteS p a b (PrimArray_Ite p a b)
     unreachable1 = PrimArray_Unreachable
 
 instance SymbolicOf (Array P.Int a) (PrimArray a) where

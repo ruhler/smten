@@ -1,0 +1,125 @@
+
+Sun Jun 15 11:56:27 EDT 2014
+
+There is a bug:
+
+       p <- union (single True) (single False)
+       x <- if p 
+               then single False    
+               else union (single True) (single False)
+       guard (x == x)
+
+A very simple query. Somehow the symbolic monad is failing. In particular,
+runS and relS are getting out of sync.
+
+What is the query generated, and what is the response from the solver?
+
+( if @0{ ( !f~1 && f~2 ) }
+    then @0
+    else ! @0 )
+check... 
+Sat
+f~1 = False
+f~2 = False
+
+What do I expect?
+
+p: runS = (True, p, DTChoice p DTEmpty DTEmpty)
+   relS = \m (DTChoice nm ta tb) -> if lookupm nm then True else False
+
+x: ite p a b
+ where a: runS = (True, False, DTEmpty), relS = \m _ -> False
+       b: runS = (True, q, DTChoice q DTEmpty DTEmpty)
+          relS = \m (DTChoice nm ta tb) -> if lookupm nm then True else False
+
+runS = (True, !p & q, DTSplit DTEmpty (DTChoice q DTEmpty DTEmpty))
+relS = \m -> (DTSplit ta tb) -> ite p False (lookup q)
+
+I think I might see the problem.
+
+It's a problem with bind_symbolic I fear.
+
+We originally run: runS (f vx) u, to get tf.
+Then we realize:   relS (f vx') tf
+
+Where vx' is the realized value of x, instead of the symbolic one.
+
+Now, this is problematic if (f vx) sees an 'ite' which (f vx') does not,
+because the rel function expects something, but it really gets a DTSplit.
+
+I bet this is the problem: it expects a DTChoice (from the mplus inside the
+else branch), but it gets a DTSplit on the 'ite'.
+
+In other words, realize makes calls to ite1 disappear.
+
+Well... why can't I assume they are going to disappear, and handle that as
+appropriate?
+
+The question is: what is appropriate?
+
+I suspect a working solution would be:
+ Save 'p' for realize, and evaluate it under the model to determine whether to
+use ... whether to use what?
+
+Wait. What's going on?
+
+We save in the tree 'DTSplit', because we actually took an ite.
+
+But, we have a different argument to 'f' in bind, so 'f' may not think we took
+an ite. In fact, 'f' should most emphatically believe we did not take an ite.
+
+Hum. We have a divergence between the realize and run branches.
+
+Is the problem more clear if I do it in terms of map and join instead of bind?
+
+map we can do, that's fine. How would we implement join?
+
+join :: Space (Space a) -> Space a
+join x:
+ runS = 
+    let (px, vx, tx) = runS x
+        (py, vy, ty) = runS vx
+    in (px and py, vy, ?)
+
+You see, if we realize x, then we will get vx which is totally different.
+Which is... concrete? Well, partly concrete. More concrete than it was before.
+
+This... will require some thought I fear.
+
+Sun Jun 15 16:13:52 EDT 2014
+
+Here's the deal. It works fine, so long as ite1 for the Space monad sees every
+call to ite, not just those where the predicate is symbolic. I believe that is
+the most natural way to proceed: we don't have to do any realization.
+
+The problem is, the code is not currently organized around this assumption.
+My quick attempts to switch have caused problems. Meaning the optimization (or
+assumption) for concrete evaluation of ite for every, or many, types is
+important.
+
+In other words... I think this could be made to work, but it requires getting
+a bunch of details in the code right, because I'm changing a somewhat
+fundamental assumption about the meaning of a certain interface.
+
+Actually, it may not be so bad if I get rid of 'ite' entirely, and just use
+'ite0'. I fear I'll be tempted not to optimize everywhere, and I may miss some
+important opportunities to do so.
+
+I suppose I could have a hackish solution: iteNX methods, with defaults which
+optimize, and use that for everything except the Space monad.
+
+The real question is: which things am I not optimizing that I need to be?
+
+If it's generated code: just generate the optimization.
+If it's a primitive: just fix that primitive.
+
+Those are the only options. It's not that burdensome.
+
+In other words, the hackish solution isn't the right way to go.
+
+Sun Jun 15 22:11:11 EDT 2014
+
+So I did what I think is the right fix, and it does fix it, I think. Though
+there may be some other problems going on. Anyway, the test case I gave is
+fixed now, so other bugs are other bugs I need to figure out.
+

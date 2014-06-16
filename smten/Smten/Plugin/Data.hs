@@ -71,14 +71,15 @@ smtenHS nm tyvs cs = do
    unreach <- unreachableD nm n cs
    return [S.InstD ctx ty [ite, unreach]]
 
--- iteN = \p a b -> Foo {
+-- iteN = \p a b -> iteS p a b (Foo {
 --   gd* = ite0 p (gd* a) (gd* b),
 --   fl* = ite0 p (fl* a) (fl* b),
 --   ...
--- }
+-- })
 iteD :: Name -> Int -> [DataCon] -> CG S.Method
 iteD nm k cs = do
   itenm <- usequalified "Smten.Runtime.SmtenHS" "ite0"
+  iteS <- S.VarE <$> usequalified "Smten.Runtime.Formula.BoolF" "iteS"
   nm' <- qtynameCG nm
   let mkcon :: DataCon -> CG [S.Name]
       mkcon d = do
@@ -100,7 +101,8 @@ iteD nm k cs = do
   ks <- concat <$> mapM mkcon cs
   let upds = map mkupd $ ks
       upd = S.RecE (S.VarE nm') upds
-      body = S.LamE "p" (S.LamE "a" (S.LamE "b" upd))
+      ited = S.appsE iteS [S.VarE "p", S.VarE "a", S.VarE "b", upd]
+      body = S.LamE "p" (S.LamE "a" (S.LamE "b" ited))
   return $ S.Method ("ite" ++ show k) body
 
 -- unreachableN = Foo {

@@ -7,6 +7,7 @@ module Smten.Runtime.Solver (
 import Smten.Runtime.Model
 import Smten.Runtime.Result
 import Smten.Runtime.Formula.Finite
+import Smten.Runtime.Formula.BoolF
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Build
@@ -25,7 +26,7 @@ newtype Solver = Solver {
 
 -- TODO: why do we need this?
 instance SmtenHS0 Solver where
-  ite0 = error "TODO: Solver.ite0"
+  ite0 p a b = iteS p a b (error "TODO: Solver.ite0")
   unreachable0 = error "TODO: Solver.unreachable0"
   
 

@@ -34,7 +34,7 @@ toHSChar# :: Char# -> P.Char#
 toHSChar# (Char# x) = x
 
 instance SmtenHS0 Char# where
-    ite0 p a b = 
+    ite0 p a b = iteS p a b P.$
         case (select a b, a, b) of
            (SRBoth, Char# av, Char# bv) | av `P.eqChar#` bv -> a
            (SRBoth, _, _) | a `stableNameEq` b -> a

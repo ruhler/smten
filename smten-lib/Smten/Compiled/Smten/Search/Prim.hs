@@ -47,9 +47,9 @@ instance SmtenHS1 Symbolic where
         runS = \u -> 
           let (pa, va, ta) = runS a u
               (pb, vb, tb) = runS b u
-          in (ite p pa pb, ite p va vb, DTSplit ta tb),
+          in (ite0 p pa pb, ite0 p va vb, DTSplit ta tb),
 
-        relS = \m (DTSplit ta tb) -> ite p (relS a m ta) (relS b m tb)
+        relS = \m (DTSplit ta tb) -> ite0 p (relS a m ta) (relS b m tb)
       }
 
     unreachable1 = Symbolic {
@@ -85,7 +85,7 @@ mplus_symbolic a b = Symbolic {
         let p = varF nm
             (pa, va, ta) = runS a u
             (pb, vb, tb) = runS b u
-        in (ite p pa pb, ite p va vb, DTChoice nm ta tb),
+        in (ite0 p pa pb, ite0 p va vb, DTChoice nm ta tb),
 
     relS = \m (DTChoice nm ta tb) ->
         if lookupBool m nm

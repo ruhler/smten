@@ -56,7 +56,7 @@ applyToIntFF' f x =
     IntFF i -> f i
     Symbolic_IntFF m ->
       let g [] = unreachable
-          g ((I# k,v):xs) = ite (finiteF v) (f k) (g xs)
+          g ((I# k,v):xs) = ite0 (finiteF v) (f k) (g xs)
       in g (M.assocs m)
     Unreachable_IntFF -> unreachable
 

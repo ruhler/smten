@@ -36,10 +36,10 @@ unreachable_IntF = Int# unreachablePF
 -- TODO: this forgets that 'p' is finite.
 primIntApp :: (SmtenHS0 a) => (P.Int# -> a) -> Int# -> a
 primIntApp f (Int# (PartialF TrueFF (IntFF v) _)) = f v
-primIntApp f (Int# (PartialF p a b)) = ite (finiteF p) (applyToIntFF' f a) (primIntApp f (Int# b))
+primIntApp f (Int# (PartialF p a b)) = ite0 (finiteF p) (applyToIntFF' f a) (primIntApp f (Int# b))
 
 instance SmtenHS0 Int# where
-    ite0 = ite_IntF
+    ite0 p a b = iteS p a b (ite_IntF p a b)
     unreachable0 = unreachable_IntF
 
 int# :: P.Int# -> Int#

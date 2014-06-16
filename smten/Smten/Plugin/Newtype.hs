@@ -71,10 +71,11 @@ smtenHS nm tyvs constr = do
    unreach <- unreachableD cn n
    return [S.InstD ctx ty [ite, unreach]]
 
--- iteN = \p a b = Foo (ite0 p (__deNewTyFoo a) (__deNewTyFoo b))
+-- iteN = \p a b -> iteS p a b (Foo (ite0 p (__deNewTyFoo a) (__deNewTyFoo b)))
 iteD :: Name -> Int -> CG S.Method
 iteD nm k = do
   ite0nm <- usequalified "Smten.Runtime.SmtenHS" "ite0"
+  iteS <- S.VarE <$> usequalified "Smten.Runtime.Formula.BoolF" "iteS"
   cn <- qnameCG nm
   dcn <- qdenewtynmCG nm
   let ite = foldl1 S.AppE [
@@ -83,7 +84,8 @@ iteD nm k = do
         S.AppE (S.VarE dcn) (S.VarE "a"),
         S.AppE (S.VarE dcn) (S.VarE "b")]
       foo = S.AppE (S.VarE cn) ite
-      body = S.LamE "p" (S.LamE "a" (S.LamE "b" foo))
+      ited = S.appsE iteS [S.VarE "p", S.VarE "a", S.VarE "b", foo]
+      body = S.LamE "p" (S.LamE "a" (S.LamE "b" ited))
   return $ S.Method ("ite" ++ show k) body
 
 -- unreachableN = Foo unreachable

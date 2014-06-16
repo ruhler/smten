@@ -19,7 +19,7 @@ import Smten.Runtime.SymbolicOf
 type Integer = IntegerF
 
 instance Finite IntegerF where
-    ite_finite p a b = ite (finiteF p) a b
+    ite_finite p a b = ite0 (finiteF p) a b
     unreachable_finite = unreachable
 
 -- Do integer symapp for integers not in ite form.
@@ -44,7 +44,7 @@ nonIteIntegerSymapp f y =
         | l P.== (h P.- 1) = f l
         | P.otherwise =
             let m = (l P.+ h) `P.div` 2
-            in ite (finiteF P.$ leq_IntegerFF x (integerFF (m P.- 1)))
+            in ite0 (finiteF P.$ leq_IntegerFF x (integerFF (m P.- 1)))
                            (lookin l m x)
                            (lookin m h x)
 
@@ -52,7 +52,7 @@ nonIteIntegerSymapp f y =
       --    Do symapp for x assuming x >= l
       lookabove l i x =
          let h = l P.+ i
-         in ite (finiteF P.$ leq_IntegerFF x (integerFF h))
+         in ite0 (finiteF P.$ leq_IntegerFF x (integerFF h))
                     (lookin l h x)
                     (lookabove h (i P.* 2) x)
 
@@ -60,11 +60,11 @@ nonIteIntegerSymapp f y =
       --    Do symapp for x assuming x < h
       lookbelow h i x =
          let l = h P.- i
-         in ite (finiteF P.$ leq_IntegerFF x (integerFF l))
+         in ite0 (finiteF P.$ leq_IntegerFF x (integerFF l))
                     (lookbelow l (i P.* 2) x)
                     (lookin l h x)
             
-  in ite (finiteF P.$ leq_IntegerFF y (integerFF (P.negate 1)))
+  in ite0 (finiteF P.$ leq_IntegerFF y (integerFF (P.negate 1)))
               (lookbelow 0 1 y)
               (lookabove 0 1 y)
         
@@ -76,7 +76,7 @@ instance SymbolicOf P.Integer IntegerFF where
         IntegerFF i -> f i
         Add_IntegerFF a b _ -> symapp (\av -> (symapp (\bv -> f (av P.+ bv))) b) a
         Sub_IntegerFF a b _ -> symapp (\av -> (symapp (\bv -> f (av P.- bv))) b) a
-        Ite_IntegerFF p a b _ -> ite (finiteF p) (symapp f a) (symapp f b)
+        Ite_IntegerFF p a b _ -> ite0 (finiteF p) (symapp f a) (symapp f b)
         Var_IntegerFF {} -> nonIteIntegerSymapp f x
         Unreachable_IntegerFF -> unreachable
         
@@ -87,7 +87,7 @@ instance SymbolicOf P.Integer IntegerF where
     symapp f x =
       case deIntegerF x of
         (TrueFF, IntegerFF i, _) -> f i
-        (p, a, b) -> ite (finiteF p) (symapp f a) (symapp f b)
+        (p, a, b) -> ite0 (finiteF p) (symapp f a) (symapp f b)
 
 
 instance P.Num IntegerF where

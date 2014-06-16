@@ -183,6 +183,13 @@ smttests = do
        guard (x >= 3)
        return x
 
+   symtesteq "SMT.Core.IteSym" (Just ()) $ do
+       p <- union (single True) (single False)
+       x <- if p 
+               then single False    
+               else union (single True) (single False)
+       guard (x == x)
+
 tests :: IO ()
 tests = do
    runtest (SMTTestCfg smten [] []) smttests

@@ -6,7 +6,7 @@
 
 module Smten.Runtime.SmtenHS (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
-    ite, unreachable,
+    unreachable,
     emptycase,
     ) where
 
@@ -14,7 +14,6 @@ import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula
 
 class SmtenHS0 a where
-    -- It can be assumed that the given BoolF is not concrete.
     ite0 :: BoolF -> a -> a -> a
     unreachable0 :: a
 
@@ -51,13 +50,6 @@ instance (SmtenHS0 a, SmtenHS4 m) => SmtenHS3 (m a) where
     ite3 = ite4
     unreachable3 = unreachable4
 
-{-# INLINEABLE ite #-}
-ite :: (SmtenHS0 a) => BoolF -> a -> a -> a
-ite p a b 
-  | isTrueF p = a
-  | isFalseF p = b
-  | otherwise = ite0 p a b
-
 {-# INLINEABLE unreachable #-}
 unreachable :: (SmtenHS0 a) => a
 unreachable = unreachable0
@@ -88,7 +80,7 @@ instance SmtenHS0 (BitF n) where
     unreachable0 = unreachable_BitF
 
 instance SmtenHS2 (->) where
-    ite2 p fa fb = {-# SCC "ITE2_Fun" #-} \x -> ite0 p (fa x) (fb x)
+    ite2 p fa fb = iteS p fa fb (\x -> ite0 p (fa x) (fb x))
     unreachable2 = \x -> unreachable
 
 emptycase :: a

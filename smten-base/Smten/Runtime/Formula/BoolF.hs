@@ -6,7 +6,7 @@ module Smten.Runtime.Formula.BoolF (
     BoolF(..), trueF, falseF, boolF, andF, andF_, notF, iteF,
     varF, finiteF,
     unreachableF,
-    isTrueF, isFalseF,
+    isTrueF, isFalseF, iteS,
     deBoolF,
   ) where
 
@@ -63,4 +63,14 @@ isTrueF _ = False
 isFalseF :: BoolF -> Bool
 isFalseF (BoolF (PartialF TrueFF FalseFF _)) = True
 isFalseF _ = False
+
+-- iteS p a b s
+--  - if p is Concretely True, then a
+--  - if p is Concretely False, then b
+--  - if p is Symbolic, then s
+iteS :: BoolF -> a -> a -> a -> a
+iteS (BoolF (PartialF TrueFF TrueFF _)) a b s = a
+iteS (BoolF (PartialF TrueFF FalseFF _)) a b s = b
+iteS _ a b s = s
+
 

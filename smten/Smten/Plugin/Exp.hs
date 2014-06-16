@@ -167,7 +167,7 @@ mkSeqCase x v = do
 
 mkIte :: S.Exp -> S.Exp -> S.Exp -> CG S.Exp
 mkIte p a b = do
-  itenm <- usequalified "Smten.Runtime.SmtenHS" "ite"
+  itenm <- usequalified "Smten.Runtime.SmtenHS" "ite0"
   return $ foldl1 S.AppE [S.VarE itenm, p, a, b]
 
 -- mkBoolCase v mdef ms
@@ -222,7 +222,7 @@ mkDefault (Just b) = do
 --   Foo { gdA = gdA, flA1 = a1, flA2 = a2, ...,
 --         gdB = gdB, flB1 = b1, flB2 = b2, ...,
 --         ...
---         } -> ite gda bodyA (ite gdB bodyB ( ... default)
+--         } -> ite0 gda bodyA (ite gdB bodyB ( ... default)
 -- Note: this works only under the assumption that the variable names for the
 -- fields in different alternatives are all unique. I think that's a safe
 -- assumption given the uniqification of names ghc does before going into
