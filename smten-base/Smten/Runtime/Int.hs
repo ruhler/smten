@@ -6,7 +6,7 @@
 
 -- | Implementation of primitive Int# type for Smten.
 module Smten.Runtime.Int (
-    Int#(..), __isLitInt#,
+    Int#(..), __isLitInt#, toHSInt#,
     (/=#), (==#), (>=#), (<=#), (>#), (<#),
     (+#), (-#), (*#), negateInt#,
     quotInt#, remInt#, quotRemInt#,
@@ -25,6 +25,10 @@ import Smten.Runtime.SmtenHS
 import Smten.Runtime.IntFF
 
 newtype Int# = Int# (PartialF IntFF)
+
+-- Assuming the Int# is concrete, return it's value.
+toHSInt# :: Int# -> P.Int#
+toHSInt# (Int# (PartialF TrueFF (IntFF v) _)) = v
 
 
 ite_IntF :: BoolF -> Int# -> Int# -> Int#

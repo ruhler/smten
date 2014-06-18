@@ -50,7 +50,7 @@ approxPF x = PartialF falseFF unreachable_finite x
 -- normal form, then returns WHNF representations for both x_ and y_.
 {-# INLINEABLE selectPF #-}
 selectPF :: (Finite a, Finite b) => PartialF a -> PartialF b -> (PartialF a, PartialF b)
-selectPF x_ y_ = S.approximate (approxPF x_) (approxPF y_) x_ y_
+selectPF x_ y_ = S.select (approxPF x_) (approxPF y_) x_ y_
 
 -- Apply a unary function which is strict and finite
 {-# INLINEABLE unaryPF #-}

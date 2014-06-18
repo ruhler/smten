@@ -62,14 +62,6 @@ Performance::
     when we really want to say (a > b)
 
 * Symbolic Performance
-  * Int (and presumably Char) don't preserve sharing.
-    For example:
-        x <- choice [1..10]
-        assert ((if x < 3 then x else x) == x)
-    Will require 200 comparisons, half of which are duplicated.
-    See SMT.Opt.IntShare test, which captures this performance bug.
-    Note: This should only be a problem for Char now.
-
 * Concrete Performance
    ** Performance is very sensitive to generation of case expressions for
       data types. Can we special case that, or otherwise optimize it in any
