@@ -1,6 +1,4 @@
 
-{-# OPTIONS_GHC -fprof-auto-top #-}
-
 -- | Representation of SMT boolean formulas which may contain _|_ in subterms.
 module Smten.Runtime.Formula.BoolF (
     BoolF(..), trueF, falseF, boolF, andF, andF_, notF, iteF,

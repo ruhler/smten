@@ -1,6 +1,4 @@
 
-{-# OPTIONS_GHC -auto-all #-}
-
 -- | Representation of a finite SMT Formula
 module Smten.Runtime.Formula.Finite (
   BoolFF(..), trueFF, falseFF, boolFF, andFF, orFF, orsFF, notFF, iteFF, varFF,

@@ -1,6 +1,4 @@
 
-{-# OPTIONS_GHC -fprof-auto-top #-}
-
 module Smten.Runtime.Formula.PartialF (
     PartialF(..), Finite(..), 
     finitePF, itePF, itePF_, andPF,
