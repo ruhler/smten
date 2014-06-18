@@ -2,9 +2,9 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Compiled.Smten.Search.Prim (
-    Symbolic, Solver,
-    return_symbolic, bind_symbolic, run_symbolic,
-    mzero_symbolic, mplus_symbolic,
+    Space, Solver,
+    single, bind, search,
+    empty, union,
     free_Integer, free_Bit,
     ) where
 
@@ -22,7 +22,7 @@ import Smten.Compiled.GHC.TypeLits
 
 data DT = DTEmpty | DTSingle FreeID | DTSplit DT DT | DTChoice FreeID DT DT
 
-data Symbolic a = Symbolic {
+data Space a = Space {
     -- Run the symbolic computation, producing an SMT formula and symbolic
     -- representation of the result.
     -- This takes a unit argument to ensure each time it is run, different
@@ -34,16 +34,16 @@ data Symbolic a = Symbolic {
     relS :: Model -> DT -> a
 }
 
-instance Functor Symbolic where
-    fmap f x = Symbolic {
+instance Functor Space where
+    fmap f x = Space {
         runS = \u -> case runS x u of
                         (p, v, t) -> (p, f v, t),
         relS = \m t -> f (relS x m t)
     }
     
 
-instance SmtenHS1 Symbolic where
-    ite1 p a b = Symbolic {
+instance SmtenHS1 Space where
+    ite1 p a b = Space {
         runS = \u -> 
           let (pa, va, ta) = runS a u
               (pb, vb, tb) = runS b u
@@ -52,19 +52,19 @@ instance SmtenHS1 Symbolic where
         relS = \m (DTSplit ta tb) -> ite0 p (relS a m ta) (relS b m tb)
       }
 
-    unreachable1 = Symbolic {
+    unreachable1 = Space {
         runS = const (unreachable, unreachable, DTEmpty),
-        relS = error "Symbolic.unreachable reached"
+        relS = error "Space.unreachable reached"
     }
 
-return_symbolic :: a -> Symbolic a
-return_symbolic x = Symbolic {
-    runS = {-# SCC "returnS" #-} const (trueF, x, DTEmpty),
+single :: a -> Space a
+single x = Space {
+    runS = const (trueF, x, DTEmpty),
     relS = \m _ -> x
 }
 
-bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
-bind_symbolic x f = Symbolic {
+bind :: Space a -> (a -> Space b) -> Space b
+bind x f = Space {
     runS = \u ->
        let (px, vx, tx) = runS x u
            (pf, vf, tf) = runS (f vx) u
@@ -73,14 +73,14 @@ bind_symbolic x f = Symbolic {
  }
        
 
-mzero_symbolic :: (SmtenHS0 a) => Symbolic a
-mzero_symbolic = Symbolic {
-    runS = {-# SCC "mzeroS" #-} const (falseF, unreachable, DTEmpty),
-    relS = \m _ -> error "Symbolic.relS.mzero reached"
+empty :: (SmtenHS0 a) => Space a
+empty = Space {
+    runS = const (falseF, unreachable, DTEmpty),
+    relS = \m _ -> error "Space.relS.empty reached"
  }
 
-mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
-mplus_symbolic a b = Symbolic {
+union :: (SmtenHS0 a) => Space a -> Space a -> Space a
+union a b = Space {
     runS = \u -> withfresh $ \nm ->
         let p = varF nm
             (pa, va, ta) = runS a u
@@ -93,16 +93,16 @@ mplus_symbolic a b = Symbolic {
             else relS b m tb
  }
 
-free_Integer :: Symbolic IntegerF
-free_Integer = Symbolic {
+free_Integer :: Space IntegerF
+free_Integer = Space {
     runS = \u -> {-# SCC "freeIntegerS" #-} withfresh $ \nm -> 
         u `seq` (trueF, var_IntegerF nm, DTSingle nm),
     relS = \m (DTSingle nm) -> integerF $ lookupInteger m nm
  }
 
 
-free_Bit :: SingI Nat n -> Symbolic (BitF n)
-free_Bit w = Symbolic {
+free_Bit :: SingI Nat n -> Space (BitF n)
+free_Bit w = Space {
     runS = \u -> {-# SCC "freeBitS" #-} withfresh $ \nm ->
             u `seq` (trueF, var_BitF (__deNewTyDGSingI w) nm, DTSingle nm),
 
@@ -111,8 +111,8 @@ free_Bit w = Symbolic {
  }
 
 
-run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
-run_symbolic s q = do
+search :: (SmtenHS0 a) => Solver -> Space a -> IO (S.Maybe a)
+search s q = do
   case ({-# SCC "RunS" #-} runS q ()) of
      (p, x, t) | (pp, pa, pb) <- deBoolF p -> do
        -- Try to find a solution in the finite part of the formula.
@@ -125,5 +125,5 @@ run_symbolic s q = do
             bres <- {-# SCC "SolveApprox" #-} solve s (notFF pp)
             case bres of
                Nothing -> return S.__Nothing
-               Just _ -> run_symbolic s (q { runS = const (andF_ (notFF pp) pb, x, t)})
+               Just _ -> search s (q { runS = const (andF_ (notFF pp) pb, x, t)})
 

@@ -13,8 +13,12 @@ module Smten.Symbolic
     ) where
 
 import Smten.Prelude
-import Smten.Search.Prim
 import Smten.Search
+
+type Symbolic = Space
+
+run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
+run_symbolic = search
 
 -- | Assert the given predicate is satisfied.
 assert :: Bool -> Space ()

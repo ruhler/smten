@@ -7,10 +7,11 @@ module Smten.Symbolic.SMT
    (SMT, query, runSMT) where
 
 import Smten.Prelude
-import Smten.Search.Prim
+import Smten.Search.Prim hiding (search)
 import Smten.Searches
 
 type SMT = Searches
+type Symbolic = Space
 
 -- | Run the symbolic computation and get the result.
 -- This does not effect the current context.

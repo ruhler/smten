@@ -2,7 +2,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 -- | This module provides the Space monad.
--- An alternate presentation of the Smten API for serach
 module Smten.Search (
   Space, Solver, search,
   empty, single, union,
@@ -16,33 +15,19 @@ import Smten.Smten.TypeLits
 import Smten.Control.Monad
 import Smten.Search.Prim
 
-type Space = Symbolic
-
-empty :: Space a
-empty = mzero 
-
-single :: a -> Space a
-single = return
-
-union :: Space a -> Space a -> Space a
-union = mplus
-
-search :: Solver -> Space a -> IO (Maybe a)
-search = run_symbolic
-
-instance Functor Symbolic where
+instance Functor Space where
     fmap f x = do
         v <- x
         return (f v)
 
-instance Monad Symbolic where
-    return = return_symbolic
-    (>>=) = bind_symbolic
-    fail _ = mzero
+instance Monad Space where
+    return = single
+    (>>=) = bind
+    fail _ = empty
 
-instance MonadPlus Symbolic where
-    mzero = mzero_symbolic
-    mplus = mplus_symbolic
+instance MonadPlus Space where
+    mzero = empty
+    mplus = union
 
 -- | The set of booleans { True, False }
 free_Bool :: Space Bool
