@@ -69,7 +69,8 @@ smtenHS nm tyvs cs = do
    let ty = S.ConAppT smtenhsnm [S.ConAppT qtyname tyvs']
    ite <- iteD nm n cs
    unreach <- unreachableD nm n cs
-   return [S.InstD ctx ty [ite, unreach]]
+   traces <- traceD nm n cs
+   return [S.InstD ctx ty [ite, unreach, traces]]
 
 -- iteN = \p a b -> iteS p a b (Foo {
 --   gd* = ite0 p (gd* a) (gd* b),
@@ -129,6 +130,34 @@ unreachableD nm k cs = do
   let upds = map mkupd $ ks
       body = S.RecE (S.VarE nm') upds
   return $ S.Method ("unreachable" ++ show k) body
+
+-- traceSN = \x ->
+--    traceSD [("FooA", gdFooA x, [traceS0 (flFooA1 x), ...),
+--             ("FooB", gdFooB x, [traceS0 (flFooB1 x), ...)]
+traceD :: Name -> Int -> [DataCon] -> CG S.Method
+traceD nm k cs = do
+  trace <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "traceS0"
+  traced <- S.VarE <$> usequalified "Smten.Runtime.Trace" "traceSD"
+  let mkcon :: DataCon -> CG S.Exp
+      mkcon d = do
+        let dnm = dataConName d
+
+            mkfield :: Int -> CG S.Exp
+            mkfield i = do
+              flf <- S.VarE <$> qfieldnmCG i dnm
+              return $ S.AppE trace (S.AppE flf (S.VarE "x"))
+
+        let cstr = S.LitE (S.StringL (occNameString $ nameOccName dnm))
+
+        gdf <- S.VarE <$> qguardnmCG dnm
+        let gd = S.AppE gdf (S.VarE "x")
+
+        fields <- S.ListE <$> (mapM (mkfield . fst) $ zip [1..] (dataConOrigArgTys d))
+        return $ S.tup3E cstr gd fields
+
+  ks <- S.ListE <$> mapM mkcon cs
+  let body = S.LamE "x" (S.AppE traced ks)
+  return $ S.Method ("traceS" ++ show k) body
 
 -- mkConD n ds d 
 -- Generate constructor functions for each constructor.

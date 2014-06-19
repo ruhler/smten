@@ -7,7 +7,7 @@ module Smten.Plugin.Output.Syntax (
     Alt(..), Pat(..), PatField(..), Literal(..), RecField(..),
     arrowT,
     tup2P, wildP,
-    conE, tup2E, appsE,
+    conE, tup2E, tup3E, appsE,
     ) where
 
 type Name = String
@@ -98,6 +98,9 @@ tup2P a b = ConP "(,)" [a, b]
 
 tup2E :: Exp -> Exp -> Exp
 tup2E a b = conE "(,)" [a, b]
+
+tup3E :: Exp -> Exp -> Exp -> Exp
+tup3E a b c = conE "(,,)" [a, b, c]
 
 wildP :: Pat
 wildP = VarP "_"

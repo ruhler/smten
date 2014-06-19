@@ -10,7 +10,7 @@ userinstall2:
 	tclsh8.5 tclmk/install.tcl
 
 clean:
-	rm -rf build/smten*
+	rm -rf build/smten* build/home/.cabal/lib/*/smten-*
 
 fullclean:
 	rm -rf build/*

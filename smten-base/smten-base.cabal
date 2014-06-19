@@ -86,6 +86,7 @@ library
     Smten.Runtime.SmtenHS
     Smten.Runtime.StableNameEq
     Smten.Runtime.SymbolicOf
+    Smten.Runtime.Trace
 
     Smten.Compiled.Smten.Prelude
     Smten.Compiled.Smten.Control.Monad
