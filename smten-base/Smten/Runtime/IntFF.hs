@@ -9,6 +9,7 @@ module Smten.Runtime.IntFF (
     add_IntFF, sub_IntFF, mul_IntFF, negate_IntFF,
     quot_IntFF, rem_IntFF,
     isLit_IntFF,
+    trace_IntFF,
   ) where
 
 import GHC.Prim
@@ -23,6 +24,7 @@ data IntFF =
    IntFF Int#
  | Symbolic_IntFF (M.IntMap BoolFF)
  | Unreachable_IntFF
+  deriving (Show)
 
 ite_IntFF :: BoolFF -> IntFF -> IntFF -> IntFF 
 ite_IntFF TrueFF a _ = a
@@ -219,4 +221,7 @@ quot_IntFF = iii (\a b -> if b ==# 0# then 0# else quotInt# a b)
 -- I'm just returning 0#.
 rem_IntFF :: IntFF -> IntFF -> IntFF
 rem_IntFF = iii (\a b -> if b ==# 0# then 0# else remInt# a b)
+
+trace_IntFF :: IntFF -> String
+trace_IntFF = show
 

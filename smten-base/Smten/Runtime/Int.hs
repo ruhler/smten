@@ -45,6 +45,7 @@ primIntApp f (Int# (PartialF p a b)) = ite0 (finiteF p) (applyToIntFF' f a) (pri
 instance SmtenHS0 Int# where
     ite0 p a b = iteS p a b (ite_IntF p a b)
     unreachable0 = unreachable_IntF
+    traceS0 (Int# x) = traceSPF trace_IntFF x
 
 int# :: P.Int# -> Int#
 int# v = Int# (finitePF (IntFF v))

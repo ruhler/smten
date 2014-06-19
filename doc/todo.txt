@@ -3,6 +3,15 @@ Approx::
     Why?
 * Have timeout for select (?)
 
+Trace::
+* Should share code with 'debug', no?
+* Add trace support for newtypes
+* Better tracing of primitives
+* PartialF should not print: TrueFF ? foo : _|_ if finite is TrueFF.
+  Instead, just print 'foo'
+* Can we use tabbing to clarify alternatives?
+* BoolF should print using boolean formula syntax
+
 Prelude::
 * make it so people can import Prelude instead of Smten.Prelude
 

@@ -40,6 +40,7 @@ toHSChar# (Char# x) = P.chr# (toHSInt# x)
 instance SmtenHS0 Char# where
     ite0 p (Char# a) (Char# b) = Char# (ite0 p a b)
     unreachable0 = Char# unreachable0
+    traceS0 (Char# a) = "Char# (" P.++ traceS0 a P.++ ")"
 
 eqChar# :: Char# -> Char# -> Bool
 eqChar# (Char# a) (Char# b) = a ==# b
