@@ -16,6 +16,10 @@ class SmtenHS0 a where
     ite0 :: BoolF -> a -> a -> a
     unreachable0 :: a
 
+    -- For debugging purposes only, show the representation of this type.
+    traceS0 :: a -> String
+    traceS0 _ = "?traceS?"
+
 class SmtenHS1 m where
     ite1 :: (SmtenHS0 a) => BoolF -> m a -> m a -> m a
     unreachable1 :: (SmtenHS0 a) => m a

@@ -84,6 +84,7 @@ library
     Smten.Tests.SMT.Integer
     Smten.Tests.SMT.Core
     Smten.Tests.Test
+    Smten.Tests.Trace
     Smten.Tests.All
 
     Smten.Compiled.GHC.TypeLits
@@ -135,6 +136,7 @@ library
     Smten.Compiled.Smten.Tests.SMT.Integer
     Smten.Compiled.Smten.Tests.SMT.Opt
     Smten.Compiled.Smten.Tests.Test
+    Smten.Compiled.Smten.Tests.Trace
     Smten.Compiled.Smten.Tests.All
 
   other-modules:

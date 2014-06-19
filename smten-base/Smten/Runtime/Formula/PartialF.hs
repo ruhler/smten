@@ -3,6 +3,7 @@ module Smten.Runtime.Formula.PartialF (
     PartialF(..), Finite(..), 
     finitePF, itePF, itePF_, andPF,
     unaryPF, binaryPF, unreachablePF,
+    traceSPF,
   )  where
 
 import Smten.Runtime.Formula.Finite
@@ -129,4 +130,10 @@ itePF_ p x_ y_
 
 itePF__ :: BoolFF -> a -> PartialF a -> PartialF a
 itePF__ = PartialF
+
+traceSPF :: (a -> String) -> PartialF a -> String
+traceSPF f x =
+  case x of
+    PartialF p a _ -> show p ++ " ? " ++ f a ++ ": _|_"
+    Unreachable_PartialF -> "UNREACH"
 

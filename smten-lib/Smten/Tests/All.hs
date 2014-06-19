@@ -16,10 +16,10 @@ import qualified Smten.Tests.State
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Datatype
 import qualified Smten.Tests.SMT.Opt
+import qualified Smten.Tests.Trace
 
 -- Import things so that they will be compiled by the plugin, even though we
 -- don't actually have tests to run for them.
-import qualified Smten.Debug.Trace ()
 import qualified Smten.Control.Monad.Error ()
 import qualified Smten.Control.Monad.State.Strict ()
 import qualified Smten.Search ()
@@ -45,6 +45,7 @@ main = do
   Smten.Tests.List.tests
   Smten.Tests.Array.tests
   Smten.Tests.State.tests
+  Smten.Tests.Trace.tests
   Smten.Tests.SMT.Core.tests
   Smten.Tests.SMT.Datatype.tests
   Smten.Tests.SMT.Opt.tests
