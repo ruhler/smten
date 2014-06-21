@@ -14,5 +14,5 @@ trace :: (SmtenHS0 a) => List__ Char -> a -> a
 trace = symapp P.trace
 
 traceS :: (SmtenHS0 a) => a -> b -> b
-traceS x y = P.trace (traceS0 x) y
+traceS x y = {-# SCC "traceS" #-} P.trace (traceS0 x) y
 

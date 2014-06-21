@@ -140,8 +140,6 @@ library
     Smten.Compiled.Smten.Tests.All
 
   other-modules:
-    Smten.Runtime.AnyKeyMap
-    Smten.Runtime.Debug
     Smten.Runtime.HashTable
     Smten.Runtime.Yices2.AST
     Smten.Runtime.Yices2.FFI

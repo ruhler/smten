@@ -66,11 +66,13 @@ library
     Smten.System.IO_
     Smten.System.IO0
 
+    Smten.Runtime.AnyKeyMap
     Smten.Runtime.AnyMap
     Smten.Runtime.Bit
     Smten.Runtime.Bool
     Smten.Runtime.BuildCache
     Smten.Runtime.Char
+    Smten.Runtime.Debug
     Smten.Runtime.Formula
     Smten.Runtime.Formula.BitF
     Smten.Runtime.Formula.BoolF
@@ -138,7 +140,8 @@ library
 
   build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten ==@VERSIONMAJOR@.*,
                  hashtables ==1.0.*, template-haskell ==2.8.*,
-                 transformers ==0.3.*, integer-gmp ==0.5.*, containers ==0.5.*
+                 transformers ==0.3.*, integer-gmp ==0.5.*,
+                 containers ==0.5.*, pretty ==1.1.*, mtl ==2.1.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 

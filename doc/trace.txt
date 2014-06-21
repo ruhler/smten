@@ -1,0 +1,54 @@
+
+Fri Jun 20 18:51:48 EDT 2014
+
+Goal is to get the traceS infrastructure in much better shape.
+
+The idea is: it's hard to figure out why things blow up. I believe it would be
+much easier if you could see the symbolic state of things, especially in the
+recursive functions that blow up.
+
+So we have a primitive, traceS, which prints that out. At least, in theory. In
+practice there is a lot of work to do to make it work well enough to be useful
+
+My driving test case: ssketch is blowing up for reasons I don't expect. Like a
+Map is becoming symbolic when it shouldn't.
+
+The trouble is, when I try to trace the map, it just hangs.
+
+First step: verify it hangs during tracing, by adding a profiling pragma.
+
+Yes. Profiling puts all the time in Trace.
+
+I have two comments:
+
+1. Trace should be such that it never blows up.
+Maybe it's slow to print things, but it should keep printing and printing.
+It should recognize bottom as such and explicitly say "_|_", maybe with an
+error message if we have it.
+
+I suppose if you have a cycle in the data structure, it would print forever...
+Unless we can handle that by sharing (which would be cool), but that's not a
+big deal right now.
+
+2. Boolean formulas should print like they do for debug.
+
+If I'm going to do (1), I think I should do (2) first, because it makes sense,
+perhaps, to have the test for _|_ in the same place as the test for sharing
+and debug and such?
+
+This makes an easy first step, I think:
+
+I. Change the debug solver to use traceS0 to print the formula instead of
+"assert". 
+
+Actually, I could split this into a few smaller steps.
+
+1. Move Smten.Runtime.Debug to smten-base
+2. Implement traceS_BoolFF using debug
+Perhaps in Smten.Runtime.Debug.BoolFF.
+3. Use traceS_BoolFF in the instance of traceS0 for BoolF.
+4. Run ssketch now - it should print the boolean formulas much more pretty
+5. Change Debug solver to use traceS_BoolFF.
+
+Then consider what the best thing to do next is.
+
