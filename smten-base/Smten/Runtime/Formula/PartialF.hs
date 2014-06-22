@@ -135,5 +135,5 @@ traceSPF :: (a -> String) -> PartialF a -> String
 traceSPF f x =
   case x of
     PartialF p a _ -> show p ++ " ? " ++ f a ++ ": _|_"
-    Unreachable_PartialF -> "UNREACH"
+    Unreachable_PartialF -> "UR"
 

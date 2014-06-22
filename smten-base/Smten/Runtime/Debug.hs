@@ -1,6 +1,6 @@
 
 module Smten.Runtime.Debug (
-    Debug, dbgRender,
+    Debug, dbgRender, dbgShow,
     dbgOp, dbgCase, dbgText, dbgError, dbgVar, dbgCon, dbgApp, dbgApps,
     dbgShare, dbgLit,
     ) where
@@ -10,6 +10,7 @@ import Data.Functor ((<$>))
 import Data.IORef
 import Text.PrettyPrint.HughesPJ
 import qualified Smten.Runtime.AnyKeyMap as A
+import System.IO.Unsafe
 
 data ShareState =
    SeenOnce             -- ^ We have seen the object once so far.
@@ -162,4 +163,7 @@ dbgRender (Debug sh go) = {-# SCC "DebugRender" #-} do
   v <- newIORef 0
   _ <- runReaderT sh (SR m)
   render <$> runReaderT go (GR m v)
+
+dbgShow :: Debug -> String
+dbgShow d = unsafePerformIO (dbgRender d)
 

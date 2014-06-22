@@ -73,6 +73,7 @@ library
     Smten.Runtime.BuildCache
     Smten.Runtime.Char
     Smten.Runtime.Debug
+    Smten.Runtime.Debug.Finite
     Smten.Runtime.Formula
     Smten.Runtime.Formula.BitF
     Smten.Runtime.Formula.BoolF

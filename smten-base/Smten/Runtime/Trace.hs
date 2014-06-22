@@ -11,6 +11,6 @@ traceSD xs =
   in case filter (\(_, p, _) -> not (isFalseF p)) xs of
         [(s,_,args)] -> s ++ targs args
         xs' -> 
-          let f (s,p,args) = s ++ " [" ++ trace_BoolF p ++ "]" ++ targs args
+          let f (s,p,args) = s ++ " [" ++ traceS_BoolF p ++ "]" ++ targs args
           in unlines (map f xs')
 

@@ -6,12 +6,13 @@ module Smten.Runtime.Formula.BoolF (
     unreachableF,
     isTrueF, isFalseF, iteS,
     deBoolF,
-    trace_BoolF,
+    traceS_BoolF,
   ) where
 
 import Smten.Runtime.FreeID
 import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula.PartialF
+import Smten.Runtime.Debug.Finite
 
 newtype BoolF = BoolF (PartialF BoolFF)
      deriving (Show)
@@ -72,6 +73,6 @@ iteS (BoolF (PartialF TrueFF TrueFF _)) a b s = a
 iteS (BoolF (PartialF TrueFF FalseFF _)) a b s = b
 iteS _ a b s = s
 
-trace_BoolF :: BoolF -> String
-trace_BoolF = show
+traceS_BoolF :: BoolF -> String
+traceS_BoolF (BoolF x) = traceSPF traceS_BoolFF x
 
