@@ -28,41 +28,25 @@ traceS_BitFF :: BitFF -> String
 traceS_BitFF = dbgShow . debug_BitFF
 
 
--- mark a debug object for sharing.
-sh :: Debug -> Debug
-sh x = dbgShare id x
-
-shb :: BoolFF -> Debug
-shb x = sh (dbgb x)
-
-shi :: IntegerFF -> Debug
-shi x = sh (dbgi x)
-
-shv :: BitFF -> Debug
-shv x = sh (dbgv x)
-
-op :: String -> Debug -> Debug -> Debug
-op o a b = dbgOp o (sh a) (sh b)
-
 opb :: String -> BoolFF -> BoolFF -> Debug
-opb o a b = op o (dbgb a) (dbgb b)
+opb o a b = dbgOp o (dbgb a) (dbgb b)
 
 opi :: String -> IntegerFF -> IntegerFF -> Debug
-opi o a b = op o (dbgi a) (dbgi b)
+opi o a b = dbgOp o (dbgi a) (dbgi b)
 
 opv :: String -> BitFF -> BitFF -> Debug
-opv o a b = op o (dbgv a) (dbgv b)
+opv o a b = dbgOp o (dbgv a) (dbgv b)
 
 
 dbgb :: BoolFF -> Debug
-dbgb x =
+dbgb = dbgShare $ \x ->
   case x of 
     TrueFF -> dbgLit True
     FalseFF -> dbgLit False
-    IteFF p a b _ -> dbgCase "True" (shb p) (shb a) (shb b)
+    IteFF p a b _ -> dbgCase "True" (dbgb p) (dbgb a) (dbgb b)
     AndFF a b _ -> opb "&&" a b
     OrFF a b _ -> opb "||" a b
-    NotFF x _ -> dbgApp (dbgText "!") (shb x)
+    NotFF x _ -> dbgApp (dbgText "!") (dbgb x)
     VarFF n _ -> dbgVar (freenm n)
     Eq_IntegerFF a b _ -> opi "==" a b
     Leq_IntegerFF a b _ -> opi "<=" a b
@@ -71,17 +55,17 @@ dbgb x =
     Unreachable_BoolFF -> dbgText "UR"
 
 dbgi :: IntegerFF -> Debug
-dbgi x =
+dbgi = dbgShare $ \x -> 
   case x of
     IntegerFF i -> dbgLit i
     Add_IntegerFF a b _ -> opi "+" a b
     Sub_IntegerFF a b _ -> opi "-" a b
-    Ite_IntegerFF p a b _ -> dbgCase "True" (shb p) (shi a) (shi b)
+    Ite_IntegerFF p a b _ -> dbgCase "True" (dbgb p) (dbgi a) (dbgi b)
     Var_IntegerFF n _ -> dbgVar (freenm n)
     Unreachable_IntegerFF -> dbgText "UR"
 
 dbgv :: BitFF -> Debug
-dbgv x =
+dbgv = dbgShare $ \x ->
   case x of
     BitFF v -> dbgLit v
     Add_BitFF a b _ -> opv "+" a b
@@ -97,10 +81,10 @@ dbgv x =
     Shl_BitFF _ a b _ -> opv "<<" a b
     Lshr_BitFF _ a b _ -> opv ">>" a b
     Concat_BitFF a b _ -> opv "++" a b
-    Not_BitFF a _ -> dbgApp (dbgText "~") (shv x)
+    Not_BitFF a _ -> dbgApp (dbgText "~") (dbgv x)
     SignExtend_BitFF fr to x _ -> dbgText "?SignExtend"
-    Extract_BitFF hi lo x _ -> dbgApp (shv x) (dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]")
-    Ite_BitFF p a b _ -> dbgCase "True" (shb p) (shv a) (shv b)
+    Extract_BitFF hi lo x _ -> dbgApp (dbgv x) (dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]")
+    Ite_BitFF p a b _ -> dbgCase "True" (dbgb p) (dbgv a) (dbgv b)
     Var_BitFF _ n _ -> dbgVar (freenm n)
     Unreachable_BitFF -> dbgText "UR"
 

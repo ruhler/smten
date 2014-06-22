@@ -48,7 +48,7 @@ Actually, I could split this into a few smaller steps.
 Perhaps in Smten.Runtime.Debug.BoolFF.
 3+ Use traceS_BoolFF in the instance of traceS0 for BoolF.
 4+ Run ssketch now - it should print the boolean formulas much more pretty
-5. Change Debug solver to use traceS_BoolFF.
+5+ Change Debug solver to use traceS_BoolFF.
 
 Then consider what the best thing to do next is.
 
