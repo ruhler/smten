@@ -1,5 +1,5 @@
 
-module Smten.Runtime.Trace (traceSD) where
+module Smten.Runtime.Trace (traceSD, traceSNT) where
 
 import Smten.Runtime.Formula.BoolF
 
@@ -14,4 +14,8 @@ traceSD tynm xs =
         xs' -> 
           let f (s,p,args) = s ++ " [" ++ traceS_BoolF p ++ "]" ++ targs args
           in tynm ++ " {" ++ concatMap ((++ " ; ") . f) xs' ++ "}"
+
+-- Helper function for implementing traceS for newtype.
+traceSNT :: String -> String -> String
+traceSNT c x = c ++ " (" ++ x ++ ")"
 

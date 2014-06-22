@@ -69,7 +69,8 @@ smtenHS nm tyvs constr = do
        cn = dataConName constr
    ite <- iteD cn n
    unreach <- unreachableD cn n
-   return [S.InstD ctx ty [ite, unreach]]
+   traces <- traceD cn n
+   return [S.InstD ctx ty [ite, unreach, traces]]
 
 -- iteN = \p a b -> iteS p a b (Foo (ite0 p (__deNewTyFoo a) (__deNewTyFoo b)))
 iteD :: Name -> Int -> CG S.Method
@@ -94,3 +95,14 @@ unreachableD nm k = do
   xx <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "unreachable"
   c <- S.VarE <$> qnameCG nm
   return $ S.Method ("unreachable" ++ show k) (S.AppE c xx)
+
+-- traceSN = \x -> traceSNT "Foo" (traceS0 (__deNewTyFoo x))
+traceD :: Name -> Int -> CG S.Method
+traceD nm k = do
+  trc <- S.VarE <$> usequalified "Smten.Runtime.SmtenHS" "traceS0"
+  trcnt <- S.VarE <$> usequalified "Smten.Runtime.Trace" "traceSNT"
+  dcn <- S.VarE <$> qdenewtynmCG nm
+  let cnm = S.LitE (S.StringL (occNameString $ nameOccName nm))
+      body = S.AppE (S.AppE trcnt cnm) (S.AppE trc (S.AppE dcn (S.VarE "x")))
+  return $ S.Method ("traceS" ++ show k) (S.LamE "x" body)
+

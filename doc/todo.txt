@@ -4,8 +4,6 @@ Approx::
 * Have timeout for select (?)
 
 Trace::
-* Add trace support for newtypes
-* Better tracing of primitives
 * Can we use tabbing to clarify alternatives?
 
 Prelude::

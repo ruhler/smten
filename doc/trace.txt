@@ -85,4 +85,11 @@ See that it is an error, and mark it as such.
 
 Whose job is it to do this though?
 
+Sat Jun 21 23:28:21 EDT 2014
+
+Things seem to be working better now. I'm not sure what changed.
+
+I think tracing is now in good enough shape to explore more what the
+performance problems in ssketch are. Let me try it out, and fix issues as they
+come up.
 
