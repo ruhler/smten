@@ -132,7 +132,8 @@ unreachableD nm k cs = do
   return $ S.Method ("unreachable" ++ show k) body
 
 -- traceSN = \x ->
---    traceSD [("FooA", gdFooA x, [traceS0 (flFooA1 x), ...),
+--    traceSD "Foo"
+--             [("FooA", gdFooA x, [traceS0 (flFooA1 x), ...),
 --             ("FooB", gdFooB x, [traceS0 (flFooB1 x), ...)]
 traceD :: Name -> Int -> [DataCon] -> CG S.Method
 traceD nm k cs = do
@@ -156,7 +157,8 @@ traceD nm k cs = do
         return $ S.tup3E cstr gd fields
 
   ks <- S.ListE <$> mapM mkcon cs
-  let body = S.LamE "x" (S.AppE traced ks)
+  let tnm = S.LitE (S.StringL (occNameString $ nameOccName nm))
+      body = S.LamE "x" (S.AppE (S.AppE traced tnm) ks)
   return $ S.Method ("traceS" ++ show k) body
 
 -- mkConD n ds d 

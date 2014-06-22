@@ -11,6 +11,7 @@ module Smten.Runtime.Int (
     (+#), (-#), (*#), negateInt#,
     quotInt#, remInt#, quotRemInt#,
     primIntApp, int#,
+    traceS_CharF,
   ) where
 
 import qualified Prelude as P
@@ -101,4 +102,8 @@ quotRemInt# a b = (# quotInt# a b, remInt# a b #)
 
 negateInt# :: Int# -> Int#
 negateInt# (Int# a) = Int# (unaryPF negate_IntFF a)
+
+-- Trace an Int#, interpreted as a Char#
+traceS_CharF :: Int# -> P.String
+traceS_CharF (Int# x) = traceSPF trace_CharFF x
 

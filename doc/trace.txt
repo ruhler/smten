@@ -52,3 +52,37 @@ Perhaps in Smten.Runtime.Debug.BoolFF.
 
 Then consider what the best thing to do next is.
 
+Sat Jun 21 21:31:52 EDT 2014
+
+It looks like the trace for ssketch may be working. But it's printing out
+nothing.
+
+Here's what I should do next...
+
+What I want to do is pass the type name to the traceSD function. If there are
+multiple alternatives, list it as:
+  Foo {
+    FooA [...] 
+    FooB [...]
+    ...
+ }
+
+Then, if it is empty, I should see that explicitly.
+
+Sat Jun 21 22:44:53 EDT 2014
+
+Now, tracing in ssketch, it says "variable i not found".
+
+That is, we run into an error...
+
+How can that be?
+
+If that map, or a field of it, is an error.
+
+And what do I want to do in this case?
+
+See that it is an error, and mark it as such.
+
+Whose job is it to do this though?
+
+

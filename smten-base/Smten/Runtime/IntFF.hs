@@ -9,9 +9,10 @@ module Smten.Runtime.IntFF (
     add_IntFF, sub_IntFF, mul_IntFF, negate_IntFF,
     quot_IntFF, rem_IntFF,
     isLit_IntFF,
-    trace_IntFF,
-  ) where
+    trace_IntFF, trace_CharFF,
+  ) where 
 
+import Data.Char
 import GHC.Prim
 import GHC.Types
 import qualified Data.IntMap as M
@@ -19,6 +20,7 @@ import Smten.Runtime.Formula.BoolF
 import Smten.Runtime.Formula.Finite
 import Smten.Runtime.Formula.PartialF
 import Smten.Runtime.SmtenHS
+import Smten.Runtime.Trace
 
 data IntFF =
    IntFF Int#
@@ -223,5 +225,19 @@ rem_IntFF :: IntFF -> IntFF -> IntFF
 rem_IntFF = iii (\a b -> if b ==# 0# then 0# else remInt# a b)
 
 trace_IntFF :: IntFF -> String
-trace_IntFF = show
+trace_IntFF (IntFF i) = show (I# i)
+trace_IntFF (Symbolic_IntFF m) =
+  let f :: (Int, BoolFF) -> (String, BoolF, [String])
+      f (i, v) = (show i, finiteF v, [])
+  in traceSD "IntFF" (map f (M.assocs m))
+trace_IntFF Unreachable_IntFF = "UR"
+
+-- Trace an IntFF under, interpreted as a character.
+trace_CharFF :: IntFF -> String
+trace_CharFF (IntFF i) = show (C# (chr# i))
+trace_CharFF (Symbolic_IntFF m) =
+  let f :: (Int, BoolFF) -> (String, BoolF, [String])
+      f (i, v) = (show (chr i), finiteF v, [])
+  in traceSD "CharFF" (map f (M.assocs m))
+trace_CharFF Unreachable_IntFF = "UR"
 
