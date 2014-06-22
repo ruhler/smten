@@ -6,6 +6,7 @@ module Smten.Runtime.Formula.PartialF (
     traceSPF,
   )  where
 
+import Smten.Runtime.Debug.Finite
 import Smten.Runtime.Formula.Finite
 import Smten.Runtime.StableNameEq
 import qualified Smten.Runtime.Select as S
@@ -134,6 +135,8 @@ itePF__ = PartialF
 traceSPF :: (a -> String) -> PartialF a -> String
 traceSPF f x =
   case x of
-    PartialF p a _ -> show p ++ " ? " ++ f a ++ ": _|_"
+    PartialF TrueFF a _-> f a
+    PartialF FalseFF a _-> "_|_"
+    PartialF p a _-> traceS_BoolFF p ++ " ? " ++ f a ++ ": _|_"
     Unreachable_PartialF -> "UR"
 
