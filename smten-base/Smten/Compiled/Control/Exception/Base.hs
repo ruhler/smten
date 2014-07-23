@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Control.Exception.Base (
-    patError, irrefutPatError, recSelError, noMethodBindingError,
+    patError, irrefutPatError, recConError, recSelError, noMethodBindingError,
     ) where
 
 import Control.Exception.Base

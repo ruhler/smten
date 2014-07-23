@@ -7,8 +7,11 @@
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_GHC -fno-warn-missing-methods #-}
+{-# OPTIONS_GHC -fno-warn-missing-fields #-}
 
-module Smten.Tests.Basic (tests) where
+module Smten.Tests.Basic (
+    tests, testRecSelErr, testRecConErr,
+  ) where
 
 import Smten.Prelude
 import Smten.Tests.Test
@@ -126,6 +129,16 @@ thegreatthing w = thething w + howgreat w
 
 -- record type construction with no fields
 data EmptyRecord = EmptyRecord {}
+
+
+-- Ensure record selector and constructor errors are supported.
+data RecErrType = RET_A { ret :: Integer } | RET_B { not_ret :: Integer }
+
+testRecSelErr :: RecErrType -> Integer
+testRecSelErr x = ret x
+
+testRecConErr :: RecErrType 
+testRecConErr = RET_A {}
 
 class MultiFoo a b where
     multifoo :: a -> b -> Integer
